@@ -138,15 +138,15 @@ body{
   overflow-x:hidden;
   position:relative;
 }
-/* subtle tactile-panel texture behind the whole page — echoes the sensory hall's tactile panels */
+/* soft ambient color wash behind the whole page — calm ombre, no repeating pattern */
 body::before{
   content:"";
   position:fixed; inset:0; z-index:-1; pointer-events:none;
-  background-image:url('../images/pattern-tactile.svg');
-  background-size:88px 88px;
-  opacity:.28;
+  background-image:url('../images/page-ambient-wash.svg');
+  background-size:cover; background-position:center; background-repeat:no-repeat;
+  opacity:.6;
 }
-:root[data-theme="dark"] body::before, @media (prefers-color-scheme:dark){ body::before{ opacity:.14; } }
+:root[data-theme="dark"] body::before, @media (prefers-color-scheme:dark){ body::before{ opacity:.22; } }
 
 img{ max-width:100%; display:block; }
 a{ color:var(--color-sage-deep); }
