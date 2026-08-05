@@ -1,0 +1,70 @@
+<svg viewBox="0 0 480 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="heroTitle">
+  <title id="heroTitle">Дитина гойдається на сенсорній гойдалці в залі з м'яким басейном</title>
+  <defs>
+    <linearGradient id="heroSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E7F0E5"/>
+      <stop offset="1" stop-color="#E7F1F4"/>
+    </linearGradient>
+    <linearGradient id="heroFloor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FBECDB"/>
+      <stop offset="1" stop-color="#F4D9B5"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="480" height="600" fill="url(#heroSky)"/>
+
+  <!-- soft window light -->
+  <circle cx="360" cy="120" r="140" fill="#FBECDB" opacity=".55"/>
+  <circle cx="360" cy="120" r="90" fill="#FBECDB" opacity=".55"/>
+
+  <!-- floor / crash mat -->
+  <path d="M0 480 Q240 440 480 480 L480 600 L0 600 Z" fill="url(#heroFloor)"/>
+
+  <!-- suspended swing ropes -->
+  <path d="M180 40 L204 330" stroke="#3F6249" stroke-width="4" stroke-linecap="round"/>
+  <path d="M300 40 L276 330" stroke="#3F6249" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="180" cy="40" r="6" fill="#3F6249"/>
+  <circle cx="300" cy="40" r="6" fill="#3F6249"/>
+
+  <!-- fabric swing seat -->
+  <path d="M198 322 Q240 360 282 322 L272 336 Q240 366 208 336 Z" fill="#DD9C61"/>
+
+  <!-- child on swing -->
+  <g>
+    <!-- legs -->
+    <path d="M226 356 Q214 384 224 404" stroke="#3F6249" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <path d="M254 356 Q266 384 258 404" stroke="#3F6249" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <!-- body -->
+    <path d="M212 300 Q240 282 268 300 L266 348 Q240 364 214 348 Z" fill="#6F9CAE"/>
+    <!-- arms holding ropes -->
+    <path d="M214 308 Q198 300 196 280" stroke="#6F9CAE" stroke-width="10" stroke-linecap="round" fill="none"/>
+    <path d="M266 308 Q284 300 286 280" stroke="#6F9CAE" stroke-width="10" stroke-linecap="round" fill="none"/>
+    <!-- head -->
+    <circle cx="240" cy="272" r="26" fill="#F0C79B"/>
+    <path d="M216 264 Q240 240 264 264 Q262 250 240 248 Q218 250 216 264 Z" fill="#3F6249"/>
+    <!-- calm face -->
+    <path d="M231 276 q4 4 8 0" stroke="#3F6249" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  </g>
+
+  <!-- ball pit -->
+  <ellipse cx="120" cy="520" rx="100" ry="34" fill="#E7F1F4"/>
+  <g>
+    <circle cx="60" cy="512" r="13" fill="#6E9B78"/>
+    <circle cx="90" cy="524" r="15" fill="#DD9C61"/>
+    <circle cx="120" cy="508" r="12" fill="#6F9CAE"/>
+    <circle cx="150" cy="522" r="14" fill="#6E9B78"/>
+    <circle cx="178" cy="510" r="11" fill="#DD9C61"/>
+    <circle cx="45" cy="528" r="10" fill="#6F9CAE"/>
+    <circle cx="200" cy="524" r="10" fill="#6E9B78"/>
+  </g>
+
+  <!-- tactile panel hint -->
+  <g transform="translate(348,410)">
+    <rect x="0" y="0" width="86" height="110" rx="14" fill="#FFFFFF" stroke="#E6DFCE" stroke-width="2"/>
+    <circle cx="24" cy="28" r="8" fill="#E7F0E5"/>
+    <circle cx="58" cy="28" r="8" fill="#FBECDB"/>
+    <circle cx="24" cy="58" r="8" fill="#E7F1F4"/>
+    <circle cx="58" cy="58" r="8" fill="#E7F0E5"/>
+    <rect x="16" y="80" width="54" height="10" rx="5" fill="#F2EEE1"/>
+  </g>
+</svg>

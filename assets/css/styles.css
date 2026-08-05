@@ -136,7 +136,17 @@ body{
   line-height:1.6;
   -webkit-font-smoothing:antialiased;
   overflow-x:hidden;
+  position:relative;
 }
+/* subtle tactile-panel texture behind the whole page — echoes the sensory hall's tactile panels */
+body::before{
+  content:"";
+  position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background-image:url('../images/pattern-tactile.svg');
+  background-size:88px 88px;
+  opacity:.28;
+}
+:root[data-theme="dark"] body::before, @media (prefers-color-scheme:dark){ body::before{ opacity:.14; } }
 
 img{ max-width:100%; display:block; }
 a{ color:var(--color-sage-deep); }
@@ -267,7 +277,11 @@ h1,h2,h3,.font-display{
   aspect-ratio:4/5; background:linear-gradient(160deg,var(--color-sage-tint),var(--color-sky-tint));
   display:flex; align-items:center; justify-content:center; border:1px solid var(--color-border);
 }
+.hero-media-img{
+  position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:50% 22%;
+}
 .hero-media .play{
+  position:relative; z-index:1;
   width:64px;height:64px;border-radius:50%; background:var(--color-surface); box-shadow:var(--shadow-md);
   display:flex; align-items:center; justify-content:center; cursor:pointer; border:none;
 }
@@ -295,7 +309,13 @@ h1,h2,h3,.font-display{
 .pain-card svg{ flex:none; width:20px; height:20px; stroke:var(--color-apricot-deep); margin-top:2px; }
 
 /* ---------- About / mission ---------- */
-.about-grid{ display:grid; grid-template-columns:1.1fr .9fr; gap:56px; align-items:start; }
+#about{ overflow:hidden; }
+.about-decor{
+  position:absolute; right:-40px; bottom:-30px; width:340px; height:340px;
+  opacity:.06; pointer-events:none; z-index:0;
+}
+:root[data-theme="dark"] .about-decor, @media (prefers-color-scheme:dark){ .about-decor{ opacity:.1; } }
+.about-grid{ position:relative; z-index:1; display:grid; grid-template-columns:1.1fr .9fr; gap:56px; align-items:start; }
 .about-grid p{ font-size:16px; color:var(--color-ink-soft); max-width:60ch; }
 .mission-card{
   background:var(--color-sage-deep); color:#fff; border-radius:var(--radius-l);
@@ -347,6 +367,11 @@ h1,h2,h3,.font-display{
 .path-step p{ font-size:14.5px; color:var(--color-ink-soft); margin:0; max-width:60ch; }
 
 /* ---------- Gallery ---------- */
+.hall-banner{
+  margin:0 0 24px; border-radius:var(--radius-l); overflow:hidden; border:1px solid var(--color-border);
+  box-shadow:var(--shadow-sm); line-height:0;
+}
+.hall-banner img{ width:100%; height:auto; display:block; }
 .gallery-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
 .gallery-item{
   aspect-ratio:1; border-radius:var(--radius-m); border:1px solid var(--color-border);
@@ -368,9 +393,10 @@ h1,h2,h3,.font-display{
 .team-card.sky:hover{ border-color:var(--color-sky); }
 .team-card.apricot:hover{ border-color:var(--color-apricot); }
 .team-avatar{
-  width:64px;height:64px;border-radius:50%; margin-bottom:16px;
+  width:64px;height:64px;border-radius:50%; margin-bottom:16px; overflow:hidden;
   background:linear-gradient(135deg,var(--color-sage-tint),var(--color-sky-tint)); border:1px solid var(--color-border);
 }
+.team-avatar img{ width:100%; height:100%; object-fit:cover; }
 .team-card h3{ font-family:'PT Sans',sans-serif; font-size:16px; font-weight:700; margin-bottom:2px; }
 .team-role{ font-size:12.5px; font-weight:700; color:var(--color-sage-deep); margin-bottom:12px; }
 .team-card blockquote{ margin:0 0 10px; font-size:14px; color:var(--color-ink-soft); font-style:italic; }
@@ -393,7 +419,8 @@ h1,h2,h3,.font-display{
 }
 .testi-card blockquote{ margin:0 0 16px; font-size:14.5px; color:var(--color-ink-soft); }
 .testi-who{ display:flex; align-items:center; gap:10px; }
-.testi-avatar{ width:36px;height:36px;border-radius:50%; background:var(--color-sage-tint); }
+.testi-avatar{ width:36px;height:36px;border-radius:50%; background:var(--color-sage-tint); overflow:hidden; }
+.testi-avatar img{ width:100%; height:100%; object-fit:cover; }
 .testi-name{ font-size:13px; font-weight:700; }
 .testi-role{ font-size:12px; color:var(--color-ink-faint); }
 .testi-placeholder-badge{
