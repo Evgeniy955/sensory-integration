@@ -480,7 +480,34 @@ h1,h2,h3,.font-display{
 .footer-col h4{ font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--color-ink-faint); margin-bottom:14px; font-weight:700; }
 .footer-col a{ display:block; font-size:14px; color:var(--color-ink-soft); text-decoration:none; margin-bottom:10px; }
 .footer-col a:hover{ color:var(--color-sage-deep); }
+.footer-social{ display:flex; gap:10px; margin-top:14px; }
+.social-badge{
+  width:38px; height:38px; border-radius:var(--radius-full);
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; box-shadow:var(--shadow-sm); text-decoration:none;
+  transition:transform .2s ease, box-shadow .2s ease;
+}
+.social-badge i{ font-size:17px; line-height:1; }
+.social-badge:hover{ transform:translateY(-3px) scale(1.06); box-shadow:var(--shadow-md); }
+.social-viber{ background:#7360F2; }
+.social-telegram{ background:#26A5E4; }
+.social-whatsapp{ background:#25D366; }
+.social-instagram{ background:radial-gradient(circle at 30% 110%, #FDCB52 0%, #F17A38 25%, #E1306C 50%, #C1327B 75%, #833AB4 100%); }
 .footer-bottom{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; padding-top:24px; border-top:1px solid var(--color-border); font-size:12.5px; color:var(--color-ink-faint); }
+
+/* ---------- Floating social ---------- */
+.floating-social{
+  position:fixed; right:22px; top:50%; transform:translateY(-50%);
+  display:flex; flex-direction:column; gap:10px; z-index:40;
+}
+.floating-social .social-badge{ width:44px; height:44px; }
+.floating-social .social-badge i{ font-size:19px; }
+@media (max-width:860px){
+  .floating-social{
+    right:14px; top:auto; bottom:14px; transform:none;
+  }
+  .floating-social .social-badge{ width:40px; height:40px; }
+}
 
 /* ---------- Responsive ---------- */
 @media (max-width:1024px){
