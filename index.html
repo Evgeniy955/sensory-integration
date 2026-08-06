@@ -119,16 +119,27 @@
             <span data-i18n="pain.card4">Хочеться команду, яка пам'ятає вашу дитину, а не картку з черги.</span>
           </div>
         </div>
-        <div class="pain-photos">
-          <figure class="photo-card reveal">
-            <img src="assets/images/photos/sensory-hands-fingerpaint-baby.jpg" alt="Дитяча долоня, вкрита пальчиковою фарбою, під час тактильної гри" loading="lazy" width="1100" height="1375">
-          </figure>
-          <figure class="photo-card reveal">
-            <img src="assets/images/photos/sensory-hands-paint-plate.jpg" alt="Долоня дитини занурена в кольорову фарбу на палітрі" loading="lazy" width="1100" height="1374">
-          </figure>
-          <figure class="photo-card reveal">
-            <img src="assets/images/photos/sensory-play-foam-blocks.jpg" alt="Дитина грається з великими сенсорними поролоновими блоками" loading="lazy" width="1100" height="1375">
-          </figure>
+        <div class="pain-carousel reveal">
+          <div class="pain-carousel-track" id="painTrack">
+            <figure class="photo-card" style="aspect-ratio:1600/1067">
+              <img src="assets/images/photos/sensory-play-sand-scoop.jpg" alt="Дитина грається з сипучим сенсорним матеріалом і совочком у сенсорній пісочниці" loading="lazy" width="1600" height="1067">
+            </figure>
+            <figure class="photo-card" style="aspect-ratio:1100/1375">
+              <img src="assets/images/photos/sensory-hands-fingerpaint-baby.jpg" alt="Дитяча долоня, вкрита пальчиковою фарбою, під час тактильної гри" loading="lazy" width="1100" height="1375">
+            </figure>
+            <figure class="photo-card" style="aspect-ratio:1100/1374">
+              <img src="assets/images/photos/sensory-hands-paint-plate.jpg" alt="Долоня дитини занурена в кольорову фарбу на палітрі" loading="lazy" width="1100" height="1374">
+            </figure>
+            <figure class="photo-card" style="aspect-ratio:1100/1375">
+              <img src="assets/images/photos/sensory-play-foam-blocks.jpg" alt="Дитина грається з великими сенсорними поролоновими блоками" loading="lazy" width="1100" height="1375">
+            </figure>
+          </div>
+          <button class="carousel-btn carousel-prev" type="button" aria-label="Попереднє фото" data-i18n-aria="pain.prev_aria" data-carousel-prev>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6l-6 6 6 6"/></svg>
+          </button>
+          <button class="carousel-btn carousel-next" type="button" aria-label="Наступне фото" data-i18n-aria="pain.next_aria" data-carousel-next>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6l6 6-6 6"/></svg>
+          </button>
         </div>
       </div>
     </div>

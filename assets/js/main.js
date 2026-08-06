@@ -36,6 +36,28 @@
     revealEls.forEach((el) => revealObserver.observe(el));
   }
 
+  // Pain-section photo carousel
+  const painTrack = document.getElementById('painTrack');
+  const painPrev = document.querySelector('[data-carousel-prev]');
+  const painNext = document.querySelector('[data-carousel-next]');
+  if (painTrack && painPrev && painNext) {
+    const scrollByCard = (dir) => {
+      const card = painTrack.querySelector('.photo-card');
+      const amount = card ? card.getBoundingClientRect().width + 12 : painTrack.clientWidth * 0.8;
+      painTrack.scrollBy({ left: dir * amount, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+    };
+    painPrev.addEventListener('click', () => scrollByCard(-1));
+    painNext.addEventListener('click', () => scrollByCard(1));
+    const updateCarouselButtons = () => {
+      const max = painTrack.scrollWidth - painTrack.clientWidth - 2;
+      painPrev.disabled = painTrack.scrollLeft <= 2;
+      painNext.disabled = painTrack.scrollLeft >= max;
+    };
+    painTrack.addEventListener('scroll', updateCarouselButtons, { passive: true });
+    window.addEventListener('resize', updateCarouselButtons);
+    updateCarouselButtons();
+  }
+
   // Growing path line in "Как мы работаем"
   const pathTrack = document.getElementById('pathTrack');
   const pathFill = document.getElementById('pathFill');
