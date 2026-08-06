@@ -316,8 +316,9 @@ h1,h2,h3,.font-display{
   display:flex; gap:12px; align-items:flex-start;
 }
 .pain-card svg{ flex:none; width:20px; height:20px; stroke:var(--color-apricot-deep); margin-top:2px; }
-.pain-photos{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; align-self:start; }
-.pain-photos .photo-card{ aspect-ratio:3/4; }
+.pain-photos{ display:grid; grid-template-columns:1fr 1fr; gap:12px; align-self:start; }
+.pain-photos .photo-card:first-child{ grid-column:1 / -1; aspect-ratio:16/9; }
+.pain-photos .photo-card:not(:first-child){ aspect-ratio:1/1; }
 
 /* ---------- About / mission ---------- */
 #about{ overflow:hidden; }
@@ -526,7 +527,6 @@ h1,h2,h3,.font-display{
   .nav-toggle{ display:flex; }
   .section{ padding:var(--space-2xl) 0; }
   .pain-grid, .directions, .team-grid, .why-grid, .testi-grid, .photo-row{ grid-template-columns:1fr; }
-  .pain-photos{ grid-template-columns:repeat(3,1fr); }
   .gallery-grid, .hall-gallery{ grid-template-columns:repeat(2,1fr); }
   .trust-row{ gap:20px; }
 }
