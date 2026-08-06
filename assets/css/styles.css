@@ -308,13 +308,16 @@ h1,h2,h3,.font-display{
 .photo-card img{ width:100%; height:100%; object-fit:cover; display:block; }
 
 /* ---------- Pains ---------- */
-.pain-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:16px; max-width:900px; }
+.pain-body{ display:grid; grid-template-columns:1.3fr 1fr; gap:32px; align-items:start; }
+.pain-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
 .pain-card{
   background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-m);
   padding:22px 24px; box-shadow:var(--shadow-sm); font-size:15px; color:var(--color-ink-soft);
   display:flex; gap:12px; align-items:flex-start;
 }
 .pain-card svg{ flex:none; width:20px; height:20px; stroke:var(--color-apricot-deep); margin-top:2px; }
+.pain-photos{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; align-self:start; }
+.pain-photos .photo-card{ aspect-ratio:3/4; }
 
 /* ---------- About / mission ---------- */
 #about{ overflow:hidden; }
@@ -322,17 +325,19 @@ h1,h2,h3,.font-display{
   position:absolute; right:-40px; bottom:-30px; width:340px; height:340px;
   opacity:.06; pointer-events:none; z-index:0;
 }
-:root[data-theme="dark"] .about-decor, @media (prefers-color-scheme:dark){ .about-decor{ opacity:.1; } }
+:root[data-theme="dark"] .about-decor{ opacity:.1; }
+@media (prefers-color-scheme:dark){ .about-decor{ opacity:.1; } }
 .about-grid{ position:relative; z-index:1; display:grid; grid-template-columns:1.1fr .9fr; gap:56px; align-items:start; }
 .about-grid p{ font-size:16px; color:var(--color-ink-soft); max-width:60ch; }
 .mission-card{
   background:var(--color-sage-deep); color:#fff; border-radius:var(--radius-l);
   padding:var(--space-xl) var(--space-lg); position:relative;
 }
-:root[data-theme="dark"] .mission-card, @media (prefers-color-scheme:dark){ .mission-card{ color:#0F1613; } }
+:root[data-theme="dark"] .mission-card{ color:#0F1613; }
+@media (prefers-color-scheme:dark){ .mission-card{ color:#0F1613; } }
 .mission-card .quote-mark{ font-family:'Comfortaa',sans-serif; font-size:60px; line-height:1; opacity:.35; margin-bottom:8px; }
 .mission-card blockquote{ margin:0 0 14px; font-family:'Comfortaa',sans-serif; font-size:21px; font-weight:500; line-height:1.35; }
-.mission-card p{ margin:0; font-size:14.5px; opacity:.9; max-width:44ch; }
+.mission-card p{ margin:0; font-size:14.5px; color:inherit; opacity:.9; max-width:44ch; }
 
 /* ---------- Directions ---------- */
 .directions{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
@@ -375,11 +380,12 @@ h1,h2,h3,.font-display{
 .path-step p{ font-size:14.5px; color:var(--color-ink-soft); margin:0; max-width:60ch; }
 
 /* ---------- Gallery ---------- */
-.hall-banner{
-  margin:0 0 24px; border-radius:var(--radius-l); overflow:hidden; border:1px solid var(--color-border);
-  box-shadow:var(--shadow-sm); line-height:0;
+.hall-gallery{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:0 0 24px; }
+.hall-photo{
+  margin:0; border-radius:var(--radius-l); overflow:hidden; aspect-ratio:3/4;
+  box-shadow:var(--shadow-sm); border:1px solid var(--color-border);
 }
-.hall-banner img{ width:100%; height:auto; display:block; }
+.hall-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
 .gallery-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
 .gallery-item{
   aspect-ratio:1; border-radius:var(--radius-m); border:1px solid var(--color-border);
@@ -479,8 +485,8 @@ h1,h2,h3,.font-display{
 /* ---------- Responsive ---------- */
 @media (max-width:1024px){
   .directions, .team-grid, .why-grid, .testi-grid{ grid-template-columns:repeat(2,1fr); }
-  .gallery-grid{ grid-template-columns:repeat(3,1fr); }
-  .hero-inner, .about-grid, .cta-final, .footer-grid{ grid-template-columns:1fr; }
+  .gallery-grid, .hall-gallery{ grid-template-columns:repeat(3,1fr); }
+  .hero-inner, .about-grid, .pain-body, .cta-final, .footer-grid{ grid-template-columns:1fr; }
   .hero-media{ order:-1; aspect-ratio:16/9; }
   .footer-grid{ gap:28px; }
 }
@@ -493,7 +499,8 @@ h1,h2,h3,.font-display{
   .nav-toggle{ display:flex; }
   .section{ padding:var(--space-2xl) 0; }
   .pain-grid, .directions, .team-grid, .why-grid, .testi-grid, .photo-row{ grid-template-columns:1fr; }
-  .gallery-grid{ grid-template-columns:repeat(2,1fr); }
+  .pain-photos{ grid-template-columns:repeat(3,1fr); }
+  .gallery-grid, .hall-gallery{ grid-template-columns:repeat(2,1fr); }
   .trust-row{ gap:20px; }
 }
 .nav.is-open{
