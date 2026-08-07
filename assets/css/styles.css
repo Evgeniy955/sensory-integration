@@ -243,13 +243,19 @@ h1,h2,h3,.font-display{
 .hero-mountain-far{
   position:absolute; left:-6%; right:-6%; bottom:20%; height:150px;
   clip-path:polygon(0% 100%, 0% 62%, 12% 34%, 24% 54%, 38% 20%, 52% 50%, 66% 16%, 80% 46%, 92% 26%, 100% 54%, 100% 100%);
-  background:linear-gradient(180deg, rgba(168,184,216,.7), rgba(168,184,216,.85));
+  background:
+    linear-gradient(180deg, rgba(235,244,239,.6), rgba(235,244,239,.75)),
+    url('../images/photos/sensory-rainbow-foam-hands.jpg') center 35% / cover;
+  filter:blur(3px) saturate(.65);
   animation:mtnDriftFar 100s ease-in-out infinite;
 }
 .hero-mountain-near{
   position:absolute; left:-6%; right:-6%; bottom:15%; height:175px;
   clip-path:polygon(0% 100%, 0% 55%, 15% 22%, 30% 58%, 45% 12%, 60% 44%, 75% 8%, 90% 40%, 100% 16%, 100% 100%);
-  background:linear-gradient(180deg, rgba(92,122,153,.88), rgba(92,122,153,.96));
+  background:
+    linear-gradient(180deg, rgba(31,59,46,.05), rgba(31,59,46,.25)),
+    url('../images/photos/sensory-rainbow-foam-hands.jpg') center 55% / cover;
+  filter:saturate(1.05);
   animation:mtnDriftNear 120s ease-in-out infinite;
 }
 .hero-water{
