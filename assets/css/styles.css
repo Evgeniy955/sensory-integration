@@ -240,10 +240,10 @@ h1,h2,h3,.font-display{
 .hero-bg{
   position:absolute; inset:0; z-index:0; pointer-events:none;
   background:
-    linear-gradient(90deg, rgba(250,247,240,.94) 0%, rgba(250,247,240,.84) 34%, rgba(250,247,240,.42) 58%, rgba(250,247,240,.12) 76%, rgba(250,247,240,0) 90%),
-    url('../images/photos/sensory-rainbow-foam-hands.jpg') center 42% / cover;
-  /* soft, muted grade — keeps the photo gentle and in line with the brand's calm palette */
-  filter:saturate(.55) contrast(1.02) brightness(1.05);
+    linear-gradient(90deg, rgba(250,247,240,.9) 0%, rgba(250,247,240,.78) 34%, rgba(250,247,240,.36) 58%, rgba(250,247,240,.1) 76%, rgba(250,247,240,0) 90%),
+    url('../images/photos/sensory-hands-white-sand-light.jpg') center 38% / cover;
+  /* light grade — the photo is already soft and airy, just easing contrast slightly */
+  filter:saturate(.95) contrast(1.02) brightness(1.03);
 }
 
 .hero-inner{ position:relative; z-index:1; display:grid; grid-template-columns:1.1fr .9fr; gap:56px; align-items:center; }
