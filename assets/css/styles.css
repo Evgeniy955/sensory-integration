@@ -228,59 +228,13 @@ h1,h2,h3,.font-display{
 .btn-soft{ background:var(--color-sage-tint); color:var(--color-sage-deep); }
 .btn-sm{ padding:10px 18px; font-size:13.5px; }
 
-/* ---------- Hero + animated background ---------- */
+/* ---------- Hero + photo background ---------- */
 .hero{ position:relative; padding:var(--space-2xl) 0 var(--space-3xl); overflow:hidden; }
 .hero-bg{
-  position:absolute; inset:-10% -10% -10% -10%; z-index:0; pointer-events:none;
-}
-/* A small valley scene living behind the hero copy: sun, two mountain ridges,
-   a shimmering lake and a meadow in the foreground. All CSS shapes, no images. */
-.hero-sun{
-  position:absolute; top:9%; right:16%; width:110px; height:110px; border-radius:50%;
-  background:radial-gradient(circle, rgba(245,166,35,.9) 0%, rgba(245,166,35,.35) 55%, transparent 75%);
-  animation:sunGlow 10s ease-in-out infinite;
-}
-.hero-mountain-far{
-  position:absolute; left:-6%; right:-6%; bottom:20%; height:150px;
-  clip-path:polygon(0% 100%, 0% 62%, 12% 34%, 24% 54%, 38% 20%, 52% 50%, 66% 16%, 80% 46%, 92% 26%, 100% 54%, 100% 100%);
+  position:absolute; inset:0; z-index:0; pointer-events:none;
   background:
-    linear-gradient(180deg, rgba(235,244,239,.6), rgba(235,244,239,.75)),
-    url('../images/photos/sensory-rainbow-foam-hands.jpg') center 35% / cover;
-  filter:blur(3px) saturate(.65);
-  animation:mtnDriftFar 100s ease-in-out infinite;
-}
-.hero-mountain-near{
-  position:absolute; left:-6%; right:-6%; bottom:15%; height:175px;
-  clip-path:polygon(0% 100%, 0% 55%, 15% 22%, 30% 58%, 45% 12%, 60% 44%, 75% 8%, 90% 40%, 100% 16%, 100% 100%);
-  background:
-    linear-gradient(180deg, rgba(31,59,46,.05), rgba(31,59,46,.25)),
-    url('../images/photos/sensory-rainbow-foam-hands.jpg') center 55% / cover;
-  filter:saturate(1.05);
-  animation:mtnDriftNear 120s ease-in-out infinite;
-}
-.hero-water{
-  position:absolute; left:-6%; right:-6%; bottom:7%; height:15%;
-  background:linear-gradient(180deg, rgba(46,143,168,.75), rgba(28,93,112,.88));
-  overflow:hidden;
-}
-.hero-water::after{
-  content:"";
-  position:absolute; inset:0;
-  background:repeating-linear-gradient(100deg, rgba(255,255,255,.2) 0px, rgba(255,255,255,.2) 2px, transparent 2px, transparent 26px);
-  animation:waterShimmer 7s linear infinite;
-}
-.hero-field{
-  position:absolute; left:-6%; right:-6%; bottom:-6%; height:20%;
-  clip-path:polygon(0% 42%, 15% 22%, 35% 36%, 55% 16%, 75% 30%, 100% 12%, 100% 100%, 0% 100%);
-  background:linear-gradient(180deg, rgba(79,158,92,.92), rgba(46,107,59,.96));
-}
-
-@keyframes sunGlow{ 0%,100%{ opacity:.85; transform:scale(1); } 50%{ opacity:1; transform:scale(1.06); } }
-@keyframes mtnDriftFar{ 0%,100%{ transform:translateX(0); } 50%{ transform:translateX(-1.5%); } }
-@keyframes mtnDriftNear{ 0%,100%{ transform:translateX(0); } 50%{ transform:translateX(1.2%); } }
-@keyframes waterShimmer{ from{ background-position-x:0; } to{ background-position-x:78px; } }
-@media (prefers-reduced-motion:reduce){
-  .hero-sun,.hero-mountain-far,.hero-mountain-near,.hero-water::after{ animation:none; }
+    linear-gradient(90deg, rgba(235,244,239,.94) 0%, rgba(235,244,239,.82) 34%, rgba(235,244,239,.35) 58%, rgba(235,244,239,.08) 76%, rgba(235,244,239,0) 90%),
+    url('../images/photos/sensory-rainbow-foam-hands.jpg') center 42% / cover;
 }
 
 .hero-inner{ position:relative; z-index:1; display:grid; grid-template-columns:1.1fr .9fr; gap:56px; align-items:center; }
