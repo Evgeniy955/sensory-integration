@@ -235,6 +235,8 @@ h1,h2,h3,.font-display{
   background:
     linear-gradient(90deg, rgba(235,244,239,.94) 0%, rgba(235,244,239,.82) 34%, rgba(235,244,239,.35) 58%, rgba(235,244,239,.08) 76%, rgba(235,244,239,0) 90%),
     url('../images/photos/sensory-rainbow-foam-hands.jpg') center 42% / cover;
+  /* gentle color grade so the rainbow photo sits comfortably with the landscape palette */
+  filter:saturate(.82) contrast(1.04) brightness(1.03) sepia(.06);
 }
 
 .hero-inner{ position:relative; z-index:1; display:grid; grid-template-columns:1.1fr .9fr; gap:56px; align-items:center; }
