@@ -1,0 +1,276 @@
+/* Anketa (parent questionnaire) — admin-only page.
+   Deliberately breaks from the site's soft pastel theme with a "hacker
+   terminal" look, per request. Scoped to .anketa-shell so it never leaks
+   into the public site or the rest of the admin panel. */
+
+.anketa-shell {
+  --hx-bg: #050805;
+  --hx-panel: #0a120a;
+  --hx-green: #39ff6a;
+  --hx-green-dim: #1b8a3a;
+  --hx-green-faint: #0f4a22;
+  --hx-amber: #ffd23f;
+  --hx-red: #ff4d4d;
+  --hx-mono: 'Courier New', ui-monospace, Consolas, monospace;
+
+  min-height: 100vh;
+  background: var(--hx-bg);
+  color: var(--hx-green);
+  font-family: var(--hx-mono);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Canvas matrix rain sits behind everything */
+.anketa-shell canvas#matrixRain {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  opacity: .55;
+}
+
+/* CRT scanline overlay */
+.anketa-shell::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, .25) 3px
+  );
+  mix-blend-mode: multiply;
+}
+
+.anketa-topbar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: rgba(5, 8, 5, .85);
+  border-bottom: 1px solid var(--hx-green-dim);
+  backdrop-filter: blur(2px);
+}
+
+.anketa-topbar__brand {
+  color: var(--hx-green);
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+.anketa-topbar__brand::before { content: "$ "; color: var(--hx-green-dim); }
+
+.anketa-topbar__user {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  font-size: .85rem;
+  color: var(--hx-green-dim);
+}
+
+.anketa-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .55rem .9rem;
+  border-radius: 2px;
+  border: 1px solid var(--hx-green-dim);
+  background: transparent;
+  color: var(--hx-green);
+  font-family: var(--hx-mono);
+  font-size: .85rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background .15s ease, box-shadow .15s ease;
+}
+.anketa-btn:hover {
+  background: var(--hx-green-faint);
+  box-shadow: 0 0 12px rgba(57, 255, 106, .35);
+}
+.anketa-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.anketa-main {
+  position: relative;
+  z-index: 2;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+
+.anketa-intro {
+  border: 1px solid var(--hx-green-dim);
+  background: rgba(10, 18, 10, .82);
+  border-radius: 4px;
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1.75rem;
+  box-shadow: 0 0 24px rgba(57, 255, 106, .08);
+}
+
+.anketa-intro h1 {
+  margin: 0 0 .4rem;
+  font-size: 1.15rem;
+  color: var(--hx-green);
+  text-shadow: 0 0 8px rgba(57, 255, 106, .5);
+}
+
+.anketa-intro p {
+  margin: 0;
+  color: var(--hx-green-dim);
+  font-size: .85rem;
+  line-height: 1.6;
+}
+
+.anketa-cursor {
+  display: inline-block;
+  width: .55em;
+  height: 1em;
+  background: var(--hx-green);
+  vertical-align: text-bottom;
+  margin-left: 2px;
+  animation: anketaBlink 1s steps(1) infinite;
+}
+
+.anketa-section {
+  border: 1px solid var(--hx-green-dim);
+  background: rgba(10, 18, 10, .78);
+  border-radius: 4px;
+  padding: 1.25rem 1.25rem 1.5rem;
+  margin: 0 0 1.5rem;
+  box-shadow: 0 0 18px rgba(57, 255, 106, .06);
+}
+
+.anketa-section__title {
+  padding: 0 .5rem;
+  font-size: .95rem;
+  color: var(--hx-amber);
+  letter-spacing: .02em;
+}
+
+.anketa-prompt { color: var(--hx-green-dim); }
+
+.anketa-field {
+  margin-top: 1rem;
+}
+
+.anketa-field__label {
+  display: block;
+  margin-bottom: .4rem;
+  font-size: .82rem;
+  color: var(--hx-green);
+  line-height: 1.5;
+}
+.anketa-field__label::before { content: "> "; color: var(--hx-green-dim); }
+
+.anketa-req { color: var(--hx-red); }
+
+.anketa-field input[type="text"],
+.anketa-field input[type="tel"],
+.anketa-field input[type="date"],
+.anketa-field textarea,
+.anketa-field select {
+  width: 100%;
+  padding: .6rem .7rem;
+  background: #020402;
+  border: 1px solid var(--hx-green-dim);
+  border-radius: 2px;
+  color: var(--hx-green);
+  font-family: var(--hx-mono);
+  font-size: .9rem;
+  resize: vertical;
+}
+
+.anketa-field input:focus,
+.anketa-field textarea:focus,
+.anketa-field select:focus {
+  outline: none;
+  border-color: var(--hx-green);
+  box-shadow: 0 0 10px rgba(57, 255, 106, .4);
+}
+
+.anketa-field select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--hx-green-dim) 50%),
+                     linear-gradient(135deg, var(--hx-green-dim) 50%, transparent 50%);
+  background-position: calc(100% - 18px) center, calc(100% - 13px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.anketa-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem .9rem;
+}
+
+.anketa-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .85rem;
+  color: var(--hx-green-dim);
+  cursor: pointer;
+}
+
+.anketa-radio input { accent-color: var(--hx-green); }
+
+.anketa-radio input:checked + span { color: var(--hx-green); text-shadow: 0 0 6px rgba(57, 255, 106, .5); }
+
+.anketa-submit-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: .5rem;
+}
+
+.anketa-submit {
+  padding: .8rem 1.6rem;
+  border-radius: 2px;
+  border: 1px solid var(--hx-green);
+  background: var(--hx-green-faint);
+  color: var(--hx-green);
+  font-family: var(--hx-mono);
+  font-weight: 700;
+  font-size: .95rem;
+  letter-spacing: .03em;
+  cursor: pointer;
+  transition: background .15s ease, box-shadow .15s ease;
+}
+.anketa-submit:hover { background: var(--hx-green-dim); box-shadow: 0 0 18px rgba(57, 255, 106, .55); }
+.anketa-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+.anketa-status {
+  font-size: .85rem;
+  color: var(--hx-green-dim);
+}
+.anketa-status--ok { color: var(--hx-green); text-shadow: 0 0 6px rgba(57, 255, 106, .5); }
+.anketa-status--err { color: var(--hx-red); }
+
+.anketa-denied {
+  max-width: 480px;
+  margin: 4rem auto;
+  text-align: center;
+  padding: 2rem;
+  border: 1px solid var(--hx-red);
+  border-radius: 4px;
+  background: rgba(20, 5, 5, .85);
+  color: var(--hx-red);
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes anketaBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anketa-cursor { animation: none; opacity: 1; }
+}

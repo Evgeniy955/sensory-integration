@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Анкета для батьків — Центр сенсорної інтеграції</title>
+<link rel="stylesheet" href="../assets/css/anketa.css">
+</head>
+<body class="anketa-shell">
+  <canvas id="matrixRain" aria-hidden="true"></canvas>
+
+  <header class="anketa-topbar">
+    <a class="anketa-topbar__brand" href="dashboard.html">sensory-integration/anketa</a>
+    <div class="anketa-topbar__user">
+      <span id="whoami">access check...</span>
+      <a class="anketa-btn" href="dashboard.html">&lt; Назад</a>
+      <button class="anketa-btn" id="logout-btn" type="button">Вийти</button>
+    </div>
+  </header>
+
+  <main class="anketa-main">
+    <div id="anketa-denied" hidden class="anketa-denied">
+      <p>ACCESS DENIED</p>
+      <p style="font-size:.8rem;">Ця сторінка доступна лише ролям Адмін та Супер адмін.</p>
+    </div>
+
+    <div id="anketa-content" hidden>
+      <div class="anketa-intro">
+        <h1>&gt; Анкета для батьків<span class="anketa-cursor"></span></h1>
+        <p>
+          Питання та поля цифрової анкети — заповнюються батьками (або адміном з їхніх слів)
+          перед першим заняттям. Дані поки що зберігаються тільки локально в цьому запиті;
+          збереження у базу буде додано окремо.
+        </p>
+      </div>
+
+      <form id="anketa-form" novalidate>
+        <div id="anketa-fields"></div>
+
+        <div class="anketa-submit-row">
+          <button type="submit" class="anketa-submit" id="anketa-submit-btn">./submit_anketa.sh</button>
+          <span class="anketa-status" id="anketa-status"></span>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/supabase-config.js"></script>
+  <script src="../assets/js/admin-auth.js"></script>
+  <script src="../assets/js/matrix-rain.js"></script>
+  <script src="../assets/js/anketa.js"></script>
+  <script>
+    (async function () {
+      window.startMatrixRain("matrixRain");
+
+      const profile = await window.requireAuth();
+      if (!profile) return; // requireAuth already redirected to login.html
+
+      const allowedRoles = ["admin", "super_admin"];
+      if (!allowedRoles.includes(profile.role)) {
+        document.getElementById("anketa-denied").hidden = false;
+        return;
+      }
+
+      const ROLE_LABELS = { super_admin: "Супер адмін", admin: "Адмін", instructor: "Інструктор" };
+      document.getElementById("whoami").textContent =
+        profile.email + " · " + (ROLE_LABELS[profile.role] || profile.role);
+
+      document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
+
+      document.getElementById("anketa-content").hidden = false;
+      window.renderAnketaForm(document.getElementById("anketa-fields"));
+
+      const form = document.getElementById("anketa-form");
+      const statusEl = document.getElementById("anketa-status");
+      const submitBtn = document.getElementById("anketa-submit-btn");
+
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        if (!form.reportValidity()) {
+          statusEl.textContent = "> помилка: заповніть обов'язкові поля";
+          statusEl.className = "anketa-status anketa-status--err";
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "sending...";
+
+        const data = window.collectAnketaData(form);
+        // TODO: replace with a real Supabase insert once the anketa table exists.
+        console.log("Анкета (чернетка):", data);
+
+        setTimeout(function () {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "./submit_anketa.sh";
+          statusEl.textContent = "> анкету збережено локально (" + Object.keys(data).length + " полів)";
+          statusEl.className = "anketa-status anketa-status--ok";
+        }, 500);
+      });
+    })();
+  </script>
+</body>
+</html>
