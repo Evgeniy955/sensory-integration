@@ -152,21 +152,21 @@
     let control = "";
 
     if (f.type === "textarea") {
-      control = `<textarea id="${f.name}" name="${f.name}" rows="3"${reqAttr}></textarea>`;
+      control = `<textarea id="${f.name}" name="${f.name}" rows="3" autocomplete="off"${reqAttr}></textarea>`;
     } else if (f.type === "select") {
       const opts = f.options.map((o) => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join("");
-      control = `<select id="${f.name}" name="${f.name}"${reqAttr}><option value="">— оберіть —</option>${opts}</select>`;
+      control = `<select id="${f.name}" name="${f.name}" autocomplete="off"${reqAttr}><option value="">— оберіть —</option>${opts}</select>`;
     } else if (f.type === "radio") {
       control = `<div class="anketa-radio-group" role="radiogroup" aria-label="${escapeHtml(f.label)}">` +
         f.options.map((o, i) => {
           const id = `${f.name}_${i}`;
           return `<label class="anketa-radio" for="${id}">` +
-            `<input type="radio" id="${id}" name="${f.name}" value="${escapeHtml(o)}"${reqAttr}>` +
+            `<input type="radio" id="${id}" name="${f.name}" value="${escapeHtml(o)}" autocomplete="off"${reqAttr}>` +
             `<span>${escapeHtml(o)}</span></label>`;
         }).join("") + `</div>`;
     } else {
       const type = f.type === "date" ? "date" : f.type === "tel" ? "tel" : "text";
-      control = `<input type="${type}" id="${f.name}" name="${f.name}"${reqAttr}>`;
+      control = `<input type="${type}" id="${f.name}" name="${f.name}" autocomplete="off"${reqAttr}>`;
     }
 
     const labelTag = f.type === "radio"
