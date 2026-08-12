@@ -1,175 +1,337 @@
 /* Anketa (parent questionnaire) — admin-only page.
-   Deliberately breaks from the site's soft pastel theme with a "hacker
-   terminal" look, per request. Scoped to .anketa-shell so it never leaks
-   into the public site or the rest of the admin panel. */
+   Cosmic / "view of Earth from orbit" theme: soft deep-space palette,
+   starfield, nebula glow, a CSS-only Earth graphic, and glass-panel
+   question cards. Scoped to .anketa-shell so it never leaks into the
+   public site or the rest of the admin panel. Color language matches
+   the project's cosmic-design exploration (deep indigo + mint/sky/gold
+   accents) so this page won't clash if that theme ships later. */
+
+@font-face{
+  font-family:'Comfortaa';
+  font-weight:500;
+  font-style:normal;
+  src:url('../fonts/Comfortaa-Medium.ttf') format('truetype');
+  font-display:swap;
+}
+@font-face{
+  font-family:'Comfortaa';
+  font-weight:700;
+  font-style:normal;
+  src:url('../fonts/Comfortaa-Bold.ttf') format('truetype');
+  font-display:swap;
+}
+@font-face{
+  font-family:'PT Sans';
+  font-weight:400;
+  font-style:normal;
+  src:url('../fonts/PTSans-Regular.ttf') format('truetype');
+  font-display:swap;
+}
+@font-face{
+  font-family:'PT Sans';
+  font-weight:700;
+  font-style:normal;
+  src:url('../fonts/PTSans-Bold.ttf') format('truetype');
+  font-display:swap;
+}
 
 .anketa-shell {
-  --hx-bg: #050805;
-  --hx-panel: #0a120a;
-  --hx-green: #39ff6a;
-  --hx-green-dim: #1b8a3a;
-  --hx-green-faint: #0f4a22;
-  --hx-amber: #ffd23f;
-  --hx-red: #ff4d4d;
-  --hx-mono: 'Courier New', ui-monospace, Consolas, monospace;
+  --cx-bg: #10112A;
+  --cx-bg-deep: #070816;
+  --cx-panel: rgba(27, 30, 63, .58);
+  --cx-panel-solid: #1B1E3F;
+  --cx-ink: #ECEAF7;
+  --cx-ink-soft: #B9B7D9;
+  --cx-ink-faint: #8886B0;
+  --cx-border: rgba(120, 124, 178, .28);
+  --cx-sage: #7FE3C7;
+  --cx-sage-deep: #4FBFA0;
+  --cx-sky: #9CB8FF;
+  --cx-sky-deep: #6E8FE8;
+  --cx-apricot: #F5C86B;
+  --cx-coral: #FF9C8A;
+  --cx-shadow: 0 20px 48px -20px rgba(3, 4, 20, .65);
+  --cx-radius: 22px;
+  --cx-font-display: 'Comfortaa', 'Segoe UI', sans-serif;
+  --cx-font-body: 'PT Sans', 'Segoe UI', sans-serif;
 
   min-height: 100vh;
-  background: var(--hx-bg);
-  color: var(--hx-green);
-  font-family: var(--hx-mono);
+  background:
+    radial-gradient(900px 500px at 85% -8%, rgba(159, 178, 255, .16), transparent 60%),
+    radial-gradient(700px 500px at 8% 15%, rgba(127, 227, 199, .10), transparent 55%),
+    linear-gradient(180deg, var(--cx-bg) 0%, var(--cx-bg-deep) 100%);
+  color: var(--cx-ink);
+  font-family: var(--cx-font-body);
   position: relative;
   overflow-x: hidden;
 }
 
-/* Canvas matrix rain sits behind everything */
-.anketa-shell canvas#matrixRain {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  opacity: .55;
-}
-
-/* CRT scanline overlay */
-.anketa-shell::after {
+/* ---------- Starfield ---------- */
+.anketa-shell::before {
   content: "";
   position: fixed;
   inset: 0;
-  z-index: 1;
+  z-index: 0;
   pointer-events: none;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0) 0px,
-    rgba(0, 0, 0, 0) 2px,
-    rgba(0, 0, 0, .25) 3px
-  );
-  mix-blend-mode: multiply;
+  background-image:
+    radial-gradient(1.6px 1.6px at 12% 18%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 28% 62%, #fff, transparent),
+    radial-gradient(1.8px 1.8px at 44% 24%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 61% 74%, #fff, transparent),
+    radial-gradient(1.4px 1.4px at 76% 12%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 8% 82%, #fff, transparent),
+    radial-gradient(1.6px 1.6px at 93% 46%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 52% 90%, #fff, transparent),
+    radial-gradient(1.4px 1.4px at 34% 40%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 88% 84%, #fff, transparent),
+    radial-gradient(1.6px 1.6px at 19% 96%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 68% 58%, #fff, transparent);
+  opacity: .55;
+  animation: anketaTwinkle 5s ease-in-out infinite alternate;
 }
 
+@keyframes anketaTwinkle {
+  from { opacity: .35; }
+  to { opacity: .75; }
+}
+
+/* ---------- Earth-from-orbit graphic (pure CSS, no external image) ---------- */
+.anketa-earth-wrap {
+  position: fixed;
+  right: -8vw;
+  bottom: -14vw;
+  width: min(48vw, 620px);
+  height: min(48vw, 620px);
+  z-index: 0;
+  pointer-events: none;
+  animation: anketaFloat 14s ease-in-out infinite;
+}
+
+.anketa-earth {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .55), transparent 9%),
+    radial-gradient(circle at 66% 22%, #3f8f52 0%, transparent 20%),
+    radial-gradient(circle at 26% 55%, #3a8a4d 0%, transparent 24%),
+    radial-gradient(circle at 55% 68%, #cdb26a 0%, transparent 16%),
+    radial-gradient(circle at 78% 60%, #3f8f52 0%, transparent 18%),
+    radial-gradient(circle at 44% 40%, #2E8FA8 0%, #1c5d78 55%, #0a2e46 100%);
+  box-shadow:
+    inset -34px -24px 70px rgba(2, 6, 16, .65),
+    inset 24px 18px 50px rgba(255, 255, 255, .12),
+    0 0 90px 6px rgba(124, 190, 220, .28);
+}
+
+.anketa-earth::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 38% 30%, rgba(255, 255, 255, .38), transparent 22%),
+    radial-gradient(circle at 65% 58%, rgba(255, 255, 255, .28), transparent 26%),
+    radial-gradient(circle at 22% 68%, rgba(255, 255, 255, .2), transparent 20%);
+  filter: blur(5px);
+}
+
+.anketa-earth-atmosphere {
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  box-shadow: 0 0 60px 14px rgba(140, 200, 255, .22);
+  pointer-events: none;
+}
+
+@keyframes anketaFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anketa-shell::before { animation: none; opacity: .55; }
+  .anketa-earth-wrap { animation: none; }
+}
+
+@media (max-width: 720px) {
+  .anketa-earth-wrap { width: 70vw; height: 70vw; right: -20vw; bottom: -22vw; opacity: .6; }
+}
+
+/* ---------- Topbar ---------- */
 .anketa-topbar {
-  position: relative;
-  z-index: 2;
+  position: sticky;
+  top: 0;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem 1.5rem;
-  background: rgba(5, 8, 5, .85);
-  border-bottom: 1px solid var(--hx-green-dim);
-  backdrop-filter: blur(2px);
+  background: rgba(11, 12, 32, .6);
+  border-bottom: 1px solid var(--cx-border);
+  backdrop-filter: blur(14px);
 }
 
 .anketa-topbar__brand {
-  color: var(--hx-green);
+  font-family: var(--cx-font-display);
+  color: var(--cx-ink);
   text-decoration: none;
   font-weight: 700;
-  letter-spacing: .04em;
+  letter-spacing: .01em;
+  font-size: .98rem;
 }
-.anketa-topbar__brand::before { content: "$ "; color: var(--hx-green-dim); }
 
 .anketa-topbar__user {
   display: flex;
   align-items: center;
   gap: .75rem;
   font-size: .85rem;
-  color: var(--hx-green-dim);
+  color: var(--cx-ink-soft);
 }
 
 .anketa-btn {
   display: inline-flex;
   align-items: center;
   gap: .4rem;
-  padding: .55rem .9rem;
-  border-radius: 2px;
-  border: 1px solid var(--hx-green-dim);
-  background: transparent;
-  color: var(--hx-green);
-  font-family: var(--hx-mono);
+  padding: .55rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--cx-border);
+  background: rgba(255, 255, 255, .04);
+  color: var(--cx-ink-soft);
+  font-family: var(--cx-font-body);
   font-size: .85rem;
   cursor: pointer;
   text-decoration: none;
-  transition: background .15s ease, box-shadow .15s ease;
+  transition: background .15s ease, color .15s ease, transform .1s ease;
 }
 .anketa-btn:hover {
-  background: var(--hx-green-faint);
-  box-shadow: 0 0 12px rgba(57, 255, 106, .35);
+  background: rgba(255, 255, 255, .09);
+  color: var(--cx-ink);
 }
+.anketa-btn:active { transform: translateY(1px); }
 .anketa-btn:disabled { opacity: .5; cursor: not-allowed; }
 
+/* ---------- Layout ---------- */
 .anketa-main {
   position: relative;
   z-index: 2;
-  max-width: 880px;
+  max-width: 920px;
   margin: 0 auto;
-  padding: 2rem 1.25rem 4rem;
+  padding: 2.25rem 1.25rem 5rem;
 }
 
 .anketa-intro {
-  border: 1px solid var(--hx-green-dim);
-  background: rgba(10, 18, 10, .82);
-  border-radius: 4px;
-  padding: 1.1rem 1.25rem;
-  margin-bottom: 1.75rem;
-  box-shadow: 0 0 24px rgba(57, 255, 106, .08);
+  border: 1px solid var(--cx-border);
+  background: var(--cx-panel);
+  backdrop-filter: blur(16px);
+  border-radius: var(--cx-radius);
+  padding: 1.75rem 1.9rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--cx-shadow);
 }
 
+.anketa-intro__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .74rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--cx-sky);
+  margin-bottom: .6rem;
+}
+.anketa-intro__eyebrow svg { width: 14px; height: 14px; }
+
 .anketa-intro h1 {
-  margin: 0 0 .4rem;
-  font-size: 1.15rem;
-  color: var(--hx-green);
-  text-shadow: 0 0 8px rgba(57, 255, 106, .5);
+  font-family: var(--cx-font-display);
+  margin: 0 0 .5rem;
+  font-size: 1.5rem;
+  color: var(--cx-ink);
 }
 
 .anketa-intro p {
   margin: 0;
-  color: var(--hx-green-dim);
-  font-size: .85rem;
-  line-height: 1.6;
+  color: var(--cx-ink-soft);
+  font-size: .92rem;
+  line-height: 1.65;
+  max-width: 62ch;
 }
 
-.anketa-cursor {
-  display: inline-block;
-  width: .55em;
-  height: 1em;
-  background: var(--hx-green);
-  vertical-align: text-bottom;
-  margin-left: 2px;
-  animation: anketaBlink 1s steps(1) infinite;
-}
-
+/* ---------- Question sections ---------- */
 .anketa-section {
-  border: 1px solid var(--hx-green-dim);
-  background: rgba(10, 18, 10, .78);
-  border-radius: 4px;
-  padding: 1.25rem 1.25rem 1.5rem;
+  border: 1px solid var(--cx-border);
+  background: var(--cx-panel);
+  backdrop-filter: blur(16px);
+  border-radius: var(--cx-radius);
+  padding: 1.5rem 1.6rem 1.75rem;
   margin: 0 0 1.5rem;
-  box-shadow: 0 0 18px rgba(57, 255, 106, .06);
+  box-shadow: var(--cx-shadow);
+  position: relative;
+  overflow: hidden;
 }
+.anketa-section::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--cx-sage), var(--cx-sky));
+}
+.anketa-section:nth-of-type(3n+2)::before { background: linear-gradient(90deg, var(--cx-sky), var(--cx-apricot)); }
+.anketa-section:nth-of-type(3n)::before { background: linear-gradient(90deg, var(--cx-apricot), var(--cx-sage)); }
 
 .anketa-section__title {
-  padding: 0 .5rem;
-  font-size: .95rem;
-  color: var(--hx-amber);
-  letter-spacing: .02em;
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  padding: 0 0 1.1rem;
+  margin: 0 0 .25rem;
 }
 
-.anketa-prompt { color: var(--hx-green-dim); }
+.anketa-section__icon {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(127, 227, 199, .22), rgba(156, 184, 255, .22));
+  border: 1px solid var(--cx-border);
+  color: var(--cx-sage);
+}
+.anketa-section:nth-of-type(3n+2) .anketa-section__icon { color: var(--cx-sky); background: linear-gradient(135deg, rgba(156, 184, 255, .22), rgba(245, 200, 107, .22)); }
+.anketa-section:nth-of-type(3n) .anketa-section__icon { color: var(--cx-apricot); background: linear-gradient(135deg, rgba(245, 200, 107, .22), rgba(127, 227, 199, .22)); }
+.anketa-section__icon svg { width: 22px; height: 22px; }
 
-.anketa-field {
-  margin-top: 1rem;
+.anketa-section__text { display: flex; flex-direction: column; gap: .15rem; }
+.anketa-section__step { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--cx-ink-faint); }
+.anketa-section__name { font-family: var(--cx-font-display); font-size: 1.05rem; color: var(--cx-ink); }
+
+/* ---------- Field grid ---------- */
+.anketa-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.15rem 1.25rem;
+}
+@media (max-width: 640px) {
+  .anketa-field-grid { grid-template-columns: 1fr; }
+}
+
+.anketa-field[data-type="textarea"],
+.anketa-field[data-type="radio"] {
+  grid-column: 1 / -1;
 }
 
 .anketa-field__label {
   display: block;
-  margin-bottom: .4rem;
-  font-size: .82rem;
-  color: var(--hx-green);
+  margin-bottom: .45rem;
+  font-size: .85rem;
+  color: var(--cx-ink-soft);
   line-height: 1.5;
 }
-.anketa-field__label::before { content: "> "; color: var(--hx-green-dim); }
 
-.anketa-req { color: var(--hx-red); }
+.anketa-req { color: var(--cx-coral); }
 
 .anketa-field input[type="text"],
 .anketa-field input[type="tel"],
@@ -177,100 +339,131 @@
 .anketa-field textarea,
 .anketa-field select {
   width: 100%;
-  padding: .6rem .7rem;
-  background: #020402;
-  border: 1px solid var(--hx-green-dim);
-  border-radius: 2px;
-  color: var(--hx-green);
-  font-family: var(--hx-mono);
-  font-size: .9rem;
+  padding: .65rem .8rem;
+  background: rgba(6, 8, 22, .45);
+  border: 1px solid var(--cx-border);
+  border-radius: 12px;
+  color: var(--cx-ink);
+  font-family: var(--cx-font-body);
+  font-size: .92rem;
   resize: vertical;
 }
+
+.anketa-field input::placeholder,
+.anketa-field textarea::placeholder { color: var(--cx-ink-faint); }
 
 .anketa-field input:focus,
 .anketa-field textarea:focus,
 .anketa-field select:focus {
   outline: none;
-  border-color: var(--hx-green);
-  box-shadow: 0 0 10px rgba(57, 255, 106, .4);
+  border-color: var(--cx-sky);
+  box-shadow: 0 0 0 3px rgba(156, 184, 255, .22);
 }
 
 .anketa-field select {
   appearance: none;
-  background-image: linear-gradient(45deg, transparent 50%, var(--hx-green-dim) 50%),
-                     linear-gradient(135deg, var(--hx-green-dim) 50%, transparent 50%);
+  background-image: linear-gradient(45deg, transparent 50%, var(--cx-ink-faint) 50%),
+                     linear-gradient(135deg, var(--cx-ink-faint) 50%, transparent 50%);
   background-position: calc(100% - 18px) center, calc(100% - 13px) center;
   background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
 }
 
+/* Radio pills */
 .anketa-radio-group {
   display: flex;
   flex-wrap: wrap;
-  gap: .6rem .9rem;
+  gap: .6rem;
 }
 
 .anketa-radio {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: .4rem;
+  padding: .5rem 1.05rem;
+  border-radius: 999px;
+  border: 1px solid var(--cx-border);
+  background: rgba(255, 255, 255, .03);
   font-size: .85rem;
-  color: var(--hx-green-dim);
+  color: var(--cx-ink-soft);
   cursor: pointer;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
 }
 
-.anketa-radio input { accent-color: var(--hx-green); }
+.anketa-radio input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
 
-.anketa-radio input:checked + span { color: var(--hx-green); text-shadow: 0 0 6px rgba(57, 255, 106, .5); }
+.anketa-radio:has(input:checked) {
+  background: linear-gradient(135deg, var(--cx-sage), var(--cx-sky));
+  color: #0B0C22;
+  font-weight: 700;
+  border-color: transparent;
+}
 
+.anketa-radio:has(input:focus-visible) {
+  outline: 2px solid var(--cx-sky);
+  outline-offset: 2px;
+}
+
+/* ---------- Submit ---------- */
 .anketa-submit-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 1rem;
   margin-top: .5rem;
 }
 
 .anketa-submit {
-  padding: .8rem 1.6rem;
-  border-radius: 2px;
-  border: 1px solid var(--hx-green);
-  background: var(--hx-green-faint);
-  color: var(--hx-green);
-  font-family: var(--hx-mono);
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .85rem 1.8rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, var(--cx-sage), var(--cx-sky));
+  color: #0B0C22;
+  font-family: var(--cx-font-display);
   font-weight: 700;
   font-size: .95rem;
-  letter-spacing: .03em;
   cursor: pointer;
-  transition: background .15s ease, box-shadow .15s ease;
+  box-shadow: 0 12px 30px -12px rgba(127, 227, 199, .55);
+  transition: transform .15s ease, box-shadow .15s ease;
 }
-.anketa-submit:hover { background: var(--hx-green-dim); box-shadow: 0 0 18px rgba(57, 255, 106, .55); }
-.anketa-submit:disabled { opacity: .5; cursor: not-allowed; }
+.anketa-submit:hover { transform: translateY(-1px); box-shadow: 0 16px 36px -12px rgba(127, 227, 199, .7); }
+.anketa-submit:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.anketa-submit svg { width: 18px; height: 18px; }
 
-.anketa-status {
-  font-size: .85rem;
-  color: var(--hx-green-dim);
-}
-.anketa-status--ok { color: var(--hx-green); text-shadow: 0 0 6px rgba(57, 255, 106, .5); }
-.anketa-status--err { color: var(--hx-red); }
+.anketa-status { font-size: .85rem; color: var(--cx-ink-soft); }
+.anketa-status--ok { color: var(--cx-sage); }
+.anketa-status--err { color: var(--cx-coral); }
 
+/* ---------- Access denied ---------- */
 .anketa-denied {
   max-width: 480px;
   margin: 4rem auto;
   text-align: center;
-  padding: 2rem;
-  border: 1px solid var(--hx-red);
-  border-radius: 4px;
-  background: rgba(20, 5, 5, .85);
-  color: var(--hx-red);
+  padding: 2.25rem 2rem;
+  border: 1px solid var(--cx-border);
+  border-radius: var(--cx-radius);
+  background: var(--cx-panel);
+  backdrop-filter: blur(16px);
+  color: var(--cx-ink);
+  box-shadow: var(--cx-shadow);
   position: relative;
   z-index: 2;
 }
-
-@keyframes anketaBlink {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
+.anketa-denied__icon {
+  width: 46px; height: 46px; margin: 0 auto 1rem;
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, rgba(255, 156, 138, .25), rgba(245, 200, 107, .2));
+  color: var(--cx-coral);
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .anketa-cursor { animation: none; opacity: 1; }
-}
+.anketa-denied__icon svg { width: 24px; height: 24px; }
+.anketa-denied h2 { font-family: var(--cx-font-display); margin: 0 0 .5rem; font-size: 1.1rem; }
+.anketa-denied p { margin: 0; color: var(--cx-ink-soft); font-size: .88rem; line-height: 1.6; }

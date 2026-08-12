@@ -17,6 +17,7 @@
   window.ANKETA_SECTIONS = [
     {
       title: "Дані про дитину та батьків",
+      icon: "family",
       fields: [
         { name: "child_full_name", label: "ПІБ дитини", type: "text", required: true },
         { name: "child_birth_date", label: "Дата народження дитини", type: "date" },
@@ -28,6 +29,7 @@
     },
     {
       title: "Медична інформація",
+      icon: "medical",
       fields: [
         { name: "diagnoses", label: "Чи є у Вашої дитини медичні / психіатричні діагнози (вкажіть)", type: "textarea" },
         {
@@ -42,6 +44,7 @@
     },
     {
       title: "Про дитину загалом",
+      icon: "star",
       fields: [
         { name: "strengths", label: "Які сильні сторони Вашої дитини і його особливі таланти?", type: "textarea" },
         { name: "concerns", label: "Що хвилює найбільше Вас у Вашій дитині?", type: "textarea" },
@@ -50,6 +53,7 @@
     },
     {
       title: "Вагітність та пологи",
+      icon: "moon",
       fields: [
         { name: "pregnancy_infections", label: "Чи були якісь інфекції, захворювання, сильні стреси під час вагітності?", type: "radio", options: YES_NO },
         { name: "pregnancy_infections_desc", label: "Якщо були якісь інфекції, захворювання, сильні стреси під час вагітності опишіть їх", type: "textarea" },
@@ -60,6 +64,7 @@
     },
     {
       title: "Етапи розвитку",
+      icon: "rocket",
       fields: [
         { name: "rollover_age", label: "Коли Ваша дитина почала перевертатися?", type: "text" },
         { name: "walk_age", label: "Коли Ваша дитина почала ходити?", type: "text" },
@@ -74,6 +79,7 @@
     },
     {
       title: "Побутові навички",
+      icon: "home",
       fields: [
         { name: "sleep_problems", label: "Чи є проблеми зі сном?", type: "radio", options: YES_NO_RARE },
         { name: "sleep_problems_desc", label: "Якщо є проблеми зі сном — опишіть", type: "textarea" },
@@ -89,6 +95,7 @@
     },
     {
       title: "Соціальні та ігрові навички",
+      icon: "orbit",
       fields: [
         { name: "social_concerns", label: "Чи хвилюєтесь Ви з приводу соціальних навичок Вашої дитини? Опишіть, які є складнощі", type: "textarea" },
         { name: "play_concerns", label: "Чи хвилюєтесь Ви з приводу ігрових навичок Вашої дитини? Опишіть, які є складнощі", type: "textarea" },
@@ -97,6 +104,7 @@
     },
     {
       title: "Увага та поведінка",
+      icon: "compass",
       fields: [
         { name: "follows_instructions", label: "Чи є проблеми у дитини з виконанням інструкцій?", type: "radio", options: YES_NO_UNSURE },
         { name: "completes_tasks", label: "Чи є проблеми у дитини з завершенням задачі / вимоги?", type: "radio", options: YES_NO_UNSURE },
@@ -109,6 +117,7 @@
     },
     {
       title: "Додатково",
+      icon: "note",
       fields: [
         { name: "additional_info", label: "Що Ви хотіли б розказати ще про свою дитину?", type: "textarea" },
         { name: "main_request", label: "Опишіть основний запит до спеціаліста?", type: "textarea" },
@@ -116,6 +125,20 @@
       ],
     },
   ];
+
+  // Small line-icon set for the section badges (24x24, stroke currentColor).
+  // Purely decorative — kept minimal/consistent so new icons are easy to add.
+  const ICONS = {
+    family: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="8.5" r="2.3"/><path d="M3.5 20c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5"/><path d="M14.8 14.9c2.4.3 4.2 2.2 4.2 5.1"/></svg>',
+    medical: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.35-9.5-8.8C.7 8.6 2.4 5 6 5c2 0 3.3 1.1 4 2.2C10.7 6.1 12 5 14 5c3.6 0 5.3 3.6 3.5 7.2C19 16.65 12 21 12 21Z"/><path d="M9 12h2l1-2 2 4 1-2h1"/></svg>',
+    star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 5.9 6.1.5-4.6 4.1 1.5 6-5.4-3.4L6.6 19.5l1.5-6-4.6-4.1 6.1-.5L12 3Z"/></svg>',
+    moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.2A8.5 8.5 0 1 1 9.8 4a7 7 0 0 0 10.2 10.2Z"/></svg>',
+    rocket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c2.8 1.8 4.5 5 4.5 8.7 0 1.7-.4 3.2-1 4.3l-3.5 3-3.5-3c-.6-1.1-1-2.6-1-4.3 0-3.7 1.7-6.9 4.5-8.7Z"/><circle cx="12" cy="10.5" r="1.6"/><path d="M9 16.5 6.5 19M15 16.5 17.5 19M10 20.5h4"/></svg>',
+    home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9.5h12V10"/><path d="M10 19.5v-5h4v5"/></svg>',
+    orbit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.3"/><ellipse cx="12" cy="12" rx="9.5" ry="4.2"/><ellipse cx="12" cy="12" rx="4.2" ry="9.5" transform="rotate(35 12 12)"/></svg>',
+    compass: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5 13.4 13.4 8.5 15.5 10.6 10.6 15.5 8.5Z"/></svg>',
+    note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h8l3 3v14H7z"/><path d="M15 3.5v3h3M9.5 12h5M9.5 15.5h5"/></svg>',
+  };
 
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, (c) => ({
@@ -154,12 +177,20 @@
   }
 
   window.renderAnketaForm = function (mountEl) {
+    const total = window.ANKETA_SECTIONS.length;
     const html = window.ANKETA_SECTIONS.map((section, idx) => {
-      const num = String(idx + 1).padStart(2, "0");
       return `
         <fieldset class="anketa-section">
-          <legend class="anketa-section__title"><span class="anketa-prompt">[${num}]</span> ${escapeHtml(section.title)}</legend>
-          ${section.fields.map(renderField).join("")}
+          <legend class="anketa-section__title">
+            <span class="anketa-section__icon">${ICONS[section.icon] || ""}</span>
+            <span class="anketa-section__text">
+              <span class="anketa-section__step">Крок ${idx + 1} з ${total}</span>
+              <span class="anketa-section__name">${escapeHtml(section.title)}</span>
+            </span>
+          </legend>
+          <div class="anketa-field-grid">
+            ${section.fields.map(renderField).join("")}
+          </div>
         </fieldset>`;
     }).join("");
 

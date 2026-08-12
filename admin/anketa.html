@@ -8,13 +8,16 @@
 <link rel="stylesheet" href="../assets/css/anketa.css">
 </head>
 <body class="anketa-shell">
-  <canvas id="matrixRain" aria-hidden="true"></canvas>
+  <div class="anketa-earth-wrap" aria-hidden="true">
+    <div class="anketa-earth"></div>
+    <div class="anketa-earth-atmosphere"></div>
+  </div>
 
   <header class="anketa-topbar">
-    <a class="anketa-topbar__brand" href="dashboard.html">sensory-integration/anketa</a>
+    <a class="anketa-topbar__brand" href="dashboard.html">Центр сенсорної інтеграції</a>
     <div class="anketa-topbar__user">
-      <span id="whoami">access check...</span>
-      <a class="anketa-btn" href="dashboard.html">&lt; Назад</a>
+      <span id="whoami">перевіряємо доступ...</span>
+      <a class="anketa-btn" href="dashboard.html">← Назад</a>
       <button class="anketa-btn" id="logout-btn" type="button">Вийти</button>
     </div>
   </header>
@@ -23,17 +26,24 @@
     <div data-admin-status></div>
 
     <div id="anketa-denied" hidden class="anketa-denied">
-      <p>ACCESS DENIED</p>
-      <p style="font-size:.8rem;">Ця сторінка доступна лише ролям Адмін та Супер адмін.</p>
+      <div class="anketa-denied__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>
+      </div>
+      <h2>Доступ обмежено</h2>
+      <p>Ця сторінка доступна лише ролям Адмін та Супер адмін. Якщо це помилка — зверніться до вашого супер адміна.</p>
     </div>
 
     <div id="anketa-content" hidden>
       <div class="anketa-intro">
-        <h1>&gt; Анкета для батьків<span class="anketa-cursor"></span></h1>
+        <span class="anketa-intro__eyebrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c2.8 1.8 4.5 5 4.5 8.7 0 1.7-.4 3.2-1 4.3l-3.5 3-3.5-3c-.6-1.1-1-2.6-1-4.3 0-3.7 1.7-6.9 4.5-8.7Z"/><circle cx="12" cy="10.5" r="1.6"/></svg>
+          Анкета для батьків
+        </span>
+        <h1>Розкажіть нам про дитину</h1>
         <p>
-          Питання та поля цифрової анкети — заповнюються батьками (або адміном з їхніх слів)
-          перед першим заняттям. Дані поки що зберігаються тільки локально в цьому запиті;
-          збереження у базу буде додано окремо.
+          Ці питання та поля повторюють анкету, яку заповнюють батьки (або адмін з їхніх слів)
+          перед першим заняттям. Дані поки що зберігаються тільки локально в цьому запиті —
+          збереження у базу даних додамо окремим кроком.
         </p>
       </div>
 
@@ -41,7 +51,10 @@
         <div id="anketa-fields"></div>
 
         <div class="anketa-submit-row">
-          <button type="submit" class="anketa-submit" id="anketa-submit-btn">./submit_anketa.sh</button>
+          <button type="submit" class="anketa-submit" id="anketa-submit-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
+            Надіслати анкету
+          </button>
           <span class="anketa-status" id="anketa-status"></span>
         </div>
       </form>
@@ -51,16 +64,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../assets/js/supabase-config.js"></script>
   <script src="../assets/js/admin-auth.js"></script>
-  <script src="../assets/js/matrix-rain.js"></script>
   <script src="../assets/js/anketa.js"></script>
   <script>
     (async function () {
-      window.startMatrixRain("matrixRain");
-
       // Auth check can hang or throw if Supabase is unreachable (e.g. no
       // network, or the page was opened in a sandboxed/offline preview
       // instead of a real browser tab). Fail loudly instead of leaving
-      // "access check..." stuck forever.
+      // "перевіряємо доступ..." stuck forever.
       const AUTH_TIMEOUT_MS = 8000;
       let profile;
       try {
@@ -71,9 +81,9 @@
       } catch (err) {
         document.getElementById("whoami").textContent = "помилка перевірки доступу";
         document.querySelector("[data-admin-status]").innerHTML =
-          '<div class="anketa-status anketa-status--err">' +
-          "&gt; Не вдалося перевірити сесію (" + (err && err.message === "timeout" ? "немає відповіді від сервера — перевірте інтернет-з'єднання" : (err && err.message) || "невідома помилка") + "). " +
-          'Відкрийте сторінку у звичайному вікні браузера (не у вбудованому прев\'ю редактора) і спробуйте ще раз, або <a href="login.html" style="color:inherit;">увійдіть заново</a>.' +
+          '<div class="anketa-denied" style="margin-top:1.5rem;">' +
+          "<p>Не вдалося перевірити сесію (" + (err && err.message === "timeout" ? "немає відповіді від сервера — перевірте інтернет-з'єднання" : (err && err.message) || "невідома помилка") + ").</p>" +
+          '<p style="margin-top:.5rem;">Відкрийте сторінку у звичайному вікні браузера (не у вбудованому прев\'ю редактора) і спробуйте ще раз, або <a href="login.html" style="color:var(--cx-sky);">увійдіть заново</a>.</p>' +
           "</div>";
         return;
       }
@@ -102,13 +112,12 @@
         e.preventDefault();
 
         if (!form.reportValidity()) {
-          statusEl.textContent = "> помилка: заповніть обов'язкові поля";
+          statusEl.textContent = "Заповніть, будь ласка, обов'язкові поля";
           statusEl.className = "anketa-status anketa-status--err";
           return;
         }
 
         submitBtn.disabled = true;
-        submitBtn.textContent = "sending...";
 
         const data = window.collectAnketaData(form);
         // TODO: replace with a real Supabase insert once the anketa table exists.
@@ -116,8 +125,7 @@
 
         setTimeout(function () {
           submitBtn.disabled = false;
-          submitBtn.textContent = "./submit_anketa.sh";
-          statusEl.textContent = "> анкету збережено локально (" + Object.keys(data).length + " полів)";
+          statusEl.textContent = "Анкету збережено локально (" + Object.keys(data).length + " полів)";
           statusEl.className = "anketa-status anketa-status--ok";
         }, 500);
       });
