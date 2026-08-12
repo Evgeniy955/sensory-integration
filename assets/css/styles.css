@@ -246,9 +246,10 @@ h1,h2,h3,.font-display{
   position:absolute; inset:0; z-index:0; pointer-events:none;
   background:
     linear-gradient(90deg, rgba(18,20,43,.92) 0%, rgba(18,20,43,.8) 34%, rgba(18,20,43,.4) 58%, rgba(18,20,43,.12) 76%, rgba(18,20,43,0) 90%),
-    url('../images/photos/sensory-rainbow-foam-hands.jpg') center 42% / cover;
-  /* gentle color grade so the rainbow photo sits comfortably in the nebula palette */
-  filter:saturate(.75) contrast(1.05) brightness(.9) hue-rotate(-6deg);
+    linear-gradient(rgba(60,50,150,.3), rgba(60,50,150,.3)),
+    url('../images/photos/sensory-hands-white-sand-light.jpg') center 38% / cover;
+  /* moonlit color grade — the photo is bright/white, so tone it down and give it a cosmic violet cast */
+  filter:brightness(.62) contrast(1.08) saturate(.85);
 }
 
 .hero-inner{ position:relative; z-index:1; display:grid; grid-template-columns:1.1fr .9fr; gap:56px; align-items:center; }
