@@ -20,6 +20,8 @@
   </header>
 
   <main class="anketa-main">
+    <div data-admin-status></div>
+
     <div id="anketa-denied" hidden class="anketa-denied">
       <p>ACCESS DENIED</p>
       <p style="font-size:.8rem;">Ця сторінка доступна лише ролям Адмін та Супер адмін.</p>
@@ -55,7 +57,26 @@
     (async function () {
       window.startMatrixRain("matrixRain");
 
-      const profile = await window.requireAuth();
+      // Auth check can hang or throw if Supabase is unreachable (e.g. no
+      // network, or the page was opened in a sandboxed/offline preview
+      // instead of a real browser tab). Fail loudly instead of leaving
+      // "access check..." stuck forever.
+      const AUTH_TIMEOUT_MS = 8000;
+      let profile;
+      try {
+        profile = await Promise.race([
+          window.requireAuth(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), AUTH_TIMEOUT_MS)),
+        ]);
+      } catch (err) {
+        document.getElementById("whoami").textContent = "помилка перевірки доступу";
+        document.querySelector("[data-admin-status]").innerHTML =
+          '<div class="anketa-status anketa-status--err">' +
+          "&gt; Не вдалося перевірити сесію (" + (err && err.message === "timeout" ? "немає відповіді від сервера — перевірте інтернет-з'єднання" : (err && err.message) || "невідома помилка") + "). " +
+          'Відкрийте сторінку у звичайному вікні браузера (не у вбудованому прев\'ю редактора) і спробуйте ще раз, або <a href="login.html" style="color:inherit;">увійдіть заново</a>.' +
+          "</div>";
+        return;
+      }
       if (!profile) return; // requireAuth already redirected to login.html
 
       const allowedRoles = ["admin", "super_admin"];
