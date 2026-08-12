@@ -35,6 +35,13 @@
   font-display:swap;
 }
 
+.anketa-shell,
+.anketa-shell *,
+.anketa-shell *::before,
+.anketa-shell *::after {
+  box-sizing: border-box;
+}
+
 .anketa-shell {
   --cx-bg: #10112A;
   --cx-bg-deep: #070816;
