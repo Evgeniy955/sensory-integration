@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Вхід в адмінпанель — Центр сенсорної інтеграції</title>
+<link rel="stylesheet" href="../assets/css/styles.css">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body class="admin-shell">
+  <main class="admin-login">
+    <div class="admin-card">
+      <h1>Адмінпанель</h1>
+      <p class="admin-subtitle">Увійдіть, щоб керувати сайтом.</p>
+
+      <form id="login-form" novalidate>
+        <div class="admin-field">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" autocomplete="username" required>
+        </div>
+        <div class="admin-field">
+          <label for="password">Пароль</label>
+          <input type="password" id="password" name="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="admin-btn" id="login-btn">Увійти</button>
+      </form>
+
+      <div data-admin-status></div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/supabase-config.js"></script>
+  <script src="../assets/js/admin-auth.js"></script>
+  <script>
+    (async function () {
+      // Already logged in? Skip straight to the dashboard.
+      const existing = await window.getCurrentProfile();
+      if (existing) {
+        window.location.href = "dashboard.html";
+        return;
+      }
+
+      const form = document.getElementById("login-form");
+      const status = document.querySelector("[data-admin-status]");
+      const btn = document.getElementById("login-btn");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        status.innerHTML = "";
+        btn.disabled = true;
+        btn.textContent = "Вхід...";
+
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+
+        const { error } = await window.sbClient.auth.signInWithPassword({ email, password });
+
+        if (error) {
+          status.innerHTML = '<div class="admin-notice admin-notice--error">' +
+            "Не вдалося увійти: " + error.message + "</div>";
+          btn.disabled = false;
+          btn.textContent = "Увійти";
+          return;
+        }
+
+        window.location.href = "dashboard.html";
+      });
+    })();
+  </script>
+</body>
+</html>

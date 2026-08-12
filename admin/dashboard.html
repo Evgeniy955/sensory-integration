@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Адмінпанель — Центр сенсорної інтеграції</title>
+<link rel="stylesheet" href="../assets/css/styles.css">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body class="admin-shell">
+  <header class="admin-topbar">
+    <a class="admin-topbar__brand" href="../index.html">Центр сенсорної інтеграції</a>
+    <div class="admin-topbar__user">
+      <span id="whoami">Завантаження...</span>
+      <button class="admin-btn admin-btn--ghost" id="logout-btn" style="width:auto;">Вийти</button>
+    </div>
+  </header>
+
+  <main class="admin-main">
+    <div data-admin-status></div>
+
+    <!-- Super-admin only: create a new user and assign a role -->
+    <section class="admin-section" id="create-user-section" hidden>
+      <h2>Додати користувача</h2>
+      <p class="admin-hint">Новому користувачу надішлють запрошення на email для встановлення пароля.</p>
+
+      <form id="create-user-form">
+        <div class="admin-form-row">
+          <div class="admin-field" style="margin-bottom:0;">
+            <label for="new-email">Email</label>
+            <input type="email" id="new-email" required>
+          </div>
+          <div class="admin-field" style="margin-bottom:0;">
+            <label for="new-role">Роль</label>
+            <select id="new-role">
+              <option value="instructor">Інструктор</option>
+              <option value="admin">Адмін</option>
+              <option value="super_admin">Супер адмін</option>
+            </select>
+          </div>
+          <button type="submit" class="admin-btn" id="create-user-btn" style="width:auto;">Додати</button>
+        </div>
+      </form>
+
+      <div data-create-status></div>
+    </section>
+
+    <!-- Super-admin / admin: list of all users and their roles -->
+    <section class="admin-section" id="users-section" hidden>
+      <h2>Користувачі</h2>
+      <p class="admin-hint">Усі облікові записи адмінпанелі та їхні ролі.</p>
+      <table class="admin-table">
+        <thead>
+          <tr><th>Email</th><th>Ім'я</th><th>Роль</th><th>Створено</th></tr>
+        </thead>
+        <tbody id="users-tbody">
+          <tr><td colspan="4">Завантаження...</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Instructor (and fallback) view -->
+    <section class="admin-section" id="placeholder-section" hidden>
+      <h2>Ласкаво просимо</h2>
+      <p class="admin-placeholder">
+        Інструменти для редагування контенту сайту (команда, ціни, фото) з'являться тут пізніше.
+        Поки що доступний лише розділ керування користувачами для адмінів.
+      </p>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/supabase-config.js"></script>
+  <script src="../assets/js/admin-auth.js"></script>
+  <script>
+    const ROLE_LABELS = {
+      super_admin: "Супер адмін",
+      admin: "Адмін",
+      instructor: "Інструктор",
+    };
+
+    document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
+
+    async function loadUsers() {
+      const tbody = document.getElementById("users-tbody");
+      const { data, error } = await window.sbClient
+        .from("profiles")
+        .select("email, full_name, role, created_at")
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        tbody.innerHTML = '<tr><td colspan="4">Помилка завантаження: ' + error.message + "</td></tr>";
+        return;
+      }
+
+      tbody.innerHTML = data.map((u) => {
+        const date = new Date(u.created_at).toLocaleDateString("uk-UA");
+        return "<tr>" +
+          "<td>" + u.email + "</td>" +
+          "<td>" + (u.full_name || "—") + "</td>" +
+          '<td><span class="admin-badge admin-badge--' + u.role + '">' + (ROLE_LABELS[u.role] || u.role) + "</span></td>" +
+          "<td>" + date + "</td>" +
+          "</tr>";
+      }).join("") || '<tr><td colspan="4">Немає користувачів.</td></tr>';
+    }
+
+    (async function () {
+      const profile = await window.requireAuth();
+      if (!profile) return; // requireAuth already redirected to login.html
+
+      document.getElementById("whoami").textContent =
+        profile.email + " · " + (ROLE_LABELS[profile.role] || profile.role);
+
+      if (profile.role === "super_admin") {
+        document.getElementById("create-user-section").hidden = false;
+        document.getElementById("users-section").hidden = false;
+        loadUsers();
+      } else if (profile.role === "admin") {
+        document.getElementById("users-section").hidden = false;
+        loadUsers();
+      } else {
+        document.getElementById("placeholder-section").hidden = false;
+      }
+
+      const form = document.getElementById("create-user-form");
+      if (form) {
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const statusEl = document.querySelector("[data-create-status]");
+          const btn = document.getElementById("create-user-btn");
+          statusEl.innerHTML = "";
+          btn.disabled = true;
+          btn.textContent = "Додаємо...";
+
+          const email = document.getElementById("new-email").value.trim();
+          const role = document.getElementById("new-role").value;
+
+          try {
+            const { data: { session } } = await window.sbClient.auth.getSession();
+            const functionsUrl = window.SUPABASE_CONFIG.url.replace(/\/$/, "") + "/functions/v1/admin-create-user";
+
+            const res = await fetch(functionsUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + session.access_token,
+              },
+              body: JSON.stringify({ email, role }),
+            });
+
+            const result = await res.json();
+
+            if (!res.ok) {
+              throw new Error(result.error || "Невідома помилка");
+            }
+
+            statusEl.innerHTML = '<div class="admin-notice admin-notice--success">Користувача додано, запрошення надіслано на ' + email + ".</div>";
+            document.getElementById("new-email").value = "";
+            loadUsers();
+          } catch (err) {
+            statusEl.innerHTML = '<div class="admin-notice admin-notice--error">Помилка: ' + err.message + "</div>";
+          } finally {
+            btn.disabled = false;
+            btn.textContent = "Додати";
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
