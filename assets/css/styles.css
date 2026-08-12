@@ -57,6 +57,10 @@
   --shadow-md:0 8px 24px -12px rgba(31,59,46,.16);
   --shadow-lg:0 24px 48px -20px rgba(31,59,46,.22);
 
+  /* Fixed brand panel — stays the same deep sage in both themes,
+     used where white text sits on a solid filled block. */
+  --color-panel-deep:#2E6B3B;
+
   --radius-s:6px;
   --radius-m:14px;
   --radius-l:28px;
@@ -76,8 +80,8 @@
   color-scheme:light;
 }
 
-/* Landscape theme stays consistent regardless of OS light/dark preference. */
-:root[data-theme="dark"],
+/* Light theme is the default palette above; this makes it explicit
+   for when data-theme="light" is set directly on the root. */
 :root[data-theme="light"]{
   --color-bg:#EBF4EF;
   --color-surface:#FFFFFF;
@@ -103,6 +107,33 @@
   color-scheme:light;
 }
 
+/* Dark theme — same calm, low-saturation sensory-friendly approach,
+   rebuilt on a deep forest-green base instead of pure black/grey. */
+:root[data-theme="dark"]{
+  --color-bg:#132019;
+  --color-surface:#1B2A21;
+  --color-surface-alt:#213327;
+  --color-ink:#EAF4EE;
+  --color-ink-soft:#B7CCC0;
+  --color-ink-faint:#7E9789;
+  --color-sage:#67C17B;
+  --color-sage-deep:#8FE0A0;
+  --color-sage-tint:#213B29;
+  --color-sky:#4FB6D6;
+  --color-sky-deep:#8FDCEF;
+  --color-sky-tint:#1B3540;
+  --color-apricot:#F5A623;
+  --color-apricot-deep:#FFC670;
+  --color-apricot-tint:#3A2C12;
+  --color-border:#2C4033;
+  --color-destructive:#F0796A;
+  --on-apricot:#241300;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  --shadow-md:0 8px 24px -12px rgba(0,0,0,.55);
+  --shadow-lg:0 24px 48px -20px rgba(0,0,0,.65);
+  color-scheme:dark;
+}
+
 *,*::before,*::after{ box-sizing:border-box; }
 html{ scroll-behavior:smooth; }
 @media (prefers-reduced-motion:reduce){ html{ scroll-behavior:auto; } }
@@ -117,7 +148,9 @@ body{
   -webkit-font-smoothing:antialiased;
   overflow-x:hidden;
   position:relative;
+  transition:background-color .3s ease, color .3s ease;
 }
+@media (prefers-reduced-motion:reduce){ body{ transition:none; } }
 /* soft open-sky wash behind the whole page — blue sky fading toward a warm sunlit horizon */
 body::before{
   content:"";
@@ -141,6 +174,7 @@ body::after{
 }
 @keyframes cloudDrift{ 0%,100%{ transform:translateX(0); } 50%{ transform:translateX(2.5%); } }
 @media (prefers-reduced-motion:reduce){ body::after{ animation:none; } }
+:root[data-theme="dark"] body::after{ opacity:.4; }
 
 img{ max-width:100%; display:block; }
 a{ color:var(--color-sage-deep); }
@@ -174,6 +208,7 @@ h1,h2,h3,.font-display{
   background:color-mix(in srgb, var(--color-bg) 88%, transparent);
   backdrop-filter:blur(10px);
   border-bottom:1px solid var(--color-border);
+  transition:background-color .3s ease, border-color .3s ease;
 }
 .site-header .wrap{ display:flex; align-items:center; justify-content:space-between; height:76px; }
 .brand{
@@ -204,6 +239,19 @@ h1,h2,h3,.font-display{
 }
 .lang-btn:hover{ color:var(--color-ink); }
 .lang-btn.is-active{ background:var(--color-sage-deep); color:#fff; }
+
+.theme-toggle{
+  display:flex; align-items:center; justify-content:center;
+  width:36px; height:36px; border-radius:var(--radius-full); padding:0;
+  border:1px solid var(--color-border); background:var(--color-surface-alt);
+  color:var(--color-ink-soft); cursor:pointer; flex:none;
+  transition:background-color .2s ease, border-color .2s ease, color .2s ease, transform .2s ease;
+}
+.theme-toggle:hover{ color:var(--color-sage-deep); transform:translateY(-1px); }
+.theme-toggle svg{ width:18px; height:18px; stroke:currentColor; }
+.theme-toggle .icon-sun{ display:none; }
+:root[data-theme="dark"] .theme-toggle .icon-sun{ display:block; }
+:root[data-theme="dark"] .theme-toggle .icon-moon{ display:none; }
 
 .nav-cta-mobile{ display:none; }
 .header-admin-link{
@@ -240,11 +288,18 @@ h1,h2,h3,.font-display{
 .hero-bg{
   position:absolute; inset:0; z-index:0; pointer-events:none;
   background:
-    linear-gradient(90deg, rgba(235,244,239,.94) 0%, rgba(235,244,239,.82) 34%, rgba(235,244,239,.35) 58%, rgba(235,244,239,.08) 76%, rgba(235,244,239,0) 90%),
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--color-bg) 94%, transparent) 0%,
+      color-mix(in srgb, var(--color-bg) 82%, transparent) 34%,
+      color-mix(in srgb, var(--color-bg) 35%, transparent) 58%,
+      color-mix(in srgb, var(--color-bg) 8%, transparent) 76%,
+      transparent 90%),
     url('../images/photos/sensory-rainbow-foam-hands.jpg') center 42% / cover;
   /* gentle color grade so the rainbow photo sits comfortably with the landscape palette */
   filter:saturate(.82) contrast(1.04) brightness(1.03) sepia(.06);
+  transition:filter .3s ease;
 }
+:root[data-theme="dark"] .hero-bg{ filter:saturate(.72) contrast(1.08) brightness(.72) sepia(.03); }
 
 .hero-inner{ position:relative; z-index:1; display:grid; grid-template-columns:1.1fr .9fr; gap:56px; align-items:center; }
 .hero-copy h1{ font-size:clamp(30px,4vw,44px); line-height:1.18; margin-bottom:18px; }
@@ -328,7 +383,7 @@ h1,h2,h3,.font-display{
 .about-grid{ position:relative; z-index:1; display:grid; grid-template-columns:1.1fr .9fr; gap:56px; align-items:start; }
 .about-grid p{ font-size:16px; color:var(--color-ink-soft); max-width:60ch; }
 .mission-card{
-  background:var(--color-sage-deep); color:#fff; border-radius:var(--radius-l);
+  background:var(--color-panel-deep); color:#fff; border-radius:var(--radius-l);
   padding:var(--space-xl) var(--space-lg); position:relative;
 }
 .mission-card .quote-mark{ font-family:'Comfortaa',sans-serif; font-size:60px; line-height:1; opacity:.35; margin-bottom:8px; }
@@ -483,7 +538,7 @@ h1,h2,h3,.font-display{
 
 /* ---------- Final CTA ---------- */
 .cta-final{
-  background:var(--color-sage-deep); border-radius:var(--radius-l);
+  background:var(--color-panel-deep); border-radius:var(--radius-l);
   padding:var(--space-xl) var(--space-lg); display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:center;
   color:#fff; position:relative; overflow:hidden;
 }
@@ -494,7 +549,7 @@ h1,h2,h3,.font-display{
 .contact-form label{ font-size:13px; font-weight:700; display:block; margin-bottom:6px; }
 .contact-form input{
   width:100%; padding:12px 14px; border-radius:var(--radius-s); border:1px solid rgba(255,255,255,.3);
-  background:rgba(255,255,255,.95); color:var(--color-ink); font-size:15px; font-family:inherit;
+  background:rgba(255,255,255,.95); color:#1F3B2E; font-size:15px; font-family:inherit;
 }
 .contact-form .btn{ width:100%; }
 .form-note{ font-size:12px; opacity:.8; }

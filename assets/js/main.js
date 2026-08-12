@@ -1,6 +1,23 @@
 (() => {
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // Theme toggle (light / dark)
+  const THEME_KEY = 'siteTheme';
+  const themeToggle = document.getElementById('themeToggle');
+  const applyTheme = (theme) => {
+    document.documentElement.setAttribute('data-theme', theme);
+    if (themeToggle) themeToggle.setAttribute('aria-pressed', String(theme === 'dark'));
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* storage unavailable */ }
+  };
+  if (themeToggle) {
+    const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    themeToggle.setAttribute('aria-pressed', String(current === 'dark'));
+    themeToggle.addEventListener('click', () => {
+      const active = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      applyTheme(active === 'dark' ? 'light' : 'dark');
+    });
+  }
+
   // Mobile nav toggle
   const navToggle = document.getElementById('navToggle');
   const nav = document.getElementById('mainNav');
