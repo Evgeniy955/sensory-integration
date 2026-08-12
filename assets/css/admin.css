@@ -127,6 +127,30 @@
 }
 .admin-btn--ghost:hover { background: var(--color-surface-alt); }
 
+.admin-btn--google {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
+  gap: .6rem;
+}
+.admin-btn--google:hover { background: var(--color-surface-alt); }
+
+.admin-divider {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin: 1.1rem 0;
+  color: var(--color-ink-faint);
+  font-size: .8rem;
+}
+.admin-divider::before,
+.admin-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
 .admin-notice {
   margin-top: 1rem;
   padding: .7rem .9rem;
