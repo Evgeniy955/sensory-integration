@@ -197,6 +197,28 @@
     mountEl.innerHTML = html;
   };
 
+  // Fills a form already rendered by renderAnketaForm with existing
+  // answers — the reverse of collectAnketaData, used by the "Редагувати"
+  // flow to prefill a previously saved anketa. Missing/unknown fields are
+  // left as-is (untouched, empty) rather than throwing.
+  window.fillAnketaForm = function (formEl, data) {
+    if (!data) return;
+    window.ANKETA_SECTIONS.forEach((section) => {
+      section.fields.forEach((f) => {
+        const value = data[f.name];
+        if (value === undefined || value === null) return;
+        if (f.type === "radio") {
+          formEl.querySelectorAll(`input[name="${f.name}"]`).forEach((input) => {
+            input.checked = input.value === value;
+          });
+        } else {
+          const el = formEl.querySelector(`[name="${f.name}"]`);
+          if (el) el.value = value;
+        }
+      });
+    });
+  };
+
   // Collects all answers from the rendered form into a plain object.
   window.collectAnketaData = function (formEl) {
     const data = {};
