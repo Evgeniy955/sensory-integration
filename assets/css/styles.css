@@ -57,9 +57,15 @@
   --shadow-md:0 8px 24px -12px rgba(31,59,46,.16);
   --shadow-lg:0 24px 48px -20px rgba(31,59,46,.22);
 
-  /* Fixed brand panel — stays the same deep sage in both themes,
-     used where white text sits on a solid filled block. */
-  --color-panel-deep:#2E6B3B;
+  /* Text color for anything sitting on a solid sage/sage-deep fill
+     (lang switch active state, mission card, price badge, final CTA).
+     Light theme fills are dark, so this stays white; the cosmic theme
+     below flips it to a dark ink since its fills are pale mint. */
+  --on-accent-fill:#fff;
+  /* Translucent panel for the contact form sitting on top of the final CTA block */
+  --color-panel-overlay-bg:rgba(255,255,255,.08);
+  --color-panel-overlay-border:rgba(255,255,255,.2);
+  --color-panel-input-border:rgba(255,255,255,.3);
 
   --radius-s:6px;
   --radius-m:14px;
@@ -101,36 +107,45 @@
   --color-border:#CBE3D2;
   --color-destructive:#C4432E;
   --on-apricot:#3A2200;
+  --on-accent-fill:#fff;
+  --color-panel-overlay-bg:rgba(255,255,255,.08);
+  --color-panel-overlay-border:rgba(255,255,255,.2);
+  --color-panel-input-border:rgba(255,255,255,.3);
   --shadow-sm:0 1px 2px rgba(31,59,46,.06);
   --shadow-md:0 8px 24px -12px rgba(31,59,46,.16);
   --shadow-lg:0 24px 48px -20px rgba(31,59,46,.22);
   color-scheme:light;
 }
 
-/* Dark theme — same calm, low-saturation sensory-friendly approach,
-   rebuilt on a deep forest-green base instead of pure black/grey. */
-:root[data-theme="dark"]{
-  --color-bg:#132019;
-  --color-surface:#1B2A21;
-  --color-surface-alt:#213327;
-  --color-ink:#EAF4EE;
-  --color-ink-soft:#B7CCC0;
-  --color-ink-faint:#7E9789;
-  --color-sage:#67C17B;
-  --color-sage-deep:#8FE0A0;
-  --color-sage-tint:#213B29;
-  --color-sky:#4FB6D6;
-  --color-sky-deep:#8FDCEF;
-  --color-sky-tint:#1B3540;
-  --color-apricot:#F5A623;
-  --color-apricot-deep:#FFC670;
-  --color-apricot-tint:#3A2C12;
-  --color-border:#2C4033;
-  --color-destructive:#F0796A;
-  --on-apricot:#241300;
-  --shadow-sm:0 1px 2px rgba(0,0,0,.35);
-  --shadow-md:0 8px 24px -12px rgba(0,0,0,.55);
-  --shadow-lg:0 24px 48px -20px rgba(0,0,0,.65);
+/* Cosmic theme — soft nebula palette. Deep indigo base, gentle glow accents.
+   Kept deliberately low-contrast/no-flash for sensory-sensitive visitors.
+   Ported from the cosmic-design exploration branch. */
+:root[data-theme="cosmic"]{
+  --color-bg:#12142B;
+  --color-surface:#1B1E3F;
+  --color-surface-alt:#1F2249;
+  --color-ink:#ECEAF7;
+  --color-ink-soft:#B9B7D9;
+  --color-ink-faint:#8886B0;
+  --color-sage:#7FE3C7;
+  --color-sage-deep:#BEF2E1;
+  --color-sage-tint:#1E3A38;
+  --color-sky:#9CB8FF;
+  --color-sky-deep:#D6E0FF;
+  --color-sky-tint:#242C55;
+  --color-apricot:#F5C86B;
+  --color-apricot-deep:#FADE9E;
+  --color-apricot-tint:#362B1E;
+  --color-border:#33365E;
+  --color-destructive:#FF8A80;
+  --on-apricot:#241708;
+  --on-accent-fill:#141731;
+  --color-panel-overlay-bg:rgba(20,23,49,.12);
+  --color-panel-overlay-border:rgba(20,23,49,.22);
+  --color-panel-input-border:rgba(20,23,49,.3);
+  --shadow-sm:0 1px 2px rgba(4,4,20,.4);
+  --shadow-md:0 8px 24px -12px rgba(4,4,20,.6);
+  --shadow-lg:0 24px 48px -20px rgba(4,4,20,.7);
   color-scheme:dark;
 }
 
@@ -174,7 +189,37 @@ body::after{
 }
 @keyframes cloudDrift{ 0%,100%{ transform:translateX(0); } 50%{ transform:translateX(2.5%); } }
 @media (prefers-reduced-motion:reduce){ body::after{ animation:none; } }
-:root[data-theme="dark"] body::after{ opacity:.4; }
+
+/* Cosmic theme swaps the sky wash for a nebula glow, and the drifting
+   clouds for a gentle, slow-twinkling starfield. */
+:root[data-theme="cosmic"] body::before{
+  background:
+    radial-gradient(1100px 750px at 12% -8%, rgba(127,227,199,.16), transparent 60%),
+    radial-gradient(1000px 700px at 92% 8%, rgba(156,184,255,.18), transparent 60%),
+    radial-gradient(900px 800px at 50% 105%, rgba(245,200,107,.10), transparent 60%);
+}
+:root[data-theme="cosmic"] body::after{
+  background-image:
+    radial-gradient(1.6px 1.6px at 10% 15%, rgba(236,234,247,.8), transparent 60%),
+    radial-gradient(1.2px 1.2px at 25% 60%, rgba(236,234,247,.6), transparent 60%),
+    radial-gradient(1.8px 1.8px at 40% 30%, rgba(236,234,247,.7), transparent 60%),
+    radial-gradient(1.2px 1.2px at 55% 80%, rgba(236,234,247,.55), transparent 60%),
+    radial-gradient(1.6px 1.6px at 70% 20%, rgba(236,234,247,.75), transparent 60%),
+    radial-gradient(1.2px 1.2px at 85% 65%, rgba(236,234,247,.6), transparent 60%),
+    radial-gradient(1.4px 1.4px at 95% 40%, rgba(236,234,247,.65), transparent 60%),
+    radial-gradient(1.2px 1.2px at 5% 85%, rgba(236,234,247,.55), transparent 60%),
+    radial-gradient(1.6px 1.6px at 62% 5%, rgba(236,234,247,.7), transparent 60%),
+    radial-gradient(1.2px 1.2px at 33% 95%, rgba(236,234,247,.55), transparent 60%);
+  background-repeat:repeat;
+  background-size:340px 340px;
+  filter:none;
+  opacity:.5;
+  animation:starTwinkle 7s ease-in-out infinite alternate;
+}
+@keyframes starTwinkle{ 0%{ opacity:.35; } 100%{ opacity:.6; } }
+@media (prefers-reduced-motion:reduce){
+  :root[data-theme="cosmic"] body::after{ animation:none; opacity:.5; }
+}
 
 img{ max-width:100%; display:block; }
 a{ color:var(--color-sage-deep); }
@@ -238,7 +283,7 @@ h1,h2,h3,.font-display{
   min-height:28px; transition:background .2s ease, color .2s ease;
 }
 .lang-btn:hover{ color:var(--color-ink); }
-.lang-btn.is-active{ background:var(--color-sage-deep); color:#fff; }
+.lang-btn.is-active{ background:var(--color-sage-deep); color:var(--on-accent-fill); }
 
 .theme-toggle{
   display:flex; align-items:center; justify-content:center;
@@ -250,8 +295,8 @@ h1,h2,h3,.font-display{
 .theme-toggle:hover{ color:var(--color-sage-deep); transform:translateY(-1px); }
 .theme-toggle svg{ width:18px; height:18px; stroke:currentColor; }
 .theme-toggle .icon-sun{ display:none; }
-:root[data-theme="dark"] .theme-toggle .icon-sun{ display:block; }
-:root[data-theme="dark"] .theme-toggle .icon-moon{ display:none; }
+:root[data-theme="cosmic"] .theme-toggle .icon-sun{ display:block; }
+:root[data-theme="cosmic"] .theme-toggle .icon-moon{ display:none; }
 
 .nav-cta-mobile{ display:none; }
 .header-admin-link{
@@ -299,7 +344,15 @@ h1,h2,h3,.font-display{
   filter:saturate(.82) contrast(1.04) brightness(1.03) sepia(.06);
   transition:filter .3s ease;
 }
-:root[data-theme="dark"] .hero-bg{ filter:saturate(.72) contrast(1.08) brightness(.72) sepia(.03); }
+/* Cosmic theme swaps in the bright white-sand photo — the rainbow-hands
+   shot doesn't take a moonlit grade well — with a violet cast on top. */
+:root[data-theme="cosmic"] .hero-bg{
+  background:
+    linear-gradient(90deg, rgba(18,20,43,.92) 0%, rgba(18,20,43,.8) 34%, rgba(18,20,43,.4) 58%, rgba(18,20,43,.12) 76%, rgba(18,20,43,0) 90%),
+    linear-gradient(rgba(60,50,150,.3), rgba(60,50,150,.3)),
+    url('../images/photos/sensory-hands-white-sand-light.jpg') center 38% / cover;
+  filter:brightness(.62) contrast(1.08) saturate(.85);
+}
 
 .hero-inner{ position:relative; z-index:1; display:grid; grid-template-columns:1.1fr .9fr; gap:56px; align-items:center; }
 .hero-copy h1{ font-size:clamp(30px,4vw,44px); line-height:1.18; margin-bottom:18px; }
@@ -380,10 +433,11 @@ h1,h2,h3,.font-display{
   position:absolute; right:-40px; bottom:-30px; width:340px; height:340px;
   opacity:.08; pointer-events:none; z-index:0;
 }
+:root[data-theme="cosmic"] .about-decor{ opacity:.12; }
 .about-grid{ position:relative; z-index:1; display:grid; grid-template-columns:1.1fr .9fr; gap:56px; align-items:start; }
 .about-grid p{ font-size:16px; color:var(--color-ink-soft); max-width:60ch; }
 .mission-card{
-  background:var(--color-panel-deep); color:#fff; border-radius:var(--radius-l);
+  background:var(--color-sage-deep); color:var(--on-accent-fill); border-radius:var(--radius-l);
   padding:var(--space-xl) var(--space-lg); position:relative;
 }
 .mission-card .quote-mark{ font-family:'Comfortaa',sans-serif; font-size:60px; line-height:1; opacity:.35; margin-bottom:8px; }
@@ -491,7 +545,7 @@ h1,h2,h3,.font-display{
 .price-per{ font-size:12.5px; color:var(--color-ink-soft); }
 .price-badge{
   position:absolute; top:-11px; left:50%; transform:translateX(-50%); white-space:nowrap;
-  background:var(--color-sage); color:#fff; font-size:11px; font-weight:700;
+  background:var(--color-sage); color:var(--on-accent-fill); font-size:11px; font-weight:700;
   padding:4px 12px; border-radius:var(--radius-full);
 }
 .price-note{ display:flex; align-items:center; justify-content:center; gap:10px; margin-top:26px; font-size:14px; color:var(--color-ink-soft); }
@@ -538,17 +592,19 @@ h1,h2,h3,.font-display{
 
 /* ---------- Final CTA ---------- */
 .cta-final{
-  background:var(--color-panel-deep); border-radius:var(--radius-l);
+  background:var(--color-sage-deep); border-radius:var(--radius-l);
   padding:var(--space-xl) var(--space-lg); display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:center;
-  color:#fff; position:relative; overflow:hidden;
+  color:var(--on-accent-fill); position:relative; overflow:hidden;
 }
 .cta-final h2{ color:inherit; font-size:clamp(24px,3vw,30px); margin-bottom:12px; }
 .cta-final p{ opacity:.9; margin:0 0 24px; max-width:44ch; }
 .cta-final .btn-primary{ box-shadow:0 12px 30px -12px rgba(0,0,0,.4); }
-.contact-form{ background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); border-radius:var(--radius-m); padding:24px; display:grid; gap:14px; }
+:root[data-theme="cosmic"] .cta-final p{ opacity:.85; }
+:root[data-theme="cosmic"] .cta-final .btn-primary{ box-shadow:0 12px 30px -12px rgba(4,4,20,.4); }
+.contact-form{ background:var(--color-panel-overlay-bg); border:1px solid var(--color-panel-overlay-border); border-radius:var(--radius-m); padding:24px; display:grid; gap:14px; }
 .contact-form label{ font-size:13px; font-weight:700; display:block; margin-bottom:6px; }
 .contact-form input{
-  width:100%; padding:12px 14px; border-radius:var(--radius-s); border:1px solid rgba(255,255,255,.3);
+  width:100%; padding:12px 14px; border-radius:var(--radius-s); border:1px solid var(--color-panel-input-border);
   background:rgba(255,255,255,.95); color:#1F3B2E; font-size:15px; font-family:inherit;
 }
 .contact-form .btn{ width:100%; }

@@ -10,9 +10,9 @@
 (function(){
   try{
     var saved = localStorage.getItem('siteTheme');
-    var theme = saved === 'light' || saved === 'dark'
+    var theme = saved === 'light' || saved === 'cosmic'
       ? saved
-      : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'cosmic' : 'light');
     document.documentElement.setAttribute('data-theme', theme);
   }catch(e){ document.documentElement.setAttribute('data-theme','light'); }
 })();

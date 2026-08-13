@@ -1,20 +1,20 @@
 (() => {
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // Theme toggle (light / dark)
+  // Theme toggle (light / cosmic)
   const THEME_KEY = 'siteTheme';
   const themeToggle = document.getElementById('themeToggle');
   const applyTheme = (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
-    if (themeToggle) themeToggle.setAttribute('aria-pressed', String(theme === 'dark'));
+    if (themeToggle) themeToggle.setAttribute('aria-pressed', String(theme === 'cosmic'));
     try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* storage unavailable */ }
   };
   if (themeToggle) {
-    const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-    themeToggle.setAttribute('aria-pressed', String(current === 'dark'));
+    const current = document.documentElement.getAttribute('data-theme') === 'cosmic' ? 'cosmic' : 'light';
+    themeToggle.setAttribute('aria-pressed', String(current === 'cosmic'));
     themeToggle.addEventListener('click', () => {
-      const active = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-      applyTheme(active === 'dark' ? 'light' : 'dark');
+      const active = document.documentElement.getAttribute('data-theme') === 'cosmic' ? 'cosmic' : 'light';
+      applyTheme(active === 'cosmic' ? 'light' : 'cosmic');
     });
   }
 
