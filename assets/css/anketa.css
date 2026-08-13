@@ -417,6 +417,10 @@
    actions in a table row aren't mistaken for each other at a glance. */
 .anketa-view-link--edit { color: var(--color-apricot-deep); }
 
+/* "Переглянути" is the more common action in the row — a touch larger
+   than "Редагувати" so it reads as the primary one. */
+.anketa-view-link--primary { font-size: .95rem; }
+
 /* ---------- Modal (anketa detail / AI assistant stub) ---------- */
 .anketa-modal-overlay {
   position: fixed;
