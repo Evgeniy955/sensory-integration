@@ -298,7 +298,10 @@ h1,h2,h3,.font-display{
 :root[data-theme="cosmic"] .theme-toggle .icon-sun{ display:block; }
 :root[data-theme="cosmic"] .theme-toggle .icon-moon{ display:none; }
 
-.nav-cta-mobile{ display:none; }
+/* Higher specificity than .btn/.btn-primary/.btn-sm (which set
+   display:inline-flex) so this hides the mobile CTA regardless of
+   source order — it previously leaked into the desktop header. */
+.nav .nav-cta-mobile{ display:none; }
 .header-admin-link{
   display:flex; align-items:center; justify-content:center;
   width:36px; height:36px; border-radius:var(--radius-s);
