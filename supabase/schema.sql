@@ -54,11 +54,23 @@ create policy "Super admins can insert profiles"
   on public.profiles for insert
   with check (public.current_user_role() = 'super_admin');
 
+-- Admins can update instructor/admin profiles; only a super_admin may
+-- touch a row that currently is (USING, checked against the old row) or
+-- would become (WITH CHECK, checked against the new row) super_admin.
+-- That is what stops a plain admin from promoting someone to super_admin
+-- or editing/demoting an existing super_admin.
 drop policy if exists "Super admins can update any profile" on public.profiles;
 drop policy if exists "Admins can update profiles" on public.profiles;
 create policy "Admins can update profiles"
   on public.profiles for update
-  using (public.current_user_role() in ('admin', 'super_admin'));
+  using (
+    public.current_user_role() = 'super_admin'
+    or (public.current_user_role() = 'admin' and role <> 'super_admin')
+  )
+  with check (
+    public.current_user_role() = 'super_admin'
+    or (public.current_user_role() = 'admin' and role <> 'super_admin')
+  );
 
 drop policy if exists "Super admins can delete profiles" on public.profiles;
 create policy "Super admins can delete profiles"
