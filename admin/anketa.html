@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Анкета для батьків — Центр сенсорної інтеграції</title>
+<title>Анкети — Центр сенсорної інтеграції</title>
 <script>
 (function(){
   try{
@@ -44,33 +44,87 @@
       <p>Ця сторінка доступна лише ролям Адмін та Супер адмін. Якщо це помилка — зверніться до вашого супер адміна.</p>
     </div>
 
-    <div id="anketa-content" hidden>
+    <div id="anketa-list-content" hidden>
       <div class="anketa-intro">
         <span class="anketa-intro__eyebrow">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c2.8 1.8 4.5 5 4.5 8.7 0 1.7-.4 3.2-1 4.3l-3.5 3-3.5-3c-.6-1.1-1-2.6-1-4.3 0-3.7 1.7-6.9 4.5-8.7Z"/><circle cx="12" cy="10.5" r="1.6"/></svg>
-          Анкета для батьків
+          Анкети
         </span>
-        <h1>Розкажіть нам про дитину</h1>
-        <p>
-          Ці питання та поля повторюють анкету, яку заповнюють батьки (або адмін з їхніх слів)
-          перед першим заняттям. Дані поки що зберігаються тільки локально в цьому запиті —
-          збереження у базу даних додамо окремим кроком.
-        </p>
+        <h1>Анкети батьків</h1>
+        <p>Усі анкети, заповнені перед першим заняттям. Шукайте за прізвищем дитини або іменем батьків, сортуйте за будь-якою колонкою.</p>
       </div>
 
-      <form id="anketa-form" novalidate autocomplete="off">
-        <div id="anketa-fields"></div>
+      <div class="anketa-toolbar">
+        <input type="search" class="anketa-search" id="anketa-search" placeholder="Пошук за прізвищем дитини або ім'ям батьків (опікунів)…">
+        <div class="anketa-toolbar-spacer"></div>
+        <button type="button" class="anketa-btn" id="ai-assistant-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M12 3v3M12 18v3M5 12H2M22 12h-3M6.3 6.3 4.2 4.2M19.8 19.8l-2.1-2.1M6.3 17.7l-2.1 2.1M19.8 4.2l-2.1 2.1"/><circle cx="12" cy="12" r="4.2"/></svg>
+          AI помічник
+        </button>
+        <a class="anketa-btn anketa-btn--primary" href="anketa-form.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Додати нову анкету
+        </a>
+      </div>
 
-        <div class="anketa-submit-row">
-          <button type="submit" class="anketa-submit" id="anketa-submit-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
-            Надіслати анкету
-          </button>
-          <span class="anketa-status" id="anketa-status"></span>
-        </div>
-      </form>
+      <div class="anketa-table-wrap">
+        <table class="anketa-table">
+          <thead>
+            <tr>
+              <th>
+                <button type="button" class="anketa-sort-btn" data-sort="surname">
+                  Дитина (прізвище, ім'я)
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="anketa-sort-btn" data-sort="parent_name">
+                  Ім'я одного з батьків (опікунів)
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="anketa-sort-btn" data-sort="created_at">
+                  Дата додавання
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+              </th>
+              <th>Дії</th>
+            </tr>
+          </thead>
+          <tbody id="anketa-tbody">
+            <tr><td colspan="4" class="anketa-table-empty">Завантаження…</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </main>
+
+  <!-- Anketa detail (read-only view) -->
+  <div class="anketa-modal-overlay" id="view-modal-overlay" hidden>
+    <div class="anketa-modal" role="dialog" aria-modal="true" aria-labelledby="view-modal-title">
+      <button type="button" class="anketa-modal__close" id="view-modal-close" aria-label="Закрити">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <h2 id="view-modal-title">Анкета</h2>
+      <p class="anketa-modal__hint">Перегляд лише для читання.</p>
+      <div id="view-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- AI assistant stub -->
+  <div class="anketa-modal-overlay" id="ai-modal-overlay" hidden>
+    <div class="anketa-modal" role="dialog" aria-modal="true" aria-labelledby="ai-modal-title">
+      <button type="button" class="anketa-modal__close" id="ai-modal-close" aria-label="Закрити">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <h2 id="ai-modal-title">AI помічник</h2>
+      <p class="anketa-modal__hint">
+        Функція в розробці. Незабаром тут можна буде ставити запитання про анкети природною мовою —
+        наприклад, «які діти мають проблеми зі сном» — і отримувати відповідь на основі збережених даних.
+      </p>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../assets/js/supabase-config.js"></script>
@@ -96,6 +150,158 @@
     })();
   </script>
   <script>
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      }[c]));
+    }
+
+    // ПІБ дитини is written surname-first ("Прізвище Ім'я По-батькові"),
+    // same as the source Google Form — so the first word is a reasonable
+    // stand-in for "sort/search by surname" without adding a separate
+    // surname field to the questionnaire itself.
+    function getSurname(childFullName) {
+      return (childFullName || "").trim().split(/\s+/)[0] || "";
+    }
+
+    function closeModal(overlay) { overlay.hidden = true; }
+    function openModal(overlay) { overlay.hidden = false; }
+
+    [
+      ["view-modal-overlay", "view-modal-close"],
+      ["ai-modal-overlay", "ai-modal-close"],
+    ].forEach(([overlayId, closeId]) => {
+      const overlay = document.getElementById(overlayId);
+      document.getElementById(closeId).addEventListener("click", () => closeModal(overlay));
+      overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(overlay); });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !overlay.hidden) closeModal(overlay);
+      });
+    });
+
+    document.getElementById("ai-assistant-btn").addEventListener("click", () => {
+      openModal(document.getElementById("ai-modal-overlay"));
+    });
+
+    function renderAnketaDetail(row) {
+      const body = document.getElementById("view-modal-body");
+      document.getElementById("view-modal-title").textContent =
+        row.child_full_name || "Анкета";
+
+      const data = row.data || {};
+      body.innerHTML = window.ANKETA_SECTIONS.map((section) => {
+        const rows = section.fields.map((f) => {
+          const value = data[f.name];
+          const display = value === undefined || value === null || value === ""
+            ? "—"
+            : escapeHtml(value);
+          return "<div class=\"anketa-view-row\"><dt>" + escapeHtml(f.label) + "</dt><dd>" + display + "</dd></div>";
+        }).join("");
+        return "<div class=\"anketa-view-section\"><h3>" + escapeHtml(section.title) + "</h3><dl style=\"margin:0;\">" + rows + "</dl></div>";
+      }).join("");
+
+      openModal(document.getElementById("view-modal-overlay"));
+    }
+
+    let allAnketas = [];
+    let sortKey = "created_at";
+    let sortDir = "desc";
+    let searchQuery = "";
+
+    function updateSortIndicators() {
+      document.querySelectorAll(".anketa-sort-btn").forEach((btn) => {
+        const active = btn.getAttribute("data-sort") === sortKey;
+        btn.setAttribute("data-active", String(active));
+        btn.setAttribute("data-dir", active ? sortDir : "asc");
+      });
+    }
+
+    function renderRows() {
+      const tbody = document.getElementById("anketa-tbody");
+      const q = searchQuery.trim().toLowerCase();
+
+      let rows = allAnketas.filter((r) => {
+        if (!q) return true;
+        return (r.child_full_name || "").toLowerCase().includes(q) ||
+               (r.parent_name || "").toLowerCase().includes(q);
+      });
+
+      rows = rows.slice().sort((a, b) => {
+        if (sortKey === "created_at") {
+          // ISO timestamps compare correctly as plain strings.
+          if (a.created_at < b.created_at) return sortDir === "asc" ? -1 : 1;
+          if (a.created_at > b.created_at) return sortDir === "asc" ? 1 : -1;
+          return 0;
+        }
+        // Ukrainian-aware comparison: a plain "<"/">" on strings sorts by
+        // UTF-16 code unit, which puts і/ї/є after я instead of in their
+        // actual alphabetical spot — localeCompare("uk") gets this right.
+        const av = sortKey === "surname" ? getSurname(a.child_full_name) : (a.parent_name || "");
+        const bv = sortKey === "surname" ? getSurname(b.child_full_name) : (b.parent_name || "");
+        const cmp = av.localeCompare(bv, "uk");
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="anketa-table-empty">' +
+          (q ? "Нічого не знайдено за запитом «" + escapeHtml(searchQuery.trim()) + "»." : "Анкет ще немає.") +
+          "</td></tr>";
+        return;
+      }
+
+      tbody.innerHTML = rows.map((r) => {
+        const date = new Date(r.created_at).toLocaleDateString("uk-UA");
+        return "<tr>" +
+          "<td>" + escapeHtml(r.child_full_name || "—") + "</td>" +
+          "<td>" + escapeHtml(r.parent_name || "—") + "</td>" +
+          "<td>" + date + "</td>" +
+          "<td><button type=\"button\" class=\"anketa-view-link\" data-view=\"" + r.id + "\">Переглянути</button></td>" +
+          "</tr>";
+      }).join("");
+    }
+
+    async function loadAnketas() {
+      const tbody = document.getElementById("anketa-tbody");
+      const { data, error } = await window.sbClient
+        .from("anketas")
+        .select("id, child_full_name, parent_name, data, created_at")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        tbody.innerHTML = '<tr><td colspan="4" class="anketa-table-empty">Помилка завантаження: ' + escapeHtml(error.message) + "</td></tr>";
+        return;
+      }
+
+      allAnketas = data || [];
+      renderRows();
+    }
+
+    document.getElementById("anketa-search").addEventListener("input", (e) => {
+      searchQuery = e.target.value;
+      renderRows();
+    });
+
+    document.querySelectorAll(".anketa-sort-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.getAttribute("data-sort");
+        if (sortKey === key) {
+          sortDir = sortDir === "asc" ? "desc" : "asc";
+        } else {
+          sortKey = key;
+          sortDir = key === "created_at" ? "desc" : "asc";
+        }
+        updateSortIndicators();
+        renderRows();
+      });
+    });
+
+    document.getElementById("anketa-tbody").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-view]");
+      if (!btn) return;
+      const row = allAnketas.find((r) => r.id === btn.getAttribute("data-view"));
+      if (row) renderAnketaDetail(row);
+    });
+
     (async function () {
       // Auth check can hang or throw if Supabase is unreachable (e.g. no
       // network, or the page was opened in a sandboxed/offline preview
@@ -126,39 +332,15 @@
       }
 
       const ROLE_LABELS = { super_admin: "Супер адмін", admin: "Адмін", instructor: "Інструктор" };
-      document.getElementById("whoami").textContent =
-        profile.email + " · " + (ROLE_LABELS[profile.role] || profile.role);
+      const whoamiEl = document.getElementById("whoami");
+      whoamiEl.textContent = (profile.full_name || profile.email) + " · " + (ROLE_LABELS[profile.role] || profile.role);
+      whoamiEl.title = profile.email;
 
       document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
 
-      document.getElementById("anketa-content").hidden = false;
-      window.renderAnketaForm(document.getElementById("anketa-fields"));
-
-      const form = document.getElementById("anketa-form");
-      const statusEl = document.getElementById("anketa-status");
-      const submitBtn = document.getElementById("anketa-submit-btn");
-
-      form.addEventListener("submit", function (e) {
-        e.preventDefault();
-
-        if (!form.reportValidity()) {
-          statusEl.textContent = "Заповніть, будь ласка, обов'язкові поля";
-          statusEl.className = "anketa-status anketa-status--err";
-          return;
-        }
-
-        submitBtn.disabled = true;
-
-        const data = window.collectAnketaData(form);
-        // TODO: replace with a real Supabase insert once the anketa table exists.
-        console.log("Анкета (чернетка):", data);
-
-        setTimeout(function () {
-          submitBtn.disabled = false;
-          statusEl.textContent = "Анкету збережено локально (" + Object.keys(data).length + " полів)";
-          statusEl.className = "anketa-status anketa-status--ok";
-        }, 500);
-      });
+      document.getElementById("anketa-list-content").hidden = false;
+      updateSortIndicators();
+      loadAnketas();
     })();
   </script>
 </body>

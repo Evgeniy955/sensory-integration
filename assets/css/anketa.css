@@ -311,6 +311,182 @@
 .anketa-status--ok { color: var(--color-sage-deep); }
 .anketa-status--err { color: var(--color-destructive); }
 
+/* ---------- Anketa list (index page) ---------- */
+.anketa-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-bottom: 1.25rem;
+}
+
+.anketa-search {
+  flex: 1 1 260px;
+  min-width: 200px;
+  padding: .65rem .9rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-ink);
+  font-family: var(--cx-font-body);
+  font-size: .9rem;
+}
+.anketa-search::placeholder { color: var(--color-ink-faint); }
+.anketa-search:focus {
+  outline: none;
+  border-color: var(--color-sky);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-sky) 25%, transparent);
+}
+
+.anketa-toolbar-spacer { flex: 1 1 auto; }
+
+.anketa-btn--primary {
+  background: linear-gradient(135deg, var(--color-sage), var(--color-sky));
+  color: #0B0C22;
+  font-weight: 700;
+  border-color: transparent;
+}
+.anketa-btn--primary:hover { color: #0B0C22; filter: brightness(1.03); }
+
+.anketa-table-wrap {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--cx-radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.anketa-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .9rem;
+}
+
+.anketa-table th,
+.anketa-table td {
+  text-align: left;
+  padding: .75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.anketa-table tbody tr:last-child td { border-bottom: none; }
+.anketa-table tbody tr:hover td { background: var(--color-surface-alt); }
+
+.anketa-table th {
+  color: var(--color-ink-soft);
+  font-weight: 600;
+  font-size: .76rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.anketa-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+.anketa-sort-btn:hover { color: var(--color-ink); }
+.anketa-sort-btn svg { width: 12px; height: 12px; opacity: .4; transition: opacity .15s ease, transform .15s ease; }
+.anketa-sort-btn[data-active="true"] svg { opacity: 1; }
+.anketa-sort-btn[data-dir="desc"] svg { transform: rotate(180deg); }
+
+.anketa-table-empty { text-align: center; color: var(--color-ink-soft); padding: 2.5rem 1rem; }
+
+.anketa-view-link {
+  color: var(--color-sky-deep);
+  font-size: .85rem;
+  font-weight: 600;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.anketa-view-link:hover { text-decoration: underline; }
+
+/* ---------- Modal (anketa detail / AI assistant stub) ---------- */
+.anketa-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 24, .5);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4vh 1.25rem;
+  z-index: 60;
+  overflow-y: auto;
+}
+
+.anketa-modal {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--cx-radius);
+  box-shadow: var(--shadow-lg);
+  padding: 1.9rem 2rem 2.1rem;
+}
+
+.anketa-modal__close {
+  position: absolute;
+  top: .9rem;
+  right: .9rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+  color: var(--color-ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.anketa-modal__close:hover { color: var(--color-ink); }
+.anketa-modal__close svg { width: 16px; height: 16px; }
+
+.anketa-modal h2 {
+  font-family: var(--cx-font-display);
+  margin: 0 .5rem .3rem 0;
+  font-size: 1.2rem;
+  color: var(--color-ink);
+}
+.anketa-modal p.anketa-modal__hint { margin: 0 0 1.2rem; color: var(--color-ink-soft); font-size: .88rem; }
+
+.anketa-view-section { margin-bottom: 1.35rem; }
+.anketa-view-section:last-child { margin-bottom: 0; }
+.anketa-view-section h3 {
+  font-family: var(--cx-font-display);
+  font-size: .92rem;
+  margin: 0 0 .6rem;
+  color: var(--color-sage-deep);
+}
+.anketa-view-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .25rem 1rem;
+  padding: .4rem 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: .87rem;
+}
+.anketa-view-row:last-child { border-bottom: none; }
+.anketa-view-row dt { color: var(--color-ink-soft); }
+.anketa-view-row dd { margin: 0; color: var(--color-ink); word-break: break-word; }
+@media (max-width: 560px) {
+  .anketa-view-row { grid-template-columns: 1fr; gap: .15rem; }
+}
+
 /* ---------- Access denied ---------- */
 .anketa-denied {
   max-width: 480px;

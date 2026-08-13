@@ -99,7 +99,38 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- 6. Bootstrap: make yourself super_admin -------------------------------
+-- 6. Anketas (parent questionnaires) ------------------------------------
+-- Each submission is stored as one row: the two fields we need to search
+-- and sort the list by (child_full_name, parent_name) get their own
+-- columns so they're indexable, and every answer — including those two —
+-- also lives in `data` so the "view anketa" screen and any future field
+-- additions don't need a schema migration.
+create table if not exists public.anketas (
+  id uuid primary key default gen_random_uuid(),
+  child_full_name text not null,
+  parent_name text,
+  data jsonb not null default '{}'::jsonb,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.anketas enable row level security;
+
+create index if not exists anketas_child_full_name_idx on public.anketas (child_full_name);
+create index if not exists anketas_parent_name_idx on public.anketas (parent_name);
+create index if not exists anketas_created_at_idx on public.anketas (created_at desc);
+
+drop policy if exists "Admins can view anketas" on public.anketas;
+create policy "Admins can view anketas"
+  on public.anketas for select
+  using (public.current_user_role() in ('admin', 'super_admin'));
+
+drop policy if exists "Admins can insert anketas" on public.anketas;
+create policy "Admins can insert anketas"
+  on public.anketas for insert
+  with check (public.current_user_role() in ('admin', 'super_admin'));
+
+-- 7. Bootstrap: make yourself super_admin -------------------------------
 -- 1) Sign up once through admin/login.html (use "Forgot password" style
 --    flow isn't needed — just create your own account via Supabase Auth
 --    dashboard: Authentication → Users → Add user, or sign up on the page).
