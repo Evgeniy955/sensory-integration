@@ -40,6 +40,10 @@
       <form id="create-user-form">
         <div class="admin-form-row">
           <div class="admin-field" style="margin-bottom:0;">
+            <label for="new-name">Ім'я</label>
+            <input type="text" id="new-name" autocomplete="off">
+          </div>
+          <div class="admin-field" style="margin-bottom:0;">
             <label for="new-email">Email</label>
             <input type="email" id="new-email" required>
           </div>
@@ -147,6 +151,7 @@
           btn.disabled = true;
           btn.textContent = "Додаємо...";
 
+          const fullName = document.getElementById("new-name").value.trim();
           const email = document.getElementById("new-email").value.trim();
           const role = document.getElementById("new-role").value;
 
@@ -160,7 +165,7 @@
                 "Content-Type": "application/json",
                 "Authorization": "Bearer " + session.access_token,
               },
-              body: JSON.stringify({ email, role }),
+              body: JSON.stringify({ email, role, full_name: fullName || null }),
             });
 
             const result = await res.json();
@@ -170,6 +175,7 @@
             }
 
             statusEl.innerHTML = '<div class="admin-notice admin-notice--success">Користувача додано, запрошення надіслано на ' + email + ".</div>";
+            document.getElementById("new-name").value = "";
             document.getElementById("new-email").value = "";
             loadUsers();
           } catch (err) {

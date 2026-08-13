@@ -194,7 +194,7 @@
 
 .admin-form-row {
   display: grid;
-  grid-template-columns: 1.4fr 1fr auto;
+  grid-template-columns: 1fr 1.4fr 1fr auto;
   gap: .75rem;
   align-items: end;
 }
