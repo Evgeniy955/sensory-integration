@@ -298,6 +298,7 @@ h1,h2,h3,.font-display{
 :root[data-theme="cosmic"] .theme-toggle .icon-sun{ display:block; }
 :root[data-theme="cosmic"] .theme-toggle .icon-moon{ display:none; }
 
+.nav-cta-mobile{ display:none; }
 .header-admin-link{
   display:flex; align-items:center; justify-content:center;
   width:36px; height:36px; border-radius:var(--radius-s);
@@ -665,10 +666,11 @@ h1,h2,h3,.font-display{
   .gallery-grid, .hall-gallery{ grid-template-columns:repeat(2,1fr); }
   .trust-row{ gap:20px; }
   .pain-carousel-track{ height:240px; }
-}
-.nav.is-open{
-  display:flex; position:absolute; top:76px; left:0; right:0; background:var(--color-bg);
-  flex-direction:column; padding:20px 32px; border-bottom:1px solid var(--color-border); gap:16px;
+  .nav.is-open{
+    display:flex; position:absolute; top:76px; left:0; right:0; background:var(--color-bg);
+    flex-direction:column; padding:20px 32px; border-bottom:1px solid var(--color-border); gap:16px;
+  }
+  .nav.is-open .nav-cta-mobile{ display:inline-flex; margin-top:4px; }
 }
 
 @media (max-width:480px){
