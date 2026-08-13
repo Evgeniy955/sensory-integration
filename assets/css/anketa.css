@@ -472,6 +472,72 @@
 }
 .anketa-modal p.anketa-modal__hint { margin: 0 0 1.2rem; color: var(--color-ink-soft); font-size: .88rem; }
 
+.anketa-import-drop {
+  border: 1.5px dashed var(--color-border);
+  border-radius: 14px;
+  padding: 1.25rem;
+  background: var(--color-surface-alt);
+  margin-bottom: .25rem;
+}
+.anketa-import-drop input[type="file"] {
+  width: 100%;
+  font-family: var(--cx-font-body);
+  font-size: .85rem;
+  color: var(--color-ink-soft);
+}
+
+.anketa-import-summary { margin: 1rem 0 0; font-size: .9rem; color: var(--color-ink); }
+.anketa-import-summary strong { color: var(--color-sage-deep); }
+
+.anketa-view-siblings {
+  margin: -.3rem 0 1.1rem;
+  padding: .6rem .8rem;
+  background: var(--color-sky-tint);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  font-size: .85rem;
+  color: var(--color-ink-soft);
+}
+.anketa-view-siblings .anketa-view-link { font-weight: 600; }
+
+/* Attention-grabbing on purpose: this sits above the questionnaire so an
+   admin sees "this child already exists" before filling out 50+ fields,
+   not after. Red/destructive palette (not the neutral sky tint used for
+   the read-only sibling list in the view modal) is what makes it stand
+   out from the calm intro card above it. */
+.anketa-existing-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: .7rem;
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.2rem;
+  border-radius: var(--cx-radius);
+  background: color-mix(in srgb, var(--color-destructive) 10%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-destructive) 35%, transparent);
+  color: var(--color-destructive);
+  font-size: .9rem;
+  line-height: 1.55;
+}
+/* Same trap as the modal overlays: an unconditional display:flex on this
+   class (author stylesheet) outranks the browser's [hidden]{display:none}
+   default at equal specificity, so without this the warning showed on
+   every page load regardless of the hidden attribute. */
+.anketa-existing-warning[hidden] { display: none; }
+.anketa-existing-warning svg { width: 22px; height: 22px; flex: none; margin-top: .1rem; }
+.anketa-existing-warning a { color: inherit; font-weight: 700; text-decoration: underline; }
+.anketa-existing-warning a:hover { text-decoration: none; }
+
+.anketa-import-error {
+  margin-top: 1rem;
+  padding: .75rem .9rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-destructive) 12%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-destructive) 30%, transparent);
+  color: var(--color-destructive);
+  font-size: .87rem;
+  line-height: 1.5;
+}
+
 .anketa-view-section { margin-bottom: 1.35rem; }
 .anketa-view-section:last-child { margin-bottom: 0; }
 .anketa-view-section h3 {

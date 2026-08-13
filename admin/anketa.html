@@ -57,6 +57,10 @@
       <div class="anketa-toolbar">
         <input type="search" class="anketa-search" id="anketa-search" placeholder="Пошук за прізвищем дитини або ім'ям батьків (опікунів)…">
         <div class="anketa-toolbar-spacer"></div>
+        <button type="button" class="anketa-btn" id="import-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 18v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1"/></svg>
+          Імпортувати CSV
+        </button>
         <button type="button" class="anketa-btn" id="ai-assistant-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M12 3v3M12 18v3M5 12H2M22 12h-3M6.3 6.3 4.2 4.2M19.8 19.8l-2.1-2.1M6.3 17.7l-2.1 2.1M19.8 4.2l-2.1 2.1"/><circle cx="12" cy="12" r="4.2"/></svg>
           AI помічник
@@ -107,8 +111,38 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
       </button>
       <h2 id="view-modal-title">Анкета</h2>
-      <p class="anketa-modal__hint">Перегляд лише для читання.</p>
+      <p class="anketa-modal__hint">Перегляд лише для читання.<br><span id="view-modal-meta"></span></p>
+      <div id="view-modal-siblings" class="anketa-view-siblings" hidden></div>
       <div id="view-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- CSV import -->
+  <div class="anketa-modal-overlay" id="import-modal-overlay" hidden>
+    <div class="anketa-modal" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
+      <button type="button" class="anketa-modal__close" id="import-modal-close" aria-label="Закрити">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <h2 id="import-modal-title">Імпорт анкет з CSV</h2>
+      <p class="anketa-modal__hint">
+        Файл має бути експортом відповідей Google Форми «Анкета для батьків» — той самий порядок стовпців,
+        що й у формі (CSV з «Відповіді → ⋮ → Завантажити відповіді (.csv)»).
+      </p>
+
+      <div class="anketa-import-drop">
+        <input type="file" id="import-file-input" accept=".csv,text/csv">
+      </div>
+
+      <div id="import-error" class="anketa-import-error" hidden></div>
+
+      <div id="import-preview" hidden>
+        <p id="import-summary" class="anketa-import-summary"></p>
+        <div id="import-progress" class="anketa-status" hidden></div>
+        <div class="anketa-submit-row" style="margin-top:1rem;">
+          <button type="button" class="anketa-submit" id="import-confirm-btn">Імпортувати</button>
+          <button type="button" class="anketa-btn" id="import-cancel-btn">Скасувати</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -127,6 +161,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="../assets/js/supabase-config.js"></script>
   <script src="../assets/js/admin-auth.js"></script>
   <script src="../assets/js/anketa.js"></script>
@@ -170,6 +205,7 @@
     [
       ["view-modal-overlay", "view-modal-close"],
       ["ai-modal-overlay", "ai-modal-close"],
+      ["import-modal-overlay", "import-modal-close"],
     ].forEach(([overlayId, closeId]) => {
       const overlay = document.getElementById(overlayId);
       document.getElementById(closeId).addEventListener("click", () => closeModal(overlay));
@@ -189,6 +225,27 @@
         row.child_full_name || "Анкета";
 
       const data = row.data || {};
+      const metaBits = ["Додано: " + new Date(row.created_at).toLocaleString("uk-UA")];
+      if (data.respondent_email) metaBits.push("Відправник: " + data.respondent_email);
+      document.getElementById("view-modal-meta").textContent = metaBits.join(" · ");
+
+      // A child can have several anketas over time — surface the others
+      // right here instead of making the admin go search for them.
+      const siblingsEl = document.getElementById("view-modal-siblings");
+      const siblings = allAnketas
+        .filter((r) => r.id !== row.id && normalizeChildName(r.child_full_name) === normalizeChildName(row.child_full_name))
+        .sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0));
+      if (siblings.length) {
+        siblingsEl.innerHTML = "Інші анкети цієї дитини: " + siblings.map((s) =>
+          "<button type=\"button\" class=\"anketa-view-link\" data-view=\"" + s.id + "\">" +
+          new Date(s.created_at).toLocaleDateString("uk-UA") + "</button>"
+        ).join(" · ");
+        siblingsEl.hidden = false;
+      } else {
+        siblingsEl.hidden = true;
+        siblingsEl.innerHTML = "";
+      }
+
       body.innerHTML = window.ANKETA_SECTIONS.map((section) => {
         const rows = section.fields.map((f) => {
           const value = data[f.name];
@@ -202,6 +259,287 @@
 
       openModal(document.getElementById("view-modal-overlay"));
     }
+
+    // ---------- CSV import ----------
+    // Column order matches the Google Form's own CSV export ("Анкета для
+    // батьків (Ответы) - Ответы на форму.csv"): Google Forms always
+    // exports columns in question order, so position is a reliable key as
+    // long as the form itself isn't restructured. Columns 0/1 (submission
+    // timestamp, respondent email) aren't questionnaire fields — from
+    // column 2 on, this lines up 1:1 with window.ANKETA_SECTIONS.
+    const CSV_COLUMN_FIELDS = [
+      null, null,
+      "child_full_name", "child_birth_date", "parent_name", "parent_phone",
+      "comm_language", "attends_school", "diagnoses", "medical_precautions",
+      "medications", "vision", "hearing", "strengths", "concerns", "goals_6m",
+      "pregnancy_infections", "pregnancy_infections_desc", "birth_complications",
+      "birth_complications_desc", "full_term", "rollover_age", "walk_age",
+      "cup_age", "words_age", "sentences_age", "crawl_age", "sit_age",
+      "solid_food_age", "birth_weight", "sleep_problems", "toilet_problems",
+      "toilet_problems_desc", "eating_problems", "eating_problems_desc",
+      "dressing_problems", "dressing_problems_desc", "hygiene_problems",
+      "hygiene_problems_desc", "sleep_problems_desc", "social_concerns",
+      "play_concerns", "gadget_time", "follows_instructions", "completes_tasks",
+      "attention_span", "hyperactivity", "organizing_ability", "memory_problems",
+      "other_problems", "additional_info", "main_request", "form_fill_date",
+    ];
+
+    function parseFormTimestamp(str) {
+      // Google Forms writes timestamps as "M/D/YYYY H:MM:SS" (US order,
+      // no leading zeros) — used as the imported anketa's created_at so
+      // "Дата додавання" reflects when it was actually submitted, not
+      // today. Falls back to the insert-time default (now()) if unparseable.
+      const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$/.exec(String(str || "").trim());
+      if (!m) return null;
+      const mo = Number(m[1]), d = Number(m[2]), y = Number(m[3]), h = Number(m[4]), mi = Number(m[5]), s = Number(m[6]);
+      const dt = new Date(y, mo - 1, d, h, mi, s);
+      return isNaN(dt.getTime()) ? null : dt.toISOString();
+    }
+
+    // Same normalization as the DB's unique index (lower(trim(...))), plus
+    // whitespace collapsing so "Іваненко  Олег" (double space) still
+    // matches "Іваненко Олег" during the client-side pre-check.
+    function normalizeChildName(s) {
+      return String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
+    }
+
+    // A child can have several anketas over time (they left and came
+    // back, something changed) — that's history, not a duplicate. What's
+    // actually a duplicate is the exact same submission: same child *and*
+    // the same submitted_at. Comparing epoch milliseconds (rather than the
+    // raw string) means this still matches even though our locally-built
+    // ISO string and whatever format Postgres returns for created_at
+    // don't necessarily look identical as text.
+    function submissionKey(name, isoTimestamp) {
+      if (!isoTimestamp) return null;
+      const ms = new Date(isoTimestamp).getTime();
+      if (isNaN(ms)) return null;
+      return normalizeChildName(name) + "|" + ms;
+    }
+
+    async function fetchExistingSubmissionKeys() {
+      const { data, error } = await window.sbClient.from("anketas").select("child_full_name, created_at");
+      if (error) return null;
+      const set = new Set();
+      (data || []).forEach((r) => {
+        const key = submissionKey(r.child_full_name, r.created_at);
+        if (key) set.add(key);
+      });
+      return set;
+    }
+
+    let importRows = null;
+    let currentProfileId = null;
+
+    function resetImportModal() {
+      importRows = null;
+      document.getElementById("import-file-input").value = "";
+      document.getElementById("import-preview").hidden = true;
+      document.getElementById("import-error").hidden = true;
+      const progressEl = document.getElementById("import-progress");
+      progressEl.hidden = true;
+      progressEl.textContent = "";
+      const confirmBtn = document.getElementById("import-confirm-btn");
+      confirmBtn.dataset.state = "";
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "Імпортувати";
+      const cancelBtn = document.getElementById("import-cancel-btn");
+      cancelBtn.hidden = false;
+      cancelBtn.disabled = false;
+    }
+
+    function showImportError(msg) {
+      const el = document.getElementById("import-error");
+      el.textContent = msg;
+      el.hidden = false;
+      document.getElementById("import-preview").hidden = true;
+    }
+
+    document.getElementById("import-btn").addEventListener("click", () => {
+      resetImportModal();
+      openModal(document.getElementById("import-modal-overlay"));
+    });
+
+    document.getElementById("import-cancel-btn").addEventListener("click", () => {
+      closeModal(document.getElementById("import-modal-overlay"));
+    });
+
+    document.getElementById("import-file-input").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      document.getElementById("import-error").hidden = true;
+      document.getElementById("import-preview").hidden = true;
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onerror = () => showImportError("Не вдалося прочитати файл.");
+      reader.onload = async () => {
+        const parsed = Papa.parse(reader.result, { skipEmptyLines: true });
+        if (parsed.errors && parsed.errors.length) {
+          showImportError("Не вдалося розібрати CSV: " + parsed.errors[0].message);
+          return;
+        }
+
+        const rows = parsed.data;
+        if (!rows.length) { showImportError("Файл порожній."); return; }
+
+        const header = rows[0];
+        // Sanity check on shape + a couple of anchor columns, so a
+        // differently-structured file doesn't get silently mis-imported.
+        const looksRight = header.length === CSV_COLUMN_FIELDS.length &&
+          /ПІБ/i.test(header[2] || "") &&
+          /батьків/i.test(header[4] || "");
+        if (!looksRight) {
+          showImportError(
+            "Структура файлу не схожа на експорт анкети (" + header.length + " колонок, очікувалось " +
+            CSV_COLUMN_FIELDS.length + "). Перевірте, що це CSV-експорт форми «Анкета для батьків»."
+          );
+          return;
+        }
+
+        let skipped = 0;
+        const mapped = [];
+        rows.slice(1).forEach((row) => {
+          if (row.length !== CSV_COLUMN_FIELDS.length) { skipped++; return; }
+          const childFullName = (row[2] || "").trim();
+          if (!childFullName) { skipped++; return; }
+
+          const data = {};
+          for (let i = 2; i < CSV_COLUMN_FIELDS.length; i++) {
+            const field = CSV_COLUMN_FIELDS[i];
+            if (field) data[field] = (row[i] || "").trim();
+          }
+          const respondentEmail = (row[1] || "").trim();
+          if (respondentEmail) data.respondent_email = respondentEmail;
+
+          mapped.push({
+            child_full_name: childFullName,
+            parent_name: (row[4] || "").trim() || null,
+            data: data,
+            created_at: parseFormTimestamp(row[0]),
+          });
+        });
+
+        if (!mapped.length) {
+          showImportError("У файлі не знайдено жодної анкети із заповненим ПІБ дитини.");
+          return;
+        }
+
+        document.getElementById("import-summary").textContent = "Перевіряємо дублікати…";
+        document.getElementById("import-preview").hidden = false;
+
+        const existingKeys = await fetchExistingSubmissionKeys();
+        if (existingKeys === null) {
+          showImportError("Не вдалося перевірити наявні анкети (для пошуку дублікатів). Спробуйте ще раз.");
+          return;
+        }
+
+        // Only drop rows that are the exact same submission (same child +
+        // same original timestamp) as one already in the file or already
+        // in the database — e.g. re-importing the same CSV. A child
+        // appearing twice with two different dates is kept both times;
+        // that's legitimate history (they came back later). Rows without
+        // a parseable timestamp can't be safely deduped this way, so they
+        // always pass through rather than risk a wrong match.
+        let duplicateInFile = 0;
+        let duplicateInDb = 0;
+        const seenKeys = new Set();
+        const deduped = [];
+        mapped.forEach((row) => {
+          const key = submissionKey(row.child_full_name, row.created_at);
+          if (key) {
+            if (seenKeys.has(key)) { duplicateInFile++; return; }
+            if (existingKeys.has(key)) { duplicateInDb++; return; }
+            seenKeys.add(key);
+          }
+          deduped.push(row);
+        });
+
+        if (!deduped.length) {
+          showImportError("Усі анкети з файлу вже імпортовані раніше або повторюються в самому файлі — імпортувати нічого.");
+          return;
+        }
+
+        importRows = deduped;
+        const skipBits = [];
+        if (skipped) skipBits.push(skipped + " " + (skipped === 1 ? "рядок" : "рядків") + " без ПІБ дитини");
+        if (duplicateInFile) skipBits.push(duplicateInFile + " " + (duplicateInFile === 1 ? "повтор" : "повторів") + " у файлі");
+        if (duplicateInDb) skipBits.push(duplicateInDb + " вже " + (duplicateInDb === 1 ? "імпортовано раніше" : "імпортовано раніше"));
+        document.getElementById("import-summary").innerHTML =
+          "Знайдено <strong>" + deduped.length + "</strong> " +
+          (deduped.length === 1 ? "анкету" : "анкет") + " для імпорту" +
+          (skipBits.length ? " (пропущено: " + skipBits.join(", ") + ")" : "") +
+          ".";
+      };
+      reader.readAsText(file, "UTF-8");
+    });
+
+    document.getElementById("import-confirm-btn").addEventListener("click", async () => {
+      const btn = document.getElementById("import-confirm-btn");
+
+      if (btn.dataset.state === "done") {
+        closeModal(document.getElementById("import-modal-overlay"));
+        loadAnketas();
+        return;
+      }
+
+      if (!importRows || !importRows.length) return;
+
+      const progressEl = document.getElementById("import-progress");
+      const cancelBtn = document.getElementById("import-cancel-btn");
+      btn.disabled = true;
+      cancelBtn.disabled = true;
+      progressEl.hidden = false;
+
+      function toPayload(r) {
+        const payload = {
+          child_full_name: r.child_full_name,
+          parent_name: r.parent_name,
+          data: r.data,
+          created_by: currentProfileId,
+        };
+        if (r.created_at) payload.created_at = r.created_at;
+        return payload;
+      }
+      function isDuplicateError(err) {
+        return err && (err.code === "23505" || /duplicate key/i.test(err.message || ""));
+      }
+
+      const CHUNK = 25;
+      let done = 0;
+      let dupSkipped = 0;
+      let failed = 0;
+      for (let i = 0; i < importRows.length; i += CHUNK) {
+        const chunkRows = importRows.slice(i, i + CHUNK);
+        const { error } = await window.sbClient.from("anketas").insert(chunkRows.map(toPayload));
+
+        if (!error) {
+          done += chunkRows.length;
+        } else {
+          // A bulk insert is one statement — one conflicting row (most
+          // likely a duplicate created by someone else since the preview
+          // was built) fails the whole chunk. Retry row-by-row so the
+          // other 24 good rows in this chunk aren't lost over that.
+          for (const row of chunkRows) {
+            const { error: rowError } = await window.sbClient.from("anketas").insert(toPayload(row));
+            if (!rowError) done++;
+            else if (isDuplicateError(rowError)) dupSkipped++;
+            else failed++;
+          }
+        }
+
+        progressEl.textContent = "Імпортовано " + done + " з " + importRows.length +
+          (dupSkipped ? ", дублікатів: " + dupSkipped : "") +
+          (failed ? ", помилок: " + failed : "") + "…";
+      }
+
+      progressEl.textContent = "Готово: імпортовано " + done + " з " + importRows.length +
+        (dupSkipped ? ", дублікатів пропущено: " + dupSkipped : "") +
+        (failed ? ", помилок: " + failed : "") + ".";
+      btn.dataset.state = "done";
+      btn.disabled = false;
+      btn.textContent = "Закрити та оновити список";
+      cancelBtn.hidden = true;
+    });
 
     let allAnketas = [];
     let sortKey = "created_at";
@@ -295,7 +633,10 @@
       });
     });
 
-    document.getElementById("anketa-tbody").addEventListener("click", (e) => {
+    // Delegated on the document, not just #anketa-tbody, so the "Інші
+    // анкети цієї дитини" links inside the detail modal (#view-modal-siblings)
+    // are handled by the same [data-view] click too.
+    document.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-view]");
       if (!btn) return;
       const row = allAnketas.find((r) => r.id === btn.getAttribute("data-view"));
@@ -335,10 +676,20 @@
       const whoamiEl = document.getElementById("whoami");
       whoamiEl.textContent = (profile.full_name || profile.email) + " · " + (ROLE_LABELS[profile.role] || profile.role);
       whoamiEl.title = profile.email;
+      currentProfileId = profile.id;
 
       document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
 
       document.getElementById("anketa-list-content").hidden = false;
+
+      // Supports the "переглянути попередні" link from the new-anketa form
+      // (anketa-form.html?...&q=...) — lands here with the search prefilled.
+      const initialQuery = new URLSearchParams(window.location.search).get("q");
+      if (initialQuery) {
+        searchQuery = initialQuery;
+        document.getElementById("anketa-search").value = initialQuery;
+      }
+
       updateSortIndicators();
       loadAnketas();
     })();

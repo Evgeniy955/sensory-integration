@@ -119,6 +119,11 @@
 .admin-btn:hover { background: var(--color-sage-deep); }
 .admin-btn:active { transform: translateY(1px); }
 .admin-btn:disabled { opacity: .6; cursor: not-allowed; }
+/* Same [hidden] cascade trap as anketa.css: an unconditional display on
+   the author stylesheet outranks the UA default [hidden]{display:none}.
+   #anketa-link starts hidden and is only revealed by JS for admin/
+   super_admin — without this it showed for every role. */
+.admin-btn[hidden] { display: none; }
 
 .admin-btn--ghost {
   background: transparent;

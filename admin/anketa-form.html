@@ -57,6 +57,11 @@
         </p>
       </div>
 
+      <div id="existing-anketas-notice" class="anketa-existing-warning" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 16.5h.01"/><path d="M10.3 3.9 1.8 18.5a1.8 1.8 0 0 0 1.55 2.7h17.3a1.8 1.8 0 0 0 1.55-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0Z"/></svg>
+        <div id="existing-anketas-notice-text"></div>
+      </div>
+
       <form id="anketa-form" novalidate autocomplete="off">
         <div id="anketa-fields"></div>
 
@@ -138,6 +143,68 @@
       const statusEl = document.getElementById("anketa-status");
       const submitBtn = document.getElementById("anketa-submit-btn");
 
+      // A child can legitimately have several anketas over time — this
+      // isn't a block, just a heads-up so the admin knows they're adding
+      // another one for a child who's already in the system (and can go
+      // check the earlier answers before deciding what's still current).
+      function normalizeChildName(s) {
+        return String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
+      }
+      // The notice is a fuzzy "possibly the same kid" heads-up, so it
+      // matches on Прізвище + Ім'я (first two tokens) only, ignoring
+      // patronymic/middle name — parents don't always fill it in the same
+      // way twice. This is intentionally looser than the DB unique index
+      // and CSV-import dedup, which key off the full name because they're
+      // preventing exact duplicate submissions, not surfacing history.
+      function surnameGivenNameKey(s) {
+        const parts = normalizeChildName(s).split(" ").filter(Boolean);
+        return parts.slice(0, 2).join(" ");
+      }
+      function pluralizeUk(n, one, few, many) {
+        const mod10 = n % 10, mod100 = n % 100;
+        if (mod10 === 1 && mod100 !== 11) return one;
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+        return many;
+      }
+      const childNameInput = document.getElementById("child_full_name");
+      const existingNoticeEl = document.getElementById("existing-anketas-notice");
+      const existingNoticeTextEl = document.getElementById("existing-anketas-notice-text");
+      let existingCheckTimer = null;
+      if (childNameInput) {
+        const checkExisting = async () => {
+          const key = surnameGivenNameKey(childNameInput.value);
+          // Need both Прізвище and Ім'я typed before matching — checking
+          // against a bare surname alone would flag unrelated families
+          // that just happen to share it, while the admin is still typing.
+          if (!key || key.indexOf(" ") === -1) {
+            existingNoticeEl.hidden = true;
+            return;
+          }
+          const { data, error } = await window.sbClient
+            .from("anketas")
+            .select("child_full_name, created_at")
+            .order("created_at", { ascending: true });
+          if (error || !data) return;
+          const matches = data.filter((r) => surnameGivenNameKey(r.child_full_name) === key);
+          if (!matches.length) {
+            existingNoticeEl.hidden = true;
+            return;
+          }
+          const dates = matches.map((r) => new Date(r.created_at).toLocaleDateString("uk-UA")).join(", ");
+          const anketaWord = pluralizeUk(matches.length, "анкета", "анкети", "анкет");
+          existingNoticeTextEl.innerHTML =
+            "У дитини «" + childNameInput.value.trim() + "» вже є " + matches.length + " " + anketaWord +
+            " (" + dates + "). Перевірте, чи це справді нова анкета, перш ніж заповнювати всі 50+ питань — " +
+            '<a href="anketa.html?q=' + encodeURIComponent(childNameInput.value.trim()) + '" target="_blank" rel="noopener">переглянути попередні →</a>';
+          existingNoticeEl.hidden = false;
+        };
+        childNameInput.addEventListener("input", () => {
+          clearTimeout(existingCheckTimer);
+          existingCheckTimer = setTimeout(checkExisting, 500);
+        });
+        childNameInput.addEventListener("blur", checkExisting);
+      }
+
       form.addEventListener("submit", async function (e) {
         e.preventDefault();
 
@@ -161,7 +228,14 @@
         });
 
         if (error) {
-          statusEl.textContent = "Помилка збереження: " + error.message;
+          // A child can have several anketas over time (returning after a
+          // break, an update, etc.) — this only fires for an exact repeat
+          // submission (same child, same save moment), e.g. a double-click
+          // that slipped past the disabled button.
+          const isDuplicate = error.code === "23505" || /duplicate key/i.test(error.message || "");
+          statusEl.textContent = isDuplicate
+            ? "Цю анкету вже щойно збережено — здається, форму надіслано двічі."
+            : "Помилка збереження: " + error.message;
           statusEl.className = "anketa-status anketa-status--err";
           submitBtn.disabled = false;
           return;
