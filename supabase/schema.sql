@@ -168,6 +168,14 @@ create policy "Admins can update anketas"
   using (public.current_user_role() in ('admin', 'super_admin'))
   with check (public.current_user_role() in ('admin', 'super_admin'));
 
+-- Same admin/super_admin gate as edit — deleting an anketa is only
+-- offered from the edit screen, which is already restricted to those
+-- two roles at the page level.
+drop policy if exists "Admins can delete anketas" on public.anketas;
+create policy "Admins can delete anketas"
+  on public.anketas for delete
+  using (public.current_user_role() in ('admin', 'super_admin'));
+
 -- 7. Bootstrap: make yourself super_admin -------------------------------
 -- 1) Sign up once through admin/login.html (use "Forgot password" style
 --    flow isn't needed — just create your own account via Supabase Auth

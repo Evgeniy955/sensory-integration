@@ -78,6 +78,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
             <span id="anketa-submit-btn-text">Надіслати анкету</span>
           </button>
+          <button type="button" class="anketa-btn anketa-btn--danger" id="anketa-delete-btn" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg>
+            Видалити анкету
+          </button>
           <span class="anketa-status" id="anketa-status"></span>
         </div>
       </form>
@@ -178,6 +182,32 @@
         document.getElementById("anketa-intro-text").textContent =
           "Змініть потрібні поля та збережіть — попередні відповіді буде замінено новими.";
         document.getElementById("anketa-submit-btn-text").textContent = "Зберегти зміни";
+
+        const deleteBtn = document.getElementById("anketa-delete-btn");
+        deleteBtn.hidden = false;
+        deleteBtn.addEventListener("click", async () => {
+          const name = editRow.child_full_name || "цю анкету";
+          if (!window.confirm("Видалити анкету «" + name + "»? Цю дію не можна скасувати.")) return;
+
+          deleteBtn.disabled = true;
+          submitBtn.disabled = true;
+          statusEl.textContent = "Видаляємо...";
+          statusEl.className = "anketa-status";
+
+          const { error } = await window.sbClient.from("anketas").delete().eq("id", editRow.id);
+
+          if (error) {
+            statusEl.textContent = "Помилка видалення: " + error.message;
+            statusEl.className = "anketa-status anketa-status--err";
+            deleteBtn.disabled = false;
+            submitBtn.disabled = false;
+            return;
+          }
+
+          statusEl.textContent = "Анкету видалено. Повертаємось до списку…";
+          statusEl.className = "anketa-status anketa-status--ok";
+          setTimeout(function () { window.location.href = "anketa.html"; }, 900);
+        });
       }
 
       // A child can legitimately have several anketas over time — this

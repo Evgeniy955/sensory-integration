@@ -79,6 +79,11 @@
 }
 .anketa-btn:active { transform: translateY(1px); }
 .anketa-btn:disabled { opacity: .5; cursor: not-allowed; }
+/* Same [hidden] cascade trap documented elsewhere in this file/admin.css:
+   the unconditional display above outranks the UA [hidden]{display:none}
+   default. The delete button in anketa-form.html's edit mode is the
+   first .anketa-btn actually toggled via hidden, so this is needed now. */
+.anketa-btn[hidden] { display: none; }
 
 /* ---------- Layout ---------- */
 .anketa-main {
@@ -347,6 +352,15 @@
   border-color: transparent;
 }
 .anketa-btn--primary:hover { color: #0B0C22; filter: brightness(1.03); }
+
+.anketa-btn--danger {
+  color: var(--color-destructive);
+  border-color: color-mix(in srgb, var(--color-destructive) 35%, var(--color-border));
+}
+.anketa-btn--danger:hover {
+  background: color-mix(in srgb, var(--color-destructive) 12%, var(--color-surface));
+  color: var(--color-destructive);
+}
 
 .anketa-table-wrap {
   border: 1px solid var(--color-border);
