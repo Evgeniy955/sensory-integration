@@ -472,6 +472,8 @@
 }
 .anketa-modal p.anketa-modal__hint { margin: 0 0 1.2rem; color: var(--color-ink-soft); font-size: .88rem; }
 
+.anketa-modal__edit-link { margin: -.4rem 0 1.1rem; }
+
 .anketa-import-drop {
   border: 1.5px dashed var(--color-border);
   border-radius: 14px;

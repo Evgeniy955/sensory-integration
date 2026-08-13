@@ -112,6 +112,10 @@
       </button>
       <h2 id="view-modal-title">Анкета</h2>
       <p class="anketa-modal__hint">Перегляд лише для читання.<br><span id="view-modal-meta"></span></p>
+      <a id="view-modal-edit-link" class="anketa-btn anketa-modal__edit-link" href="anketa-form.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        Редагувати анкету
+      </a>
       <div id="view-modal-siblings" class="anketa-view-siblings" hidden></div>
       <div id="view-modal-body"></div>
     </div>
@@ -223,6 +227,7 @@
       const body = document.getElementById("view-modal-body");
       document.getElementById("view-modal-title").textContent =
         row.child_full_name || "Анкета";
+      document.getElementById("view-modal-edit-link").href = "anketa-form.html?id=" + encodeURIComponent(row.id);
 
       const data = row.data || {};
       const metaBits = ["Додано: " + new Date(row.created_at).toLocaleString("uk-UA")];
@@ -593,7 +598,8 @@
           "<td>" + escapeHtml(r.child_full_name || "—") + "</td>" +
           "<td>" + escapeHtml(r.parent_name || "—") + "</td>" +
           "<td>" + date + "</td>" +
-          "<td><button type=\"button\" class=\"anketa-view-link\" data-view=\"" + r.id + "\">Переглянути</button></td>" +
+          "<td><button type=\"button\" class=\"anketa-view-link\" data-view=\"" + r.id + "\">Переглянути</button>" +
+          " · <a class=\"anketa-view-link\" href=\"anketa-form.html?id=" + encodeURIComponent(r.id) + "\">Редагувати</a></td>" +
           "</tr>";
       }).join("");
     }

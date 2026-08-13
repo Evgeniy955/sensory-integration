@@ -44,14 +44,22 @@
       <p>Ця сторінка доступна лише ролям Адмін та Супер адмін. Якщо це помилка — зверніться до вашого супер адміна.</p>
     </div>
 
+    <div id="anketa-not-found" hidden class="anketa-denied">
+      <div class="anketa-denied__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      </div>
+      <h2>Анкету не знайдено</h2>
+      <p>Можливо, її вже видалили, або посилання неправильне. <a href="anketa.html">Повернутися до списку анкет</a>.</p>
+    </div>
+
     <div id="anketa-content" hidden>
       <div class="anketa-intro">
         <span class="anketa-intro__eyebrow">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c2.8 1.8 4.5 5 4.5 8.7 0 1.7-.4 3.2-1 4.3l-3.5 3-3.5-3c-.6-1.1-1-2.6-1-4.3 0-3.7 1.7-6.9 4.5-8.7Z"/><circle cx="12" cy="10.5" r="1.6"/></svg>
-          Анкета для батьків
+          <span id="anketa-intro-eyebrow-text">Анкета для батьків</span>
         </span>
-        <h1>Розкажіть нам про дитину</h1>
-        <p>
+        <h1 id="anketa-intro-title">Розкажіть нам про дитину</h1>
+        <p id="anketa-intro-text">
           Ці питання та поля повторюють анкету, яку заповнюють батьки (або адмін з їхніх слів)
           перед першим заняттям. Після надсилання анкета з'явиться у загальному списку.
         </p>
@@ -68,7 +76,7 @@
         <div class="anketa-submit-row">
           <button type="submit" class="anketa-submit" id="anketa-submit-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
-            Надіслати анкету
+            <span id="anketa-submit-btn-text">Надіслати анкету</span>
           </button>
           <span class="anketa-status" id="anketa-status"></span>
         </div>
@@ -136,12 +144,41 @@
 
       document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
 
+      // Edit mode: anketa-form.html?id=<uuid> loads and prefills an
+      // existing anketa instead of starting from a blank form. Fetched
+      // before revealing the form so a bad/deleted id shows the
+      // "не знайдено" panel instead of a blank questionnaire.
+      const editId = new URLSearchParams(window.location.search).get("id");
+      let editRow = null;
+      if (editId) {
+        const { data: row, error: fetchErr } = await window.sbClient
+          .from("anketas")
+          .select("id, child_full_name, parent_name, data, created_at")
+          .eq("id", editId)
+          .maybeSingle();
+        if (fetchErr || !row) {
+          document.getElementById("anketa-not-found").hidden = false;
+          return;
+        }
+        editRow = row;
+      }
+
       document.getElementById("anketa-content").hidden = false;
       window.renderAnketaForm(document.getElementById("anketa-fields"));
 
       const form = document.getElementById("anketa-form");
       const statusEl = document.getElementById("anketa-status");
       const submitBtn = document.getElementById("anketa-submit-btn");
+
+      if (editRow) {
+        window.fillAnketaForm(form, editRow.data || {});
+        document.title = "Редагувати анкету — Центр сенсорної інтеграції";
+        document.getElementById("anketa-intro-eyebrow-text").textContent = "Редагування анкети";
+        document.getElementById("anketa-intro-title").textContent = "Редагувати анкету";
+        document.getElementById("anketa-intro-text").textContent =
+          "Змініть потрібні поля та збережіть — попередні відповіді буде замінено новими.";
+        document.getElementById("anketa-submit-btn-text").textContent = "Зберегти зміни";
+      }
 
       // A child can legitimately have several anketas over time — this
       // isn't a block, just a heads-up so the admin knows they're adding
@@ -182,10 +219,14 @@
           }
           const { data, error } = await window.sbClient
             .from("anketas")
-            .select("child_full_name, created_at")
+            .select("id, child_full_name, created_at")
             .order("created_at", { ascending: true });
           if (error || !data) return;
-          const matches = data.filter((r) => surnameGivenNameKey(r.child_full_name) === key);
+          // When editing, the anketa being edited would otherwise always
+          // match itself — exclude it so the notice only fires for
+          // genuinely different anketas.
+          const matches = data.filter((r) =>
+            surnameGivenNameKey(r.child_full_name) === key && (!editRow || r.id !== editRow.id));
           if (!matches.length) {
             existingNoticeEl.hidden = true;
             return;
@@ -203,6 +244,9 @@
           existingCheckTimer = setTimeout(checkExisting, 500);
         });
         childNameInput.addEventListener("blur", checkExisting);
+        // In edit mode the field starts pre-filled programmatically (no
+        // "input" event fires for that), so run the check once up front.
+        if (editRow) checkExisting();
       }
 
       form.addEventListener("submit", async function (e) {
@@ -219,29 +263,35 @@
         statusEl.className = "anketa-status";
 
         const data = window.collectAnketaData(form);
-
-        const { error } = await window.sbClient.from("anketas").insert({
+        const payload = {
           child_full_name: data.child_full_name,
           parent_name: data.parent_name || null,
           data: data,
-          created_by: profile.id,
-        });
+        };
+
+        const { error } = editRow
+          ? await window.sbClient.from("anketas").update(payload).eq("id", editRow.id)
+          : await window.sbClient.from("anketas").insert(Object.assign({ created_by: profile.id }, payload));
 
         if (error) {
           // A child can have several anketas over time (returning after a
           // break, an update, etc.) — this only fires for an exact repeat
           // submission (same child, same save moment), e.g. a double-click
-          // that slipped past the disabled button.
+          // that slipped past the disabled button (or, when editing, if the
+          // edited name+timestamp combination happens to collide with a
+          // different existing anketa).
           const isDuplicate = error.code === "23505" || /duplicate key/i.test(error.message || "");
           statusEl.textContent = isDuplicate
-            ? "Цю анкету вже щойно збережено — здається, форму надіслано двічі."
+            ? (editRow
+                ? "Ця комбінація ПІБ дитини й часу створення вже зайнята іншою анкетою. Змініть ПІБ або зверніться до розробника."
+                : "Цю анкету вже щойно збережено — здається, форму надіслано двічі.")
             : "Помилка збереження: " + error.message;
           statusEl.className = "anketa-status anketa-status--err";
           submitBtn.disabled = false;
           return;
         }
 
-        statusEl.textContent = "Анкету збережено. Повертаємось до списку…";
+        statusEl.textContent = (editRow ? "Анкету оновлено" : "Анкету збережено") + ". Повертаємось до списку…";
         statusEl.className = "anketa-status anketa-status--ok";
         setTimeout(function () { window.location.href = "anketa.html"; }, 900);
       });

@@ -159,6 +159,15 @@ create policy "Admins can insert anketas"
   on public.anketas for insert
   with check (public.current_user_role() in ('admin', 'super_admin'));
 
+-- Any admin/super_admin may edit any anketa (not just the one they
+-- created) — same shared-ownership model already used for the anketas
+-- select/insert policies above and for editing user profiles.
+drop policy if exists "Admins can update anketas" on public.anketas;
+create policy "Admins can update anketas"
+  on public.anketas for update
+  using (public.current_user_role() in ('admin', 'super_admin'))
+  with check (public.current_user_role() in ('admin', 'super_admin'));
+
 -- 7. Bootstrap: make yourself super_admin -------------------------------
 -- 1) Sign up once through admin/login.html (use "Forgot password" style
 --    flow isn't needed — just create your own account via Supabase Auth
