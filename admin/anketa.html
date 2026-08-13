@@ -681,6 +681,15 @@
       document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
 
       document.getElementById("anketa-list-content").hidden = false;
+
+      // Supports the "переглянути попередні" link from the new-anketa form
+      // (anketa-form.html?...&q=...) — lands here with the search prefilled.
+      const initialQuery = new URLSearchParams(window.location.search).get("q");
+      if (initialQuery) {
+        searchQuery = initialQuery;
+        document.getElementById("anketa-search").value = initialQuery;
+      }
+
       updateSortIndicators();
       loadAnketas();
     })();

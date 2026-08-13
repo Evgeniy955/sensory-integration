@@ -60,6 +60,8 @@
       <form id="anketa-form" novalidate autocomplete="off">
         <div id="anketa-fields"></div>
 
+        <div id="existing-anketas-notice" class="anketa-view-siblings" hidden></div>
+
         <div class="anketa-submit-row">
           <button type="submit" class="anketa-submit" id="anketa-submit-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
@@ -137,6 +139,56 @@
       const form = document.getElementById("anketa-form");
       const statusEl = document.getElementById("anketa-status");
       const submitBtn = document.getElementById("anketa-submit-btn");
+
+      // A child can legitimately have several anketas over time — this
+      // isn't a block, just a heads-up so the admin knows they're adding
+      // another one for a child who's already in the system (and can go
+      // check the earlier answers before deciding what's still current).
+      function normalizeChildName(s) {
+        return String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
+      }
+      function pluralizeUk(n, one, few, many) {
+        const mod10 = n % 10, mod100 = n % 100;
+        if (mod10 === 1 && mod100 !== 11) return one;
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+        return many;
+      }
+      const childNameInput = document.getElementById("child_full_name");
+      const existingNoticeEl = document.getElementById("existing-anketas-notice");
+      let existingCheckTimer = null;
+      if (childNameInput) {
+        const checkExisting = async () => {
+          const norm = normalizeChildName(childNameInput.value);
+          if (!norm) {
+            existingNoticeEl.hidden = true;
+            existingNoticeEl.innerHTML = "";
+            return;
+          }
+          const { data, error } = await window.sbClient
+            .from("anketas")
+            .select("child_full_name, created_at")
+            .order("created_at", { ascending: true });
+          if (error || !data) return;
+          const matches = data.filter((r) => normalizeChildName(r.child_full_name) === norm);
+          if (!matches.length) {
+            existingNoticeEl.hidden = true;
+            existingNoticeEl.innerHTML = "";
+            return;
+          }
+          const dates = matches.map((r) => new Date(r.created_at).toLocaleDateString("uk-UA")).join(", ");
+          const anketaWord = pluralizeUk(matches.length, "анкета", "анкети", "анкет");
+          existingNoticeEl.innerHTML =
+            "У дитини «" + childNameInput.value.trim() + "» вже є " + matches.length + " " + anketaWord +
+            " (" + dates + "). Ця форма додасть ще одну — " +
+            '<a href="anketa.html?q=' + encodeURIComponent(childNameInput.value.trim()) + '" target="_blank" rel="noopener">переглянути попередні →</a>';
+          existingNoticeEl.hidden = false;
+        };
+        childNameInput.addEventListener("input", () => {
+          clearTimeout(existingCheckTimer);
+          existingCheckTimer = setTimeout(checkExisting, 500);
+        });
+        childNameInput.addEventListener("blur", checkExisting);
+      }
 
       form.addEventListener("submit", async function (e) {
         e.preventDefault();
