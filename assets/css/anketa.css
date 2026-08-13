@@ -489,6 +489,17 @@
 .anketa-import-summary { margin: 1rem 0 0; font-size: .9rem; color: var(--color-ink); }
 .anketa-import-summary strong { color: var(--color-sage-deep); }
 
+.anketa-view-siblings {
+  margin: -.3rem 0 1.1rem;
+  padding: .6rem .8rem;
+  background: var(--color-sky-tint);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  font-size: .85rem;
+  color: var(--color-ink-soft);
+}
+.anketa-view-siblings .anketa-view-link { font-weight: 600; }
+
 .anketa-import-error {
   margin-top: 1rem;
   padding: .75rem .9rem;

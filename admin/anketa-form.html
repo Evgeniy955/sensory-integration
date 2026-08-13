@@ -161,9 +161,13 @@
         });
 
         if (error) {
+          // A child can have several anketas over time (returning after a
+          // break, an update, etc.) — this only fires for an exact repeat
+          // submission (same child, same save moment), e.g. a double-click
+          // that slipped past the disabled button.
           const isDuplicate = error.code === "23505" || /duplicate key/i.test(error.message || "");
           statusEl.textContent = isDuplicate
-            ? "Анкета для дитини «" + data.child_full_name + "» вже існує в системі."
+            ? "Цю анкету вже щойно збережено — здається, форму надіслано двічі."
             : "Помилка збереження: " + error.message;
           statusEl.className = "anketa-status anketa-status--err";
           submitBtn.disabled = false;

@@ -120,27 +120,34 @@ create index if not exists anketas_child_full_name_idx on public.anketas (child_
 create index if not exists anketas_parent_name_idx on public.anketas (parent_name);
 create index if not exists anketas_created_at_idx on public.anketas (created_at desc);
 
--- One anketa per child: case-insensitive, ignores leading/trailing spaces
--- (so "Іваненко Олег" and " іваненко олег " collide). This is what makes
--- duplicate submissions and repeat CSV imports actually fail in the
--- database, not just get skipped by the client that happens to check first.
+-- A child can legitimately have more than one anketa over time (they
+-- leave, come back months later, something changed — that history is
+-- useful, not a mistake). What we actually want to block is re-creating
+-- the exact same submission: same child *and* the same submitted_at
+-- timestamp (for CSV imports that's the real Google Forms timestamp down
+-- to the second; for the manual "Додати анкету" page it's the save
+-- moment, which two genuinely different submissions will essentially
+-- never collide on). Two rows only look like a duplicate under this
+-- index if they're actually the same event.
 --
 -- If this errors with "could not create unique index ... is duplicated",
--- you already have duplicate anketas for the same child (e.g. from
--- testing the CSV import twice before this constraint existed). Find them:
---   select lower(trim(child_full_name)), count(*) from public.anketas
---   group by 1 having count(*) > 1;
--- Review, then optionally keep only the oldest row per child:
+-- you already have two rows for the same child with the *same* recorded
+-- timestamp (e.g. from importing the same CSV twice before this
+-- constraint existed). Find them:
+--   select lower(trim(child_full_name)), created_at, count(*) from public.anketas
+--   group by 1, 2 having count(*) > 1;
+-- Review, then optionally keep only one row per exact duplicate:
 --   delete from public.anketas a using (
 --     select id, row_number() over (
---       partition by lower(trim(child_full_name)) order by created_at asc
+--       partition by lower(trim(child_full_name)), created_at order by id
 --     ) as rn
 --     from public.anketas
 --   ) dup
 --   where a.id = dup.id and dup.rn > 1;
 -- ...then re-run this file.
-create unique index if not exists anketas_child_full_name_unique_idx
-  on public.anketas (lower(trim(child_full_name)));
+drop index if exists public.anketas_child_full_name_unique_idx;
+create unique index if not exists anketas_child_submission_unique_idx
+  on public.anketas (lower(trim(child_full_name)), created_at);
 
 drop policy if exists "Admins can view anketas" on public.anketas;
 create policy "Admins can view anketas"

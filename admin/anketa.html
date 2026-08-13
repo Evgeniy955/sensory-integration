@@ -112,6 +112,7 @@
       </button>
       <h2 id="view-modal-title">Анкета</h2>
       <p class="anketa-modal__hint">Перегляд лише для читання.<br><span id="view-modal-meta"></span></p>
+      <div id="view-modal-siblings" class="anketa-view-siblings" hidden></div>
       <div id="view-modal-body"></div>
     </div>
   </div>
@@ -228,6 +229,23 @@
       if (data.respondent_email) metaBits.push("Відправник: " + data.respondent_email);
       document.getElementById("view-modal-meta").textContent = metaBits.join(" · ");
 
+      // A child can have several anketas over time — surface the others
+      // right here instead of making the admin go search for them.
+      const siblingsEl = document.getElementById("view-modal-siblings");
+      const siblings = allAnketas
+        .filter((r) => r.id !== row.id && normalizeChildName(r.child_full_name) === normalizeChildName(row.child_full_name))
+        .sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0));
+      if (siblings.length) {
+        siblingsEl.innerHTML = "Інші анкети цієї дитини: " + siblings.map((s) =>
+          "<button type=\"button\" class=\"anketa-view-link\" data-view=\"" + s.id + "\">" +
+          new Date(s.created_at).toLocaleDateString("uk-UA") + "</button>"
+        ).join(" · ");
+        siblingsEl.hidden = false;
+      } else {
+        siblingsEl.hidden = true;
+        siblingsEl.innerHTML = "";
+      }
+
       body.innerHTML = window.ANKETA_SECTIONS.map((section) => {
         const rows = section.fields.map((f) => {
           const value = data[f.name];
@@ -285,13 +303,27 @@
       return String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
     }
 
-    async function fetchExistingChildNames() {
-      const { data, error } = await window.sbClient.from("anketas").select("child_full_name");
+    // A child can have several anketas over time (they left and came
+    // back, something changed) — that's history, not a duplicate. What's
+    // actually a duplicate is the exact same submission: same child *and*
+    // the same submitted_at. Comparing epoch milliseconds (rather than the
+    // raw string) means this still matches even though our locally-built
+    // ISO string and whatever format Postgres returns for created_at
+    // don't necessarily look identical as text.
+    function submissionKey(name, isoTimestamp) {
+      if (!isoTimestamp) return null;
+      const ms = new Date(isoTimestamp).getTime();
+      if (isNaN(ms)) return null;
+      return normalizeChildName(name) + "|" + ms;
+    }
+
+    async function fetchExistingSubmissionKeys() {
+      const { data, error } = await window.sbClient.from("anketas").select("child_full_name, created_at");
       if (error) return null;
       const set = new Set();
       (data || []).forEach((r) => {
-        const norm = normalizeChildName(r.child_full_name);
-        if (norm) set.add(norm);
+        const key = submissionKey(r.child_full_name, r.created_at);
+        if (key) set.add(key);
       });
       return set;
     }
@@ -395,32 +427,35 @@
         document.getElementById("import-summary").textContent = "Перевіряємо дублікати…";
         document.getElementById("import-preview").hidden = false;
 
-        const existingNames = await fetchExistingChildNames();
-        if (existingNames === null) {
+        const existingKeys = await fetchExistingSubmissionKeys();
+        if (existingKeys === null) {
           showImportError("Не вдалося перевірити наявні анкети (для пошуку дублікатів). Спробуйте ще раз.");
           return;
         }
 
-        // One anketa per child: drop rows that repeat within the file
-        // itself and rows for a child that's already in the database
-        // (matched the same way as the DB's unique index — case-insensitive,
-        // whitespace-insensitive). The database still enforces this too,
-        // as a safety net against races with another admin importing at
-        // the same time.
+        // Only drop rows that are the exact same submission (same child +
+        // same original timestamp) as one already in the file or already
+        // in the database — e.g. re-importing the same CSV. A child
+        // appearing twice with two different dates is kept both times;
+        // that's legitimate history (they came back later). Rows without
+        // a parseable timestamp can't be safely deduped this way, so they
+        // always pass through rather than risk a wrong match.
         let duplicateInFile = 0;
         let duplicateInDb = 0;
-        const seen = new Set();
+        const seenKeys = new Set();
         const deduped = [];
         mapped.forEach((row) => {
-          const norm = normalizeChildName(row.child_full_name);
-          if (seen.has(norm)) { duplicateInFile++; return; }
-          if (existingNames.has(norm)) { duplicateInDb++; return; }
-          seen.add(norm);
+          const key = submissionKey(row.child_full_name, row.created_at);
+          if (key) {
+            if (seenKeys.has(key)) { duplicateInFile++; return; }
+            if (existingKeys.has(key)) { duplicateInDb++; return; }
+            seenKeys.add(key);
+          }
           deduped.push(row);
         });
 
         if (!deduped.length) {
-          showImportError("Усі анкети з файлу вже є в системі або повторюються в самому файлі — імпортувати нічого.");
+          showImportError("Усі анкети з файлу вже імпортовані раніше або повторюються в самому файлі — імпортувати нічого.");
           return;
         }
 
@@ -428,7 +463,7 @@
         const skipBits = [];
         if (skipped) skipBits.push(skipped + " " + (skipped === 1 ? "рядок" : "рядків") + " без ПІБ дитини");
         if (duplicateInFile) skipBits.push(duplicateInFile + " " + (duplicateInFile === 1 ? "повтор" : "повторів") + " у файлі");
-        if (duplicateInDb) skipBits.push(duplicateInDb + " вже " + (duplicateInDb === 1 ? "є в базі" : "є в базі"));
+        if (duplicateInDb) skipBits.push(duplicateInDb + " вже " + (duplicateInDb === 1 ? "імпортовано раніше" : "імпортовано раніше"));
         document.getElementById("import-summary").innerHTML =
           "Знайдено <strong>" + deduped.length + "</strong> " +
           (deduped.length === 1 ? "анкету" : "анкет") + " для імпорту" +
@@ -598,7 +633,10 @@
       });
     });
 
-    document.getElementById("anketa-tbody").addEventListener("click", (e) => {
+    // Delegated on the document, not just #anketa-tbody, so the "Інші
+    // анкети цієї дитини" links inside the detail modal (#view-modal-siblings)
+    // are handled by the same [data-view] click too.
+    document.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-view]");
       if (!btn) return;
       const row = allAnketas.find((r) => r.id === btn.getAttribute("data-view"));
