@@ -518,6 +518,11 @@
   font-size: .9rem;
   line-height: 1.55;
 }
+/* Same trap as the modal overlays: an unconditional display:flex on this
+   class (author stylesheet) outranks the browser's [hidden]{display:none}
+   default at equal specificity, so without this the warning showed on
+   every page load regardless of the hidden attribute. */
+.anketa-existing-warning[hidden] { display: none; }
 .anketa-existing-warning svg { width: 22px; height: 22px; flex: none; margin-top: .1rem; }
 .anketa-existing-warning a { color: inherit; font-weight: 700; text-decoration: underline; }
 .anketa-existing-warning a:hover { text-decoration: none; }

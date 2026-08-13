@@ -150,6 +150,16 @@
       function normalizeChildName(s) {
         return String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
       }
+      // The notice is a fuzzy "possibly the same kid" heads-up, so it
+      // matches on Прізвище + Ім'я (first two tokens) only, ignoring
+      // patronymic/middle name — parents don't always fill it in the same
+      // way twice. This is intentionally looser than the DB unique index
+      // and CSV-import dedup, which key off the full name because they're
+      // preventing exact duplicate submissions, not surfacing history.
+      function surnameGivenNameKey(s) {
+        const parts = normalizeChildName(s).split(" ").filter(Boolean);
+        return parts.slice(0, 2).join(" ");
+      }
       function pluralizeUk(n, one, few, many) {
         const mod10 = n % 10, mod100 = n % 100;
         if (mod10 === 1 && mod100 !== 11) return one;
@@ -162,8 +172,11 @@
       let existingCheckTimer = null;
       if (childNameInput) {
         const checkExisting = async () => {
-          const norm = normalizeChildName(childNameInput.value);
-          if (!norm) {
+          const key = surnameGivenNameKey(childNameInput.value);
+          // Need both Прізвище and Ім'я typed before matching — checking
+          // against a bare surname alone would flag unrelated families
+          // that just happen to share it, while the admin is still typing.
+          if (!key || key.indexOf(" ") === -1) {
             existingNoticeEl.hidden = true;
             return;
           }
@@ -172,7 +185,7 @@
             .select("child_full_name, created_at")
             .order("created_at", { ascending: true });
           if (error || !data) return;
-          const matches = data.filter((r) => normalizeChildName(r.child_full_name) === norm);
+          const matches = data.filter((r) => surnameGivenNameKey(r.child_full_name) === key);
           if (!matches.length) {
             existingNoticeEl.hidden = true;
             return;
