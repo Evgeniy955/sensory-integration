@@ -472,6 +472,34 @@
 }
 .anketa-modal p.anketa-modal__hint { margin: 0 0 1.2rem; color: var(--color-ink-soft); font-size: .88rem; }
 
+.anketa-import-drop {
+  border: 1.5px dashed var(--color-border);
+  border-radius: 14px;
+  padding: 1.25rem;
+  background: var(--color-surface-alt);
+  margin-bottom: .25rem;
+}
+.anketa-import-drop input[type="file"] {
+  width: 100%;
+  font-family: var(--cx-font-body);
+  font-size: .85rem;
+  color: var(--color-ink-soft);
+}
+
+.anketa-import-summary { margin: 1rem 0 0; font-size: .9rem; color: var(--color-ink); }
+.anketa-import-summary strong { color: var(--color-sage-deep); }
+
+.anketa-import-error {
+  margin-top: 1rem;
+  padding: .75rem .9rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-destructive) 12%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-destructive) 30%, transparent);
+  color: var(--color-destructive);
+  font-size: .87rem;
+  line-height: 1.5;
+}
+
 .anketa-view-section { margin-bottom: 1.35rem; }
 .anketa-view-section:last-child { margin-bottom: 0; }
 .anketa-view-section h3 {
