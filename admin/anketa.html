@@ -599,7 +599,7 @@
           "<td>" + escapeHtml(r.parent_name || "—") + "</td>" +
           "<td>" + date + "</td>" +
           "<td><button type=\"button\" class=\"anketa-view-link\" data-view=\"" + r.id + "\">Переглянути</button>" +
-          " · <a class=\"anketa-view-link\" href=\"anketa-form.html?id=" + encodeURIComponent(r.id) + "\">Редагувати</a></td>" +
+          " · <a class=\"anketa-view-link anketa-view-link--edit\" href=\"anketa-form.html?id=" + encodeURIComponent(r.id) + "\">Редагувати</a></td>" +
           "</tr>";
       }).join("");
     }

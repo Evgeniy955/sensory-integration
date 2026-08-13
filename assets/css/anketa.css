@@ -413,6 +413,10 @@
 }
 .anketa-view-link:hover { text-decoration: underline; }
 
+/* Distinct color from the plain "Переглянути" link (sky) so the two
+   actions in a table row aren't mistaken for each other at a glance. */
+.anketa-view-link--edit { color: var(--color-apricot-deep); }
+
 /* ---------- Modal (anketa detail / AI assistant stub) ---------- */
 .anketa-modal-overlay {
   position: fixed;
