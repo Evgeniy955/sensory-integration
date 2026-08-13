@@ -161,7 +161,10 @@
         });
 
         if (error) {
-          statusEl.textContent = "Помилка збереження: " + error.message;
+          const isDuplicate = error.code === "23505" || /duplicate key/i.test(error.message || "");
+          statusEl.textContent = isDuplicate
+            ? "Анкета для дитини «" + data.child_full_name + "» вже існує в системі."
+            : "Помилка збереження: " + error.message;
           statusEl.className = "anketa-status anketa-status--err";
           submitBtn.disabled = false;
           return;

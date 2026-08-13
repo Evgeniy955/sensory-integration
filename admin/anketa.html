@@ -278,6 +278,24 @@
       return isNaN(dt.getTime()) ? null : dt.toISOString();
     }
 
+    // Same normalization as the DB's unique index (lower(trim(...))), plus
+    // whitespace collapsing so "Іваненко  Олег" (double space) still
+    // matches "Іваненко Олег" during the client-side pre-check.
+    function normalizeChildName(s) {
+      return String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
+    }
+
+    async function fetchExistingChildNames() {
+      const { data, error } = await window.sbClient.from("anketas").select("child_full_name");
+      if (error) return null;
+      const set = new Set();
+      (data || []).forEach((r) => {
+        const norm = normalizeChildName(r.child_full_name);
+        if (norm) set.add(norm);
+      });
+      return set;
+    }
+
     let importRows = null;
     let currentProfileId = null;
 
@@ -322,7 +340,7 @@
 
       const reader = new FileReader();
       reader.onerror = () => showImportError("Не вдалося прочитати файл.");
-      reader.onload = () => {
+      reader.onload = async () => {
         const parsed = Papa.parse(reader.result, { skipEmptyLines: true });
         if (parsed.errors && parsed.errors.length) {
           showImportError("Не вдалося розібрати CSV: " + parsed.errors[0].message);
@@ -374,13 +392,48 @@
           return;
         }
 
-        importRows = mapped;
-        document.getElementById("import-summary").innerHTML =
-          "Знайдено <strong>" + mapped.length + "</strong> " +
-          (mapped.length === 1 ? "анкету" : "анкет") + " для імпорту" +
-          (skipped ? " (" + skipped + " " + (skipped === 1 ? "рядок пропущено" : "рядків пропущено") + " — немає ПІБ дитини або невірна кількість колонок)" : "") +
-          ".";
+        document.getElementById("import-summary").textContent = "Перевіряємо дублікати…";
         document.getElementById("import-preview").hidden = false;
+
+        const existingNames = await fetchExistingChildNames();
+        if (existingNames === null) {
+          showImportError("Не вдалося перевірити наявні анкети (для пошуку дублікатів). Спробуйте ще раз.");
+          return;
+        }
+
+        // One anketa per child: drop rows that repeat within the file
+        // itself and rows for a child that's already in the database
+        // (matched the same way as the DB's unique index — case-insensitive,
+        // whitespace-insensitive). The database still enforces this too,
+        // as a safety net against races with another admin importing at
+        // the same time.
+        let duplicateInFile = 0;
+        let duplicateInDb = 0;
+        const seen = new Set();
+        const deduped = [];
+        mapped.forEach((row) => {
+          const norm = normalizeChildName(row.child_full_name);
+          if (seen.has(norm)) { duplicateInFile++; return; }
+          if (existingNames.has(norm)) { duplicateInDb++; return; }
+          seen.add(norm);
+          deduped.push(row);
+        });
+
+        if (!deduped.length) {
+          showImportError("Усі анкети з файлу вже є в системі або повторюються в самому файлі — імпортувати нічого.");
+          return;
+        }
+
+        importRows = deduped;
+        const skipBits = [];
+        if (skipped) skipBits.push(skipped + " " + (skipped === 1 ? "рядок" : "рядків") + " без ПІБ дитини");
+        if (duplicateInFile) skipBits.push(duplicateInFile + " " + (duplicateInFile === 1 ? "повтор" : "повторів") + " у файлі");
+        if (duplicateInDb) skipBits.push(duplicateInDb + " вже " + (duplicateInDb === 1 ? "є в базі" : "є в базі"));
+        document.getElementById("import-summary").innerHTML =
+          "Знайдено <strong>" + deduped.length + "</strong> " +
+          (deduped.length === 1 ? "анкету" : "анкет") + " для імпорту" +
+          (skipBits.length ? " (пропущено: " + skipBits.join(", ") + ")" : "") +
+          ".";
       };
       reader.readAsText(file, "UTF-8");
     });
@@ -402,29 +455,51 @@
       cancelBtn.disabled = true;
       progressEl.hidden = false;
 
+      function toPayload(r) {
+        const payload = {
+          child_full_name: r.child_full_name,
+          parent_name: r.parent_name,
+          data: r.data,
+          created_by: currentProfileId,
+        };
+        if (r.created_at) payload.created_at = r.created_at;
+        return payload;
+      }
+      function isDuplicateError(err) {
+        return err && (err.code === "23505" || /duplicate key/i.test(err.message || ""));
+      }
+
       const CHUNK = 25;
       let done = 0;
+      let dupSkipped = 0;
       let failed = 0;
       for (let i = 0; i < importRows.length; i += CHUNK) {
-        const chunk = importRows.slice(i, i + CHUNK).map((r) => {
-          const payload = {
-            child_full_name: r.child_full_name,
-            parent_name: r.parent_name,
-            data: r.data,
-            created_by: currentProfileId,
-          };
-          if (r.created_at) payload.created_at = r.created_at;
-          return payload;
-        });
+        const chunkRows = importRows.slice(i, i + CHUNK);
+        const { error } = await window.sbClient.from("anketas").insert(chunkRows.map(toPayload));
 
-        const { error } = await window.sbClient.from("anketas").insert(chunk);
-        if (error) { failed += chunk.length; } else { done += chunk.length; }
+        if (!error) {
+          done += chunkRows.length;
+        } else {
+          // A bulk insert is one statement — one conflicting row (most
+          // likely a duplicate created by someone else since the preview
+          // was built) fails the whole chunk. Retry row-by-row so the
+          // other 24 good rows in this chunk aren't lost over that.
+          for (const row of chunkRows) {
+            const { error: rowError } = await window.sbClient.from("anketas").insert(toPayload(row));
+            if (!rowError) done++;
+            else if (isDuplicateError(rowError)) dupSkipped++;
+            else failed++;
+          }
+        }
+
         progressEl.textContent = "Імпортовано " + done + " з " + importRows.length +
-          (failed ? " (помилок: " + failed + ")" : "") + "…";
+          (dupSkipped ? ", дублікатів: " + dupSkipped : "") +
+          (failed ? ", помилок: " + failed : "") + "…";
       }
 
       progressEl.textContent = "Готово: імпортовано " + done + " з " + importRows.length +
-        (failed ? ", помилок: " + failed + "." : ".");
+        (dupSkipped ? ", дублікатів пропущено: " + dupSkipped : "") +
+        (failed ? ", помилок: " + failed : "") + ".";
       btn.dataset.state = "done";
       btn.disabled = false;
       btn.textContent = "Закрити та оновити список";

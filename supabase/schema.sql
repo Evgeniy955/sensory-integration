@@ -120,6 +120,28 @@ create index if not exists anketas_child_full_name_idx on public.anketas (child_
 create index if not exists anketas_parent_name_idx on public.anketas (parent_name);
 create index if not exists anketas_created_at_idx on public.anketas (created_at desc);
 
+-- One anketa per child: case-insensitive, ignores leading/trailing spaces
+-- (so "Іваненко Олег" and " іваненко олег " collide). This is what makes
+-- duplicate submissions and repeat CSV imports actually fail in the
+-- database, not just get skipped by the client that happens to check first.
+--
+-- If this errors with "could not create unique index ... is duplicated",
+-- you already have duplicate anketas for the same child (e.g. from
+-- testing the CSV import twice before this constraint existed). Find them:
+--   select lower(trim(child_full_name)), count(*) from public.anketas
+--   group by 1 having count(*) > 1;
+-- Review, then optionally keep only the oldest row per child:
+--   delete from public.anketas a using (
+--     select id, row_number() over (
+--       partition by lower(trim(child_full_name)) order by created_at asc
+--     ) as rn
+--     from public.anketas
+--   ) dup
+--   where a.id = dup.id and dup.rn > 1;
+-- ...then re-run this file.
+create unique index if not exists anketas_child_full_name_unique_idx
+  on public.anketas (lower(trim(child_full_name)));
+
 drop policy if exists "Admins can view anketas" on public.anketas;
 create policy "Admins can view anketas"
   on public.anketas for select
