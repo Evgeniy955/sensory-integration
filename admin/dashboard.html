@@ -68,12 +68,13 @@
       <p class="admin-hint">Усі облікові записи адмінпанелі та їхні ролі.</p>
       <table class="admin-table">
         <thead>
-          <tr><th>Email</th><th>Ім'я</th><th>Роль</th><th>Створено</th></tr>
+          <tr><th>Email</th><th>Ім'я</th><th>Роль</th><th>Створено</th><th>Дії</th></tr>
         </thead>
         <tbody id="users-tbody">
-          <tr><td colspan="4">Завантаження...</td></tr>
+          <tr><td colspan="5">Завантаження...</td></tr>
         </tbody>
       </table>
+      <div data-users-status></div>
     </section>
 
     <!-- Instructor (and fallback) view -->
@@ -98,28 +99,115 @@
 
     document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
 
+    // Populated by loadUsers(), keyed by profile id — read back when an
+    // edit row is opened/saved so we don't need to re-fetch a single row.
+    let usersById = {};
+    let canEditUsers = false; // set once we know the caller's role
+    let currentUserId = null;
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      }[c]));
+    }
+
+    function userRowHtml(u) {
+      const date = new Date(u.created_at).toLocaleDateString("uk-UA");
+      const actions = canEditUsers
+        ? '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-edit-user="' + u.id + '" style="width:auto;">Редагувати</button>'
+        : "—";
+      return "<tr data-user-row=\"" + u.id + "\">" +
+        "<td>" + escapeHtml(u.email) + "</td>" +
+        "<td>" + escapeHtml(u.full_name || "—") + "</td>" +
+        '<td><span class="admin-badge admin-badge--' + u.role + '">' + (ROLE_LABELS[u.role] || u.role) + "</span></td>" +
+        "<td>" + date + "</td>" +
+        "<td>" + actions + "</td>" +
+        "</tr>";
+    }
+
+    function userEditRowHtml(u) {
+      const isSelf = u.id === currentUserId;
+      const roleOptions = ["instructor", "admin", "super_admin"].map((r) =>
+        '<option value="' + r + '"' + (r === u.role ? " selected" : "") + ">" + ROLE_LABELS[r] + "</option>"
+      ).join("");
+      const roleField = isSelf
+        ? '<span class="admin-badge admin-badge--' + u.role + '">' + ROLE_LABELS[u.role] + "</span><div class=\"admin-hint\" style=\"margin:.25rem 0 0;\">Не можна змінити власну роль</div>"
+        : '<select data-edit-role style="width:auto;">' + roleOptions + "</select>";
+      return "<tr data-user-row=\"" + u.id + "\">" +
+        "<td>" + escapeHtml(u.email) + "</td>" +
+        "<td><input type=\"text\" data-edit-name value=\"" + escapeHtml(u.full_name || "") + "\" style=\"width:100%;\"></td>" +
+        "<td>" + roleField + "</td>" +
+        "<td>" + new Date(u.created_at).toLocaleDateString("uk-UA") + "</td>" +
+        "<td style=\"white-space:nowrap;\">" +
+        '<button type="button" class="admin-btn admin-btn--sm" data-save-user="' + u.id + '" style="width:auto;">Зберегти</button> ' +
+        '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cancel-edit style="width:auto;">Скасувати</button>' +
+        "</td></tr>";
+    }
+
     async function loadUsers() {
       const tbody = document.getElementById("users-tbody");
       const { data, error } = await window.sbClient
         .from("profiles")
-        .select("email, full_name, role, created_at")
+        .select("id, email, full_name, role, created_at")
         .order("created_at", { ascending: true });
 
       if (error) {
-        tbody.innerHTML = '<tr><td colspan="4">Помилка завантаження: ' + error.message + "</td></tr>";
+        tbody.innerHTML = '<tr><td colspan="5">Помилка завантаження: ' + error.message + "</td></tr>";
         return;
       }
 
-      tbody.innerHTML = data.map((u) => {
-        const date = new Date(u.created_at).toLocaleDateString("uk-UA");
-        return "<tr>" +
-          "<td>" + u.email + "</td>" +
-          "<td>" + (u.full_name || "—") + "</td>" +
-          '<td><span class="admin-badge admin-badge--' + u.role + '">' + (ROLE_LABELS[u.role] || u.role) + "</span></td>" +
-          "<td>" + date + "</td>" +
-          "</tr>";
-      }).join("") || '<tr><td colspan="4">Немає користувачів.</td></tr>';
+      usersById = {};
+      data.forEach((u) => { usersById[u.id] = u; });
+
+      tbody.innerHTML = data.map(userRowHtml).join("") || '<tr><td colspan="5">Немає користувачів.</td></tr>';
     }
+
+    document.getElementById("users-tbody").addEventListener("click", async (e) => {
+      const editBtn = e.target.closest("[data-edit-user]");
+      const cancelBtn = e.target.closest("[data-cancel-edit]");
+      const saveBtn = e.target.closest("[data-save-user]");
+
+      if (editBtn) {
+        const u = usersById[editBtn.getAttribute("data-edit-user")];
+        if (!u) return;
+        document.querySelector('tr[data-user-row="' + u.id + '"]').outerHTML = userEditRowHtml(u);
+        return;
+      }
+
+      if (cancelBtn) {
+        const row = cancelBtn.closest("tr[data-user-row]");
+        const u = usersById[row.getAttribute("data-user-row")];
+        if (u) row.outerHTML = userRowHtml(u);
+        return;
+      }
+
+      if (saveBtn) {
+        const userId = saveBtn.getAttribute("data-save-user");
+        const row = saveBtn.closest("tr[data-user-row]");
+        const nameInput = row.querySelector("[data-edit-name]");
+        const roleSelect = row.querySelector("[data-edit-role]");
+        const statusEl = document.querySelector("[data-users-status]");
+
+        const update = { full_name: nameInput.value.trim() || null };
+        if (roleSelect) update.role = roleSelect.value;
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Зберігаємо...";
+        statusEl.innerHTML = "";
+
+        const { error } = await window.sbClient.from("profiles").update(update).eq("id", userId);
+
+        if (error) {
+          statusEl.innerHTML = '<div class="admin-notice admin-notice--error">Помилка: ' + error.message + "</div>";
+          saveBtn.disabled = false;
+          saveBtn.textContent = "Зберегти";
+          return;
+        }
+
+        statusEl.innerHTML = '<div class="admin-notice admin-notice--success">Дані користувача оновлено.</div>';
+        loadUsers();
+      }
+    });
 
     (async function () {
       const profile = await window.requireAuth();
@@ -127,6 +215,9 @@
 
       document.getElementById("whoami").textContent =
         profile.email + " · " + (ROLE_LABELS[profile.role] || profile.role);
+
+      currentUserId = profile.id;
+      canEditUsers = profile.role === "admin" || profile.role === "super_admin";
 
       if (profile.role === "super_admin") {
         document.getElementById("create-user-section").hidden = false;

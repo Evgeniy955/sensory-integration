@@ -127,6 +127,11 @@
 }
 .admin-btn--ghost:hover { background: var(--color-surface-alt); }
 
+.admin-btn--sm {
+  padding: .4rem .75rem;
+  font-size: .82rem;
+}
+
 .admin-btn--google {
   background: var(--color-surface);
   color: var(--color-ink);

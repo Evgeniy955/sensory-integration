@@ -55,9 +55,10 @@ create policy "Super admins can insert profiles"
   with check (public.current_user_role() = 'super_admin');
 
 drop policy if exists "Super admins can update any profile" on public.profiles;
-create policy "Super admins can update any profile"
+drop policy if exists "Admins can update profiles" on public.profiles;
+create policy "Admins can update profiles"
   on public.profiles for update
-  using (public.current_user_role() = 'super_admin');
+  using (public.current_user_role() in ('admin', 'super_admin'));
 
 drop policy if exists "Super admins can delete profiles" on public.profiles;
 create policy "Super admins can delete profiles"
