@@ -426,6 +426,14 @@
   z-index: 60;
   overflow-y: auto;
 }
+/* The class above sets display:flex unconditionally, which — being an
+   author-stylesheet rule — outranks the browser's built-in [hidden]{
+   display:none} default even though both have the same specificity.
+   Without this override both modals (view + AI stub) render on top of
+   the page, full-screen, from the very first load. */
+.anketa-modal-overlay[hidden] {
+  display: none;
+}
 
 .anketa-modal {
   position: relative;
