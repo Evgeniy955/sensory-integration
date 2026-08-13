@@ -1,39 +1,11 @@
 /* Anketa (parent questionnaire) — admin-only page.
-   Cosmic / "view of Earth from orbit" theme: soft deep-space palette,
-   starfield, nebula glow, a CSS-only Earth graphic, and glass-panel
-   question cards. Scoped to .anketa-shell so it never leaks into the
-   public site or the rest of the admin panel. Color language matches
-   the project's cosmic-design exploration (deep indigo + mint/sky/gold
-   accents) so this page won't clash if that theme ships later. */
-
-@font-face{
-  font-family:'Comfortaa';
-  font-weight:500;
-  font-style:normal;
-  src:url('../fonts/Comfortaa-Medium.ttf') format('truetype');
-  font-display:swap;
-}
-@font-face{
-  font-family:'Comfortaa';
-  font-weight:700;
-  font-style:normal;
-  src:url('../fonts/Comfortaa-Bold.ttf') format('truetype');
-  font-display:swap;
-}
-@font-face{
-  font-family:'PT Sans';
-  font-weight:400;
-  font-style:normal;
-  src:url('../fonts/PTSans-Regular.ttf') format('truetype');
-  font-display:swap;
-}
-@font-face{
-  font-family:'PT Sans';
-  font-weight:700;
-  font-style:normal;
-  src:url('../fonts/PTSans-Bold.ttf') format('truetype');
-  font-display:swap;
-}
+   Built on top of the public site's design tokens defined in
+   assets/css/styles.css (colors, shadows, radii) — same pattern as
+   admin.css. The page no longer carries its own background/palette,
+   so it always matches whatever the main site currently shows
+   (the light landscape theme by default). Scoped to .anketa-shell so
+   its component styling never leaks into the public site or the rest
+   of the admin panel. */
 
 .anketa-shell,
 .anketa-shell *,
@@ -43,88 +15,15 @@
 }
 
 .anketa-shell {
-  --cx-bg: #10112A;
-  --cx-bg-deep: #070816;
-  --cx-panel: rgba(27, 30, 63, .58);
-  --cx-panel-solid: #1B1E3F;
-  --cx-ink: #ECEAF7;
-  --cx-ink-soft: #B9B7D9;
-  --cx-ink-faint: #8886B0;
-  --cx-border: rgba(120, 124, 178, .28);
-  --cx-sage: #7FE3C7;
-  --cx-sage-deep: #4FBFA0;
-  --cx-sky: #9CB8FF;
-  --cx-sky-deep: #6E8FE8;
-  --cx-apricot: #F5C86B;
-  --cx-coral: #FF9C8A;
-  --cx-shadow: 0 20px 48px -20px rgba(3, 4, 20, .65);
   --cx-radius: 22px;
   --cx-font-display: 'Comfortaa', 'Segoe UI', sans-serif;
   --cx-font-body: 'PT Sans', 'Segoe UI', sans-serif;
 
   min-height: 100vh;
-  background:
-    radial-gradient(900px 500px at 85% -8%, rgba(159, 178, 255, .16), transparent 60%),
-    radial-gradient(700px 500px at 8% 15%, rgba(127, 227, 199, .10), transparent 55%),
-    linear-gradient(180deg, var(--cx-bg) 0%, var(--cx-bg-deep) 100%);
-  color: var(--cx-ink);
+  color: var(--color-ink);
   font-family: var(--cx-font-body);
   position: relative;
   overflow-x: hidden;
-}
-
-/* ---------- Starfield ---------- */
-.anketa-shell::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image:
-    radial-gradient(1.6px 1.6px at 12% 18%, #fff, transparent),
-    radial-gradient(1.2px 1.2px at 28% 62%, #fff, transparent),
-    radial-gradient(1.8px 1.8px at 44% 24%, #fff, transparent),
-    radial-gradient(1.2px 1.2px at 61% 74%, #fff, transparent),
-    radial-gradient(1.4px 1.4px at 76% 12%, #fff, transparent),
-    radial-gradient(1.2px 1.2px at 8% 82%, #fff, transparent),
-    radial-gradient(1.6px 1.6px at 93% 46%, #fff, transparent),
-    radial-gradient(1.2px 1.2px at 52% 90%, #fff, transparent),
-    radial-gradient(1.4px 1.4px at 34% 40%, #fff, transparent),
-    radial-gradient(1.2px 1.2px at 88% 84%, #fff, transparent),
-    radial-gradient(1.6px 1.6px at 19% 96%, #fff, transparent),
-    radial-gradient(1.2px 1.2px at 68% 58%, #fff, transparent);
-  opacity: .55;
-  animation: anketaTwinkle 5s ease-in-out infinite alternate;
-}
-
-@keyframes anketaTwinkle {
-  from { opacity: .35; }
-  to { opacity: .75; }
-}
-
-/* Second, sparser star layer at a different tile size for parallax depth */
-.anketa-shell::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image:
-    radial-gradient(1px 1px at 15% 35%, #fff, transparent),
-    radial-gradient(1.4px 1.4px at 38% 8%, #fff, transparent),
-    radial-gradient(1px 1px at 55% 52%, #fff, transparent),
-    radial-gradient(1.3px 1.3px at 72% 28%, #fff, transparent),
-    radial-gradient(1px 1px at 85% 70%, #fff, transparent),
-    radial-gradient(1.2px 1.2px at 4% 60%, #fff, transparent),
-    radial-gradient(1px 1px at 95% 12%, #fff, transparent),
-    radial-gradient(1.3px 1.3px at 25% 88%, #fff, transparent);
-  opacity: .4;
-  animation: anketaTwinkle 7s ease-in-out infinite alternate-reverse;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .anketa-shell::before,
-  .anketa-shell::after { animation: none; opacity: .5; }
 }
 
 /* ---------- Topbar ---------- */
@@ -137,14 +36,14 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem 1.5rem;
-  background: rgba(11, 12, 32, .6);
-  border-bottom: 1px solid var(--cx-border);
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  border-bottom: 1px solid var(--color-border);
   backdrop-filter: blur(14px);
 }
 
 .anketa-topbar__brand {
   font-family: var(--cx-font-display);
-  color: var(--cx-ink);
+  color: var(--color-ink);
   text-decoration: none;
   font-weight: 700;
   letter-spacing: .01em;
@@ -156,7 +55,7 @@
   align-items: center;
   gap: .75rem;
   font-size: .85rem;
-  color: var(--cx-ink-soft);
+  color: var(--color-ink-soft);
 }
 
 .anketa-btn {
@@ -165,9 +64,9 @@
   gap: .4rem;
   padding: .55rem 1rem;
   border-radius: 999px;
-  border: 1px solid var(--cx-border);
-  background: rgba(255, 255, 255, .04);
-  color: var(--cx-ink-soft);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-ink-soft);
   font-family: var(--cx-font-body);
   font-size: .85rem;
   cursor: pointer;
@@ -175,8 +74,8 @@
   transition: background .15s ease, color .15s ease, transform .1s ease;
 }
 .anketa-btn:hover {
-  background: rgba(255, 255, 255, .09);
-  color: var(--cx-ink);
+  background: var(--color-surface-alt);
+  color: var(--color-ink);
 }
 .anketa-btn:active { transform: translateY(1px); }
 .anketa-btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -191,13 +90,12 @@
 }
 
 .anketa-intro {
-  border: 1px solid var(--cx-border);
-  background: var(--cx-panel);
-  backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   border-radius: var(--cx-radius);
   padding: 1.75rem 1.9rem;
   margin-bottom: 2rem;
-  box-shadow: var(--cx-shadow);
+  box-shadow: var(--shadow-md);
 }
 
 .anketa-intro__eyebrow {
@@ -207,7 +105,7 @@
   font-size: .74rem;
   text-transform: uppercase;
   letter-spacing: .1em;
-  color: var(--cx-sky);
+  color: var(--color-sage-deep);
   margin-bottom: .6rem;
 }
 .anketa-intro__eyebrow svg { width: 14px; height: 14px; }
@@ -216,12 +114,12 @@
   font-family: var(--cx-font-display);
   margin: 0 0 .5rem;
   font-size: 1.5rem;
-  color: var(--cx-ink);
+  color: var(--color-ink);
 }
 
 .anketa-intro p {
   margin: 0;
-  color: var(--cx-ink-soft);
+  color: var(--color-ink-soft);
   font-size: .92rem;
   line-height: 1.65;
   max-width: 62ch;
@@ -229,13 +127,12 @@
 
 /* ---------- Question sections ---------- */
 .anketa-section {
-  border: 1px solid var(--cx-border);
-  background: var(--cx-panel);
-  backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   border-radius: var(--cx-radius);
   padding: 1.5rem 1.6rem 1.75rem;
   margin: 0 0 1.5rem;
-  box-shadow: var(--cx-shadow);
+  box-shadow: var(--shadow-sm);
   position: relative;
   overflow: hidden;
 }
@@ -244,10 +141,10 @@
   position: absolute;
   inset: 0 0 auto 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--cx-sage), var(--cx-sky));
+  background: linear-gradient(90deg, var(--color-sage), var(--color-sky));
 }
-.anketa-section:nth-of-type(3n+2)::before { background: linear-gradient(90deg, var(--cx-sky), var(--cx-apricot)); }
-.anketa-section:nth-of-type(3n)::before { background: linear-gradient(90deg, var(--cx-apricot), var(--cx-sage)); }
+.anketa-section:nth-of-type(3n+2)::before { background: linear-gradient(90deg, var(--color-sky), var(--color-apricot)); }
+.anketa-section:nth-of-type(3n)::before { background: linear-gradient(90deg, var(--color-apricot), var(--color-sage)); }
 
 .anketa-section__title {
   display: flex;
@@ -265,17 +162,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(127, 227, 199, .22), rgba(156, 184, 255, .22));
-  border: 1px solid var(--cx-border);
-  color: var(--cx-sage);
+  background: var(--color-sage-tint);
+  border: 1px solid var(--color-border);
+  color: var(--color-sage-deep);
 }
-.anketa-section:nth-of-type(3n+2) .anketa-section__icon { color: var(--cx-sky); background: linear-gradient(135deg, rgba(156, 184, 255, .22), rgba(245, 200, 107, .22)); }
-.anketa-section:nth-of-type(3n) .anketa-section__icon { color: var(--cx-apricot); background: linear-gradient(135deg, rgba(245, 200, 107, .22), rgba(127, 227, 199, .22)); }
+.anketa-section:nth-of-type(3n+2) .anketa-section__icon { color: var(--color-sky-deep); background: var(--color-sky-tint); }
+.anketa-section:nth-of-type(3n) .anketa-section__icon { color: var(--color-apricot-deep); background: var(--color-apricot-tint); }
 .anketa-section__icon svg { width: 22px; height: 22px; }
 
 .anketa-section__text { display: flex; flex-direction: column; gap: .15rem; }
-.anketa-section__step { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--cx-ink-faint); }
-.anketa-section__name { font-family: var(--cx-font-display); font-size: 1.05rem; color: var(--cx-ink); }
+.anketa-section__step { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--color-ink-faint); }
+.anketa-section__name { font-family: var(--cx-font-display); font-size: 1.05rem; color: var(--color-ink); }
 
 /* ---------- Field grid ---------- */
 .anketa-field-grid {
@@ -296,11 +193,11 @@
   display: block;
   margin-bottom: .45rem;
   font-size: .85rem;
-  color: var(--cx-ink-soft);
+  color: var(--color-ink-soft);
   line-height: 1.5;
 }
 
-.anketa-req { color: var(--cx-coral); }
+.anketa-req { color: var(--color-destructive); }
 
 .anketa-field input[type="text"],
 .anketa-field input[type="tel"],
@@ -309,30 +206,30 @@
 .anketa-field select {
   width: 100%;
   padding: .65rem .8rem;
-  background: rgba(6, 8, 22, .45);
-  border: 1px solid var(--cx-border);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  color: var(--cx-ink);
+  color: var(--color-ink);
   font-family: var(--cx-font-body);
   font-size: .92rem;
   resize: vertical;
 }
 
 .anketa-field input::placeholder,
-.anketa-field textarea::placeholder { color: var(--cx-ink-faint); }
+.anketa-field textarea::placeholder { color: var(--color-ink-faint); }
 
 .anketa-field input:focus,
 .anketa-field textarea:focus,
 .anketa-field select:focus {
   outline: none;
-  border-color: var(--cx-sky);
-  box-shadow: 0 0 0 3px rgba(156, 184, 255, .22);
+  border-color: var(--color-sky);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-sky) 25%, transparent);
 }
 
 .anketa-field select {
   appearance: none;
-  background-image: linear-gradient(45deg, transparent 50%, var(--cx-ink-faint) 50%),
-                     linear-gradient(135deg, var(--cx-ink-faint) 50%, transparent 50%);
+  background-image: linear-gradient(45deg, transparent 50%, var(--color-ink-faint) 50%),
+                     linear-gradient(135deg, var(--color-ink-faint) 50%, transparent 50%);
   background-position: calc(100% - 18px) center, calc(100% - 13px) center;
   background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
@@ -351,10 +248,10 @@
   align-items: center;
   padding: .5rem 1.05rem;
   border-radius: 999px;
-  border: 1px solid var(--cx-border);
-  background: rgba(255, 255, 255, .03);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
   font-size: .85rem;
-  color: var(--cx-ink-soft);
+  color: var(--color-ink-soft);
   cursor: pointer;
   transition: background .15s ease, color .15s ease, border-color .15s ease;
 }
@@ -367,14 +264,14 @@
 }
 
 .anketa-radio:has(input:checked) {
-  background: linear-gradient(135deg, var(--cx-sage), var(--cx-sky));
+  background: linear-gradient(135deg, var(--color-sage), var(--color-sky));
   color: #0B0C22;
   font-weight: 700;
   border-color: transparent;
 }
 
 .anketa-radio:has(input:focus-visible) {
-  outline: 2px solid var(--cx-sky);
+  outline: 2px solid var(--color-sky);
   outline-offset: 2px;
 }
 
@@ -394,22 +291,22 @@
   padding: .85rem 1.8rem;
   border-radius: 999px;
   border: none;
-  background: linear-gradient(135deg, var(--cx-sage), var(--cx-sky));
+  background: linear-gradient(135deg, var(--color-sage), var(--color-sky));
   color: #0B0C22;
   font-family: var(--cx-font-display);
   font-weight: 700;
   font-size: .95rem;
   cursor: pointer;
-  box-shadow: 0 12px 30px -12px rgba(127, 227, 199, .55);
+  box-shadow: var(--shadow-md);
   transition: transform .15s ease, box-shadow .15s ease;
 }
-.anketa-submit:hover { transform: translateY(-1px); box-shadow: 0 16px 36px -12px rgba(127, 227, 199, .7); }
+.anketa-submit:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
 .anketa-submit:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 .anketa-submit svg { width: 18px; height: 18px; }
 
-.anketa-status { font-size: .85rem; color: var(--cx-ink-soft); }
-.anketa-status--ok { color: var(--cx-sage); }
-.anketa-status--err { color: var(--cx-coral); }
+.anketa-status { font-size: .85rem; color: var(--color-ink-soft); }
+.anketa-status--ok { color: var(--color-sage-deep); }
+.anketa-status--err { color: var(--color-destructive); }
 
 /* ---------- Access denied ---------- */
 .anketa-denied {
@@ -417,12 +314,11 @@
   margin: 4rem auto;
   text-align: center;
   padding: 2.25rem 2rem;
-  border: 1px solid var(--cx-border);
+  border: 1px solid var(--color-border);
   border-radius: var(--cx-radius);
-  background: var(--cx-panel);
-  backdrop-filter: blur(16px);
-  color: var(--cx-ink);
-  box-shadow: var(--cx-shadow);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-md);
   position: relative;
   z-index: 2;
 }
@@ -430,9 +326,9 @@
   width: 46px; height: 46px; margin: 0 auto 1rem;
   border-radius: 14px;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, rgba(255, 156, 138, .25), rgba(245, 200, 107, .2));
-  color: var(--cx-coral);
+  background: color-mix(in srgb, var(--color-destructive) 16%, var(--color-apricot-tint));
+  color: var(--color-destructive);
 }
 .anketa-denied__icon svg { width: 24px; height: 24px; }
 .anketa-denied h2 { font-family: var(--cx-font-display); margin: 0 0 .5rem; font-size: 1.1rem; }
-.anketa-denied p { margin: 0; color: var(--cx-ink-soft); font-size: .88rem; line-height: 1.6; }
+.anketa-denied p { margin: 0; color: var(--color-ink-soft); font-size: .88rem; line-height: 1.6; }
