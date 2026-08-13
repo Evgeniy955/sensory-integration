@@ -284,8 +284,13 @@
       const profile = await window.requireAuth();
       if (!profile) return; // requireAuth already redirected to login.html
 
-      document.getElementById("whoami").textContent =
-        profile.email + " · " + (ROLE_LABELS[profile.role] || profile.role);
+      // Lead with the person's name so the topbar reads as "who's signed
+      // in", not their email; email is still one hover away (title attr)
+      // for support/debugging, and is the fallback for accounts that
+      // don't have a name on file yet.
+      const whoamiEl = document.getElementById("whoami");
+      whoamiEl.textContent = (profile.full_name || profile.email) + " · " + (ROLE_LABELS[profile.role] || profile.role);
+      whoamiEl.title = profile.email;
 
       currentUserId = profile.id;
       currentUserRole = profile.role;

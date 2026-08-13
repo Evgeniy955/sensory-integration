@@ -126,8 +126,9 @@
       }
 
       const ROLE_LABELS = { super_admin: "Супер адмін", admin: "Адмін", instructor: "Інструктор" };
-      document.getElementById("whoami").textContent =
-        profile.email + " · " + (ROLE_LABELS[profile.role] || profile.role);
+      const whoamiEl = document.getElementById("whoami");
+      whoamiEl.textContent = (profile.full_name || profile.email) + " · " + (ROLE_LABELS[profile.role] || profile.role);
+      whoamiEl.title = profile.email;
 
       document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
 
