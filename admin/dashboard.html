@@ -122,17 +122,28 @@
       return u.role !== "super_admin";
     }
 
+    // Only a super_admin may delete a user, and never their own account
+    // (mirrors the check the admin-delete-user Edge Function makes).
+    function canDeleteRow(u) {
+      return currentUserRole === "super_admin" && u.id !== currentUserId;
+    }
+
     function userRowHtml(u) {
       const date = new Date(u.created_at).toLocaleDateString("uk-UA");
-      const actions = canEditRow(u)
-        ? '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-edit-user="' + u.id + '" style="width:auto;">Редагувати</button>'
-        : "—";
+      const buttons = [];
+      if (canEditRow(u)) {
+        buttons.push('<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-edit-user="' + u.id + '" style="width:auto;">Редагувати</button>');
+      }
+      if (canDeleteRow(u)) {
+        buttons.push('<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--danger" data-delete-user="' + u.id + '" style="width:auto;">Видалити</button>');
+      }
+      const actions = buttons.length ? buttons.join(" ") : "—";
       return "<tr data-user-row=\"" + u.id + "\">" +
         "<td>" + escapeHtml(u.email) + "</td>" +
         "<td>" + escapeHtml(u.full_name || "—") + "</td>" +
         '<td><span class="admin-badge admin-badge--' + u.role + '">' + (ROLE_LABELS[u.role] || u.role) + "</span></td>" +
         "<td>" + date + "</td>" +
-        "<td>" + actions + "</td>" +
+        "<td style=\"white-space:nowrap;\">" + actions + "</td>" +
         "</tr>";
     }
 
@@ -177,10 +188,55 @@
       tbody.innerHTML = data.map(userRowHtml).join("") || '<tr><td colspan="5">Немає користувачів.</td></tr>';
     }
 
+    async function deleteUser(u, btn) {
+      const statusEl = document.querySelector("[data-users-status]");
+      const confirmed = window.confirm(
+        "Видалити користувача " + u.email + "? Цю дію не можна скасувати."
+      );
+      if (!confirmed) return;
+
+      btn.disabled = true;
+      btn.textContent = "Видаляємо...";
+      statusEl.innerHTML = "";
+
+      try {
+        const { data: { session } } = await window.sbClient.auth.getSession();
+        const functionsUrl = window.SUPABASE_CONFIG.url.replace(/\/$/, "") + "/functions/v1/admin-delete-user";
+
+        const res = await fetch(functionsUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + session.access_token,
+          },
+          body: JSON.stringify({ user_id: u.id }),
+        });
+
+        const result = await res.json();
+        if (!res.ok) {
+          throw new Error(result.error || "Невідома помилка");
+        }
+
+        statusEl.innerHTML = '<div class="admin-notice admin-notice--success">Користувача ' + u.email + " видалено.</div>";
+        loadUsers();
+      } catch (err) {
+        statusEl.innerHTML = '<div class="admin-notice admin-notice--error">Помилка: ' + err.message + "</div>";
+        btn.disabled = false;
+        btn.textContent = "Видалити";
+      }
+    }
+
     document.getElementById("users-tbody").addEventListener("click", async (e) => {
       const editBtn = e.target.closest("[data-edit-user]");
       const cancelBtn = e.target.closest("[data-cancel-edit]");
       const saveBtn = e.target.closest("[data-save-user]");
+      const deleteBtn = e.target.closest("[data-delete-user]");
+
+      if (deleteBtn) {
+        const u = usersById[deleteBtn.getAttribute("data-delete-user")];
+        if (u) await deleteUser(u, deleteBtn);
+        return;
+      }
 
       if (editBtn) {
         const u = usersById[editBtn.getAttribute("data-edit-user")];

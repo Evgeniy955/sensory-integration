@@ -132,6 +132,15 @@
   font-size: .82rem;
 }
 
+.admin-btn--danger {
+  color: var(--color-destructive, #b23b36);
+  border-color: color-mix(in srgb, var(--color-destructive, #d9534f) 35%, var(--color-border));
+}
+.admin-btn--danger:hover {
+  background: color-mix(in srgb, var(--color-destructive, #d9534f) 12%, var(--color-surface));
+  color: var(--color-destructive, #b23b36);
+}
+
 .admin-btn--google {
   background: var(--color-surface);
   color: var(--color-ink);
