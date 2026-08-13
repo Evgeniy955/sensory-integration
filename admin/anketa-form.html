@@ -57,10 +57,13 @@
         </p>
       </div>
 
+      <div id="existing-anketas-notice" class="anketa-existing-warning" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 16.5h.01"/><path d="M10.3 3.9 1.8 18.5a1.8 1.8 0 0 0 1.55 2.7h17.3a1.8 1.8 0 0 0 1.55-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0Z"/></svg>
+        <div id="existing-anketas-notice-text"></div>
+      </div>
+
       <form id="anketa-form" novalidate autocomplete="off">
         <div id="anketa-fields"></div>
-
-        <div id="existing-anketas-notice" class="anketa-view-siblings" hidden></div>
 
         <div class="anketa-submit-row">
           <button type="submit" class="anketa-submit" id="anketa-submit-btn">
@@ -155,13 +158,13 @@
       }
       const childNameInput = document.getElementById("child_full_name");
       const existingNoticeEl = document.getElementById("existing-anketas-notice");
+      const existingNoticeTextEl = document.getElementById("existing-anketas-notice-text");
       let existingCheckTimer = null;
       if (childNameInput) {
         const checkExisting = async () => {
           const norm = normalizeChildName(childNameInput.value);
           if (!norm) {
             existingNoticeEl.hidden = true;
-            existingNoticeEl.innerHTML = "";
             return;
           }
           const { data, error } = await window.sbClient
@@ -172,14 +175,13 @@
           const matches = data.filter((r) => normalizeChildName(r.child_full_name) === norm);
           if (!matches.length) {
             existingNoticeEl.hidden = true;
-            existingNoticeEl.innerHTML = "";
             return;
           }
           const dates = matches.map((r) => new Date(r.created_at).toLocaleDateString("uk-UA")).join(", ");
           const anketaWord = pluralizeUk(matches.length, "анкета", "анкети", "анкет");
-          existingNoticeEl.innerHTML =
+          existingNoticeTextEl.innerHTML =
             "У дитини «" + childNameInput.value.trim() + "» вже є " + matches.length + " " + anketaWord +
-            " (" + dates + "). Ця форма додасть ще одну — " +
+            " (" + dates + "). Перевірте, чи це справді нова анкета, перш ніж заповнювати всі 50+ питань — " +
             '<a href="anketa.html?q=' + encodeURIComponent(childNameInput.value.trim()) + '" target="_blank" rel="noopener">переглянути попередні →</a>';
           existingNoticeEl.hidden = false;
         };
