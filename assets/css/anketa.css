@@ -171,7 +171,10 @@
 .anketa-section__icon svg { width: 22px; height: 22px; }
 
 .anketa-section__text { display: flex; flex-direction: column; gap: .15rem; }
-.anketa-section__step { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--color-ink-faint); }
+/* No text-transform:uppercase here — it turns the Ukrainian "з" (=
+   "of") into a capital "З", which in this font is nearly identical to
+   the digit "3", making "Крок 4 з 9" read like "Крок 4 3 9". */
+.anketa-section__step { font-size: .72rem; font-weight: 700; letter-spacing: .04em; color: var(--color-ink-faint); }
 .anketa-section__name { font-family: var(--cx-font-display); font-size: 1.05rem; color: var(--color-ink); }
 
 /* ---------- Field grid ---------- */
