@@ -52,7 +52,7 @@
           Розклад
         </span>
         <h1>Розклад залів</h1>
-        <p>Таблиця показує один тиждень одразу — перемикайтеся стрілками або відкрийте календар, щоб перейти на конкретну дату. У першому стовпці оберіть спеціаліста зі збереженого списку, а в кожній клітинці на перетині з днем — зал: клітинка підсвітиться кольором цього залу. Зміни зберігаються автоматично.</p>
+        <p>Таблиця показує один робочий день (08:00–19:00) одразу — перемикайтеся стрілками, кнопкою «Сьогодні» або відкрийте календар, щоб перейти на конкретну дату. Усі зали видно одночасно як стовпці; натисніть на клітинку, щоб призначити спеціаліста і дитину на цю годину в цьому залі. Дитину можна обрати лише зі списку вже доданих анкет — почніть вводити ПІБ, і з'являться варіанти. Зміни зберігаються автоматично.</p>
       </div>
 
       <div class="anketa-toolbar schedule-toolbar">
@@ -96,20 +96,21 @@
       </div>
 
       <div class="schedule-week-nav">
-        <button type="button" class="schedule-week-nav__arrow" id="prev-week-btn" aria-label="Попередній тиждень">
+        <button type="button" class="schedule-week-nav__arrow" id="prev-day-btn" aria-label="Попередній день">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
         </button>
-        <div class="schedule-week-nav__label" id="week-label">—</div>
-        <button type="button" class="schedule-week-nav__arrow" id="next-week-btn" aria-label="Наступний тиждень">
+        <div class="schedule-week-nav__label" id="day-label">—</div>
+        <button type="button" class="schedule-week-nav__arrow" id="next-day-btn" aria-label="Наступний день">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
         </button>
+        <button type="button" class="anketa-btn" id="today-btn">Сьогодні</button>
         <div class="schedule-week-nav-spacer"></div>
         <div class="schedule-calendar-trigger">
           <button type="button" class="anketa-btn" id="open-calendar-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>
             Відкрити календар
           </button>
-          <input type="date" id="calendar-date-input" class="schedule-calendar-input" aria-label="Обрати дату для переходу на її тиждень" tabindex="-1">
+          <input type="date" id="calendar-date-input" class="schedule-calendar-input" aria-label="Обрати дату для переходу" tabindex="-1">
         </div>
       </div>
 
@@ -123,6 +124,35 @@
       </div>
     </div>
   </main>
+
+  <!-- Slot editor: pick a specialist + child (from existing anketas) for one room/hour -->
+  <div class="anketa-modal-overlay" id="cell-modal-overlay" hidden>
+    <div class="anketa-modal schedule-cell-modal" role="dialog" aria-modal="true" aria-labelledby="cell-modal-title">
+      <button type="button" class="anketa-modal__close" id="cell-modal-close" aria-label="Закрити">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <h2 id="cell-modal-title">Запис на заняття</h2>
+      <p class="anketa-modal__hint" id="cell-modal-meta"></p>
+
+      <div class="anketa-field" data-type="select">
+        <label class="anketa-field__label" for="cell-specialist-select">Спеціаліст</label>
+        <select id="cell-specialist-select"></select>
+      </div>
+
+      <div class="anketa-field schedule-child-field" data-type="text">
+        <label class="anketa-field__label" for="cell-child-input">Дитина</label>
+        <div class="schedule-child-autocomplete">
+          <input type="text" id="cell-child-input" autocomplete="off" placeholder="Почніть вводити ПІБ дитини…">
+          <div id="cell-child-results" class="schedule-child-results" hidden></div>
+        </div>
+      </div>
+
+      <div class="schedule-cell-modal__actions">
+        <button type="button" class="anketa-btn anketa-btn--danger" id="cell-clear-btn" hidden>Очистити</button>
+        <button type="button" class="anketa-submit" id="cell-save-btn">Зберегти</button>
+      </div>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../assets/js/supabase-config.js"></script>

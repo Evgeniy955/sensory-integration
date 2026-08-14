@@ -1,30 +1,41 @@
-// Schedule board (admin/schedule.html): specialists × week-of-dates grid,
-// stored as a single JSONB row in public.schedule_boards (id='main').
-// Loaded after supabase-config.js + admin-auth.js (needs window.sbClient).
+// Schedule board (admin/schedule.html): rooms × hourly-slot grid for one
+// working day (08:00–19:00), stored as a single JSONB row in
+// public.schedule_boards (id='main'). Loaded after supabase-config.js +
+// admin-auth.js (needs window.sbClient).
 //
 // The whole board lives in one in-memory object (`board`) that's
 // re-rendered top to bottom on every change and pushed to Supabase
 // shortly after:
-//   - board.specialists — the saved roster (managed from the toolbar,
-//     add/rename/delete), independent of which rows currently exist.
-//   - board.rows — the table's visible rows, each { id, specialistId }.
-//     The first cell of a row is a dropdown over board.specialists, so
-//     which saved specialist sits in a row can be changed at any time
-//     without retyping a name or losing that row's room assignments.
-//   - board.cells — room assignments keyed by "rowId|YYYY-MM-DD" (an
-//     actual calendar date, not just a weekday name), so every week can
-//     hold its own, different assignments. Only one week (Mon–Sat) is
-//     shown at a time; `weekStart` (module state, not saved) tracks
-//     which one, moved by the ◀ / ▶ buttons or the calendar picker.
+//   - board.rooms — the columns (add/rename/delete from the "Керування
+//     залом" panel), same as before.
+//   - board.specialists — the saved roster (managed from "Керування
+//     спеціалістом"), offered as a dropdown when filling a slot.
+//   - board.cells — keyed "roomId|YYYY-MM-DD|HH" (a specific room, date
+//     *and* hour), value { specialistId, anketaId, childName }. Only one
+//     day is shown at a time; `currentDate` (module state, not saved)
+//     tracks which one, moved by the ◀ / ▶ buttons or the calendar
+//     picker.
+//
+// A slot's child is picked from the existing anketas (parent
+// questionnaires) table via search-as-you-type — never free text — so a
+// schedule entry always points at a real anketa row (anketaId), which is
+// what lets the anketa page compute "visited on these dates" later by
+// scanning this same board.
 
 (function () {
-  // Mon..Sat labels for the currently displayed week — see getWeekDays().
-  const DAY_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+  const WEEKDAY_FULL = ["неділя", "понеділок", "вівторок", "середа", "четвер", "п'ятниця", "субота"];
 
   const MONTHS_GENITIVE = [
     "січня", "лютого", "березня", "квітня", "травня", "червня",
     "липня", "серпня", "вересня", "жовтня", "листопада", "грудня",
   ];
+
+  // One row per hour of the 08:00–19:00 working day (last slot starts at
+  // 18:00, ends 19:00) — 11 rows total.
+  const START_HOUR = 8;
+  const END_HOUR = 19;
+  const HOURS = [];
+  for (let h = START_HOUR; h < END_HOUR; h++) HOURS.push(h);
 
   // Cycled across rooms in creation order. Bold/saturated on purpose (see
   // the "Room tint" comment in schedule.css) rather than the public
@@ -34,14 +45,27 @@
   const ROOM_COLORS = ["yellow", "red", "blue"];
 
   const BOARD_ROW_ID = "main";
+  const CHILD_SEARCH_MIN_LEN = 2;
+  const CHILD_SEARCH_DEBOUNCE_MS = 250;
 
   let board = null;
   let currentProfileId = null;
   let saveTimer = null;
   let managedRoomId = null; // room targeted by the toolbar's rename/delete controls
   let managedSpecialistId = null; // specialist targeted by the toolbar's rename/delete controls
-  let weekStart = startOfWeek(new Date()); // Monday of the currently displayed week
-  let currentWeekDays = []; // refreshed by render(); used outside render() for aria-label updates
+  let currentDate = new Date(); // the day currently shown; normalized to midnight below
+  currentDate.setHours(0, 0, 0, 0);
+
+  // Cell modal state — which slot is being edited, and what the child
+  // autocomplete currently has selected (only a *selected* anketa can be
+  // saved, never arbitrary typed text).
+  let editingKey = null;
+  let editingRoomId = null;
+  let editingHour = null;
+  let selectedAnketaId = null;
+  let selectedChildName = "";
+  let childSearchTimer = null;
+  let childSearchToken = 0; // discards stale async results if a newer search started
 
   function uid() {
     return (window.crypto && window.crypto.randomUUID)
@@ -73,38 +97,16 @@
     return r;
   }
 
-  // Monday-based week start, midnight local time.
-  function startOfWeek(d) {
-    const day = d.getDay(); // 0 = Sun, 1 = Mon, ... 6 = Sat
-    const diff = day === 0 ? -6 : 1 - day;
-    const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() + diff);
-    monday.setHours(0, 0, 0, 0);
-    return monday;
+  function formatDayLabel(d) {
+    const weekday = WEEKDAY_FULL[d.getDay()];
+    const capitalized = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+    return capitalized + ", " + d.getDate() + " " + MONTHS_GENITIVE[d.getMonth()] + " " + d.getFullYear();
   }
 
-  // Six {iso, label, dateLabel, isToday} entries — Monday through
-  // Saturday of the given week start.
-  function getWeekDays(weekStartDate) {
-    const todayIso = toISODate(new Date());
-    return DAY_LABELS.map((label, i) => {
-      const date = addDays(weekStartDate, i);
-      const iso = toISODate(date);
-      return { iso, label, dateLabel: pad2(date.getDate()) + "." + pad2(date.getMonth() + 1), isToday: iso === todayIso };
-    });
-  }
+  function hourLabel(h) { return pad2(h) + ":00–" + pad2(h + 1) + ":00"; }
 
-  function formatWeekRange(weekStartDate) {
-    const weekEnd = addDays(weekStartDate, 5); // Saturday
-    const d1 = weekStartDate.getDate(), d2 = weekEnd.getDate();
-    const m1 = weekStartDate.getMonth(), m2 = weekEnd.getMonth();
-    const y1 = weekStartDate.getFullYear(), y2 = weekEnd.getFullYear();
-    if (y1 !== y2) return d1 + " " + MONTHS_GENITIVE[m1] + " " + y1 + " – " + d2 + " " + MONTHS_GENITIVE[m2] + " " + y2;
-    if (m1 !== m2) return d1 + " " + MONTHS_GENITIVE[m1] + " – " + d2 + " " + MONTHS_GENITIVE[m2] + " " + y1;
-    return d1 + "–" + d2 + " " + MONTHS_GENITIVE[m1] + " " + y1;
-  }
-
-  function cellKey(rowId, dateIso) {
-    return rowId + "|" + dateIso;
+  function cellKey(roomId, dateIso, hour) {
+    return roomId + "|" + dateIso + "|" + pad2(hour);
   }
 
   function defaultBoard() {
@@ -115,47 +117,24 @@
         { id: uid(), name: "Зал 3", color: "blue" },
       ],
       specialists: [],
-      rows: [],
       cells: {},
     };
   }
 
-  // Boards saved before the calendar existed keyed cells as
-  // "rowId|mon".."rowId|sat" (a recurring template, no real date). Those
-  // get copied onto the matching weekday of the *current* real week —
-  // one-time, best-effort — so existing assignments aren't silently
-  // dropped; anything already date-keyed passes through unchanged.
-  const LEGACY_DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat"];
-
-  function migrateLegacyCells(rawCells) {
-    const out = {};
-    const thisWeek = getWeekDays(startOfWeek(new Date()));
-    Object.keys(rawCells || {}).forEach((key) => {
-      const idx = key.lastIndexOf("|");
-      if (idx === -1) return;
-      const rowId = key.slice(0, idx);
-      const suffix = key.slice(idx + 1);
-      const legacyIndex = LEGACY_DAY_KEYS.indexOf(suffix);
-      if (legacyIndex !== -1) {
-        out[cellKey(rowId, thisWeek[legacyIndex].iso)] = rawCells[key];
-      } else {
-        out[key] = rawCells[key];
-      }
-    });
-    return out;
-  }
-
+  // Older boards keyed cells "rowId|date" (whole-day, specialist-per-row)
+  // or "rowId|weekday" (before dates existed at all) — neither carries an
+  // hour or a child, so there is nothing meaningful to carry forward into
+  // the new room×hour×child shape. Anything not already in the current
+  // "roomId|date|HH" → {specialistId, anketaId, childName} shape is
+  // dropped rather than guessed at.
   function normalizeBoard(raw) {
     const fallback = defaultBoard();
     if (!raw || typeof raw !== "object") return fallback;
 
-    // Color is always re-derived from a room's position (not whatever was
-    // last saved): there's no manual color picker anywhere in the UI, so
-    // the stored value is only ever a leftover from a previous palette
-    // version. Deriving it fresh here is what actually guarantees every
-    // existing board shows today's yellow/red/blue cycle after a palette
-    // change, instead of silently keeping an old hex that happens to
-    // share a name ("blue") with a color in the new set too.
+    // Color is always re-derived from a room's position, not whatever was
+    // last saved — see the schedule-slots-attendance branch history for
+    // why (no manual color picker exists, so a stored value is only ever
+    // a leftover from a previous palette version).
     const rooms = Array.isArray(raw.rooms) && raw.rooms.length
       ? raw.rooms.filter((r) => r && r.id && r.name != null).map((r, i) => ({
           id: String(r.id), name: String(r.name), color: ROOM_COLORS[i % ROOM_COLORS.length],
@@ -166,17 +145,24 @@
       ? raw.specialists.filter((s) => s && s.id).map((s) => ({ id: String(s.id), name: String(s.name || "") }))
       : [];
 
-    // Boards saved before `rows` existed had one row per specialist,
-    // keyed the same way — reuse each specialist's id as its row id so
-    // old board.cells entries keep resolving correctly.
-    const rows = Array.isArray(raw.rows)
-      ? raw.rows.filter((r) => r && r.id).map((r) => ({
-          id: String(r.id), specialistId: r.specialistId ? String(r.specialistId) : null,
-        }))
-      : specialists.map((s) => ({ id: s.id, specialistId: s.id }));
+    const roomIds = new Set(rooms.map((r) => r.id));
+    const cells = {};
+    if (raw.cells && typeof raw.cells === "object") {
+      Object.keys(raw.cells).forEach((key) => {
+        const parts = key.split("|");
+        const value = raw.cells[key];
+        if (parts.length !== 3 || !value || typeof value !== "object") return;
+        const [roomId, dateIso, hour] = parts;
+        if (!roomIds.has(roomId) || !/^\d{4}-\d{2}-\d{2}$/.test(dateIso) || !/^\d{2}$/.test(hour)) return;
+        cells[key] = {
+          specialistId: value.specialistId ? String(value.specialistId) : null,
+          anketaId: value.anketaId ? String(value.anketaId) : null,
+          childName: value.childName ? String(value.childName) : "",
+        };
+      });
+    }
 
-    const cells = migrateLegacyCells((raw.cells && typeof raw.cells === "object") ? raw.cells : {});
-    return { rooms, specialists, rows, cells };
+    return { rooms, specialists, cells };
   }
 
   function setStatus(state, detail) {
@@ -217,9 +203,9 @@
   }
 
   // Typed text edits (renaming a room/specialist) debounce so we don't
-  // fire a write per keystroke; discrete actions (add/remove a row,
-  // picking a room or specialist in a dropdown) call saveBoard() directly
-  // since those are already one-click, infrequent actions.
+  // fire a write per keystroke; discrete actions (saving/clearing a slot,
+  // adding/removing a room or specialist) call saveBoard() directly since
+  // those are already one-click, infrequent actions.
   function scheduleSave() {
     setStatus("saving");
     clearTimeout(saveTimer);
@@ -239,69 +225,50 @@
   }
 
   function specialistName(id) {
+    if (!id) return "Без спеціаліста";
     const spec = board.specialists.find((s) => s.id === id);
-    return spec ? (spec.name || "Без імені") : "спеціаліст";
+    return spec ? (spec.name || "Без імені") : "спеціаліст видалений";
   }
 
-  function renderThead(days) {
+  // ---------- Grid rendering ----------
+  function renderThead() {
     const thead = document.getElementById("schedule-thead");
     thead.innerHTML = "<tr>" +
-      '<th class="schedule-col-specialist">Спеціаліст</th>' +
-      days.map((day) => '<th class="schedule-day-th' + (day.isToday ? " schedule-day-th--today" : "") + '">' +
-        '<div class="schedule-day-th__inner">' +
-        '<span class="schedule-day-th__date">' + day.dateLabel + "</span>" +
-        '<span class="schedule-day-th__weekday">' + day.label + "</span>" +
-        "</div></th>").join("") +
+      '<th class="schedule-col-time">Час</th>' +
+      board.rooms.map((r) =>
+        '<th class="schedule-room-th schedule-cell--' + r.color + '">' + escapeHtml(r.name) + "</th>"
+      ).join("") +
       "</tr>";
   }
 
-  function cellSelectHtml(row, day) {
-    const key = cellKey(row.id, day.iso);
-    const roomId = board.cells[key] || "";
-    const room = board.rooms.find((r) => r.id === roomId) || null;
-    const colorClass = room ? "schedule-cell--" + room.color : "";
-    const options = '<option value="">—</option>' + board.rooms.map((r) =>
-      '<option value="' + r.id + '"' + (r.id === roomId ? " selected" : "") + ">" + escapeHtml(r.name) + "</option>"
-    ).join("");
-    return '<td class="' + colorClass + '">' +
-      '<select class="schedule-cell-select" data-cell="' + key + '" data-empty="' + (roomId ? "false" : "true") + '" aria-label="Зал: ' + escapeHtml(specialistName(row.specialistId)) + ", " + day.label + " " + day.dateLabel + '">' +
-      options + "</select></td>";
+  function slotCellHtml(room, hour, dateIso) {
+    const key = cellKey(room.id, dateIso, hour);
+    const entry = board.cells[key];
+    const colorClass = entry ? "schedule-cell--" + room.color : "";
+    const label = hourLabel(hour);
+    const inner = entry
+      ? '<span class="schedule-slot-specialist">' + escapeHtml(specialistName(entry.specialistId)) + "</span>" +
+        '<span class="schedule-slot-child">' + escapeHtml(entry.childName || "") + "</span>"
+      : '<span class="schedule-slot-add" aria-hidden="true">+</span>';
+    const ariaLabel = room.name + ", " + label +
+      (entry ? ": " + specialistName(entry.specialistId) + ", " + (entry.childName || "") : ": вільно");
+    return '<td class="schedule-slot-cell ' + colorClass + '">' +
+      '<button type="button" class="schedule-slot-btn" data-cell="' + key + '" data-room="' + room.id +
+      '" data-hour="' + hour + '" aria-label="' + escapeHtml(ariaLabel) + '">' + inner + "</button></td>";
   }
 
-  // The row's own specialist dropdown — picks from the saved roster
-  // (board.specialists), independent of which row this is.
-  function rowSpecialistSelectHtml(row) {
-    const options = '<option value="">— оберіть спеціаліста —</option>' + board.specialists.map((s) =>
-      '<option value="' + s.id + '"' + (s.id === row.specialistId ? " selected" : "") + ">" + escapeHtml(s.name || "Без імені") + "</option>"
-    ).join("");
-    return '<select class="schedule-row-specialist-select" data-row-specialist="' + row.id + '" aria-label="Спеціаліст у цьому рядку">' + options + "</select>";
-  }
-
-  function rowHtml(row, days) {
-    const cells = days.map((day) => cellSelectHtml(row, day)).join("");
-    return '<tr data-row="' + row.id + '">' +
-      '<td class="schedule-col-specialist"><div class="schedule-row-header">' +
-      rowSpecialistSelectHtml(row) +
-      '<button type="button" class="schedule-remove-btn" data-remove-row="' + row.id + '" title="Видалити рядок" aria-label="Видалити рядок">×</button>' +
-      "</div></td>" + cells + "</tr>";
-  }
-
-  function renderTbody(days) {
+  function renderTbody(dateIso) {
     const tbody = document.getElementById("schedule-tbody");
-    if (!board.rows.length) {
-      const span = 1 + days.length;
-      tbody.innerHTML = '<tr><td colspan="' + span + '" class="schedule-empty-hint">' +
-        "Ще немає жодного рядка. Натисніть «Додати спеціаліста» вище." + "</td></tr>";
+    if (!board.rooms.length) {
+      tbody.innerHTML = '<tr><td class="anketa-table-empty">Ще немає жодного залу. Натисніть «Управління» → «Додати зал».</td></tr>';
       return;
     }
-    tbody.innerHTML = board.rows.map((row) => rowHtml(row, days)).join("");
+    tbody.innerHTML = HOURS.map((h) =>
+      '<tr><td class="schedule-col-time">' + hourLabel(h) + "</td>" +
+      board.rooms.map((room) => slotCellHtml(room, h, dateIso)).join("") + "</tr>"
+    ).join("");
   }
 
-  // Rebuilds the toolbar's room-management <option> list, keeping it
-  // pointed at managedRoomId. Only called after rooms are added/removed —
-  // renaming updates existing <option> text in place instead (see
-  // wireEvents' room-name-input listener) so nothing loses focus
-  // mid-keystroke.
   function populateRoomSelect() {
     const select = document.getElementById("room-select");
     select.innerHTML = board.rooms.map((r) =>
@@ -314,10 +281,6 @@
     document.getElementById("room-name-input").value = room ? room.name : "";
   }
 
-  // Called after any add/remove of a room: makes sure managedRoomId still
-  // points at a real room (falling back to the first one), then
-  // refreshes the toolbar controls and the table (cell dropdowns need
-  // their <option> list rebuilt whenever the room list changes).
   function syncRoomControls() {
     if (!board.rooms.some((r) => r.id === managedRoomId)) {
       managedRoomId = board.rooms.length ? board.rooms[0].id : null;
@@ -327,8 +290,6 @@
     render();
   }
 
-  // Mirrors populateRoomSelect()/updateRoomNameField() for the
-  // specialists toolbar group.
   function populateSpecialistSelect() {
     const select = document.getElementById("specialist-select");
     select.innerHTML = board.specialists.map((s) =>
@@ -341,81 +302,38 @@
     document.getElementById("specialist-name-input").value = spec ? spec.name : "";
   }
 
-  // Mirrors syncRoomControls(): called after add/remove of a specialist.
   function syncSpecialistControls() {
     if (!board.specialists.some((s) => s.id === managedSpecialistId)) {
       managedSpecialistId = board.specialists.length ? board.specialists[0].id : null;
     }
     populateSpecialistSelect();
     updateSpecialistNameField();
-    render();
+    render(); // slot labels show specialist names — refresh them too
   }
 
-  function updateWeekControls() {
-    document.getElementById("week-label").textContent = formatWeekRange(weekStart);
+  function updateDayControls() {
+    document.getElementById("day-label").textContent = formatDayLabel(currentDate);
     const dateInput = document.getElementById("calendar-date-input");
-    if (dateInput) dateInput.value = toISODate(weekStart);
+    if (dateInput) dateInput.value = toISODate(currentDate);
   }
 
-  function goToWeek(newWeekStart) {
-    weekStart = newWeekStart;
-    updateWeekControls();
+  function goToDay(newDate) {
+    currentDate = newDate;
+    updateDayControls();
     render();
   }
 
   function render() {
-    currentWeekDays = getWeekDays(weekStart);
-    renderThead(currentWeekDays);
-    renderTbody(currentWeekDays);
+    renderThead();
+    renderTbody(toISODate(currentDate));
   }
 
-  // Adds a new saved specialist to the roster *and* a table row already
-  // pointing at them — the common case (someone new joins) still takes
-  // one click. The row can be reassigned to a different saved specialist
-  // later via its own dropdown, or removed independently of the roster.
-  function addSpecialist() {
-    const spec = { id: uid(), name: "" };
-    board.specialists.push(spec);
-    board.rows.push({ id: uid(), specialistId: spec.id });
-    managedSpecialistId = spec.id;
-    syncSpecialistControls();
-    flushSave();
-    document.getElementById("specialist-name-input").focus();
-  }
-
-  // Removes a specialist from the saved roster. Rows that pointed at
-  // them become unassigned ("— оберіть спеціаліста —") rather than being
-  // deleted, so their room schedule isn't lost — reassign or remove the
-  // row separately if it's no longer needed.
-  function removeSpecialist(id) {
-    if (!id) return;
-    const spec = board.specialists.find((s) => s.id === id);
-    if (!spec) return;
-    const confirmed = window.confirm(
-      "Видалити спеціаліста" + (spec.name ? " «" + spec.name + "»" : "") + " зі списку? Рядки з ним стануть непризначеними (дані розкладу збережуться)."
-    );
-    if (!confirmed) return;
-    board.specialists = board.specialists.filter((s) => s.id !== id);
-    board.rows.forEach((r) => { if (r.specialistId === id) r.specialistId = null; });
-    syncSpecialistControls();
-    flushSave();
-  }
-
-  function removeRow(id) {
-    if (!id) return;
-    const confirmed = window.confirm("Видалити цей рядок розкладу разом з усіма призначеннями в ньому?");
-    if (!confirmed) return;
-    board.rows = board.rows.filter((r) => r.id !== id);
-    Object.keys(board.cells).forEach((key) => { if (key.startsWith(id + "|")) delete board.cells[key]; });
-    render();
-    flushSave();
-  }
-
+  // ---------- Rooms ----------
   function addRoom() {
     const color = ROOM_COLORS[board.rooms.length % ROOM_COLORS.length];
     const room = { id: uid(), name: "Зал " + (board.rooms.length + 1), color };
     board.rooms.push(room);
-    managedRoomId = room.id; // jump the toolbar straight to the newly added room
+    managedRoomId = room.id;
     syncRoomControls();
     flushSave();
   }
@@ -428,21 +346,163 @@
     }
     const room = board.rooms.find((r) => r.id === id);
     if (!room) return;
-    const confirmed = window.confirm('Видалити зал «' + room.name + '»? Усі призначення на нього також буде очищено.');
+    const confirmed = window.confirm('Видалити зал «' + room.name + '»? Усі записи в ньому також буде очищено.');
     if (!confirmed) return;
     board.rooms = board.rooms.filter((r) => r.id !== id);
-    Object.keys(board.cells).forEach((key) => { if (board.cells[key] === id) delete board.cells[key]; });
+    Object.keys(board.cells).forEach((key) => { if (key.startsWith(id + "|")) delete board.cells[key]; });
     syncRoomControls();
     flushSave();
+  }
+
+  // ---------- Specialists ----------
+  function addSpecialist() {
+    const spec = { id: uid(), name: "" };
+    board.specialists.push(spec);
+    managedSpecialistId = spec.id;
+    syncSpecialistControls();
+    flushSave();
+    document.getElementById("specialist-name-input").focus();
+  }
+
+  // Removes a specialist from the saved roster. Slots that had them
+  // assigned keep their child but lose the specialist ("Без спеціаліста")
+  // rather than being cleared outright — the booking itself isn't lost.
+  function removeSpecialist(id) {
+    if (!id) return;
+    const spec = board.specialists.find((s) => s.id === id);
+    if (!spec) return;
+    const confirmed = window.confirm(
+      "Видалити спеціаліста" + (spec.name ? " «" + spec.name + "»" : "") + " зі списку? У записах розкладу він стане «Без спеціаліста» (сама клітинка збережеться)."
+    );
+    if (!confirmed) return;
+    board.specialists = board.specialists.filter((s) => s.id !== id);
+    Object.values(board.cells).forEach((entry) => { if (entry.specialistId === id) entry.specialistId = null; });
+    syncSpecialistControls();
+    flushSave();
+  }
+
+  // ---------- Child autocomplete (search-only, no free text) ----------
+  function childResultsEl() { return document.getElementById("cell-child-results"); }
+
+  function hideChildResults() {
+    const el = childResultsEl();
+    el.hidden = true;
+    el.innerHTML = "";
+  }
+
+  async function searchAnketas(query) {
+    const { data, error } = await window.sbClient
+      .from("anketas")
+      .select("id, child_full_name")
+      .ilike("child_full_name", "%" + query + "%")
+      .order("child_full_name")
+      .limit(8);
+    if (error) return [];
+    return data || [];
+  }
+
+  function renderChildResults(results) {
+    const el = childResultsEl();
+    if (!results.length) {
+      el.innerHTML = '<div class="schedule-child-results__empty">Нікого не знайдено — переконайтесь, що анкета дитини вже додана.</div>';
+      el.hidden = false;
+      return;
+    }
+    el.innerHTML = results.map((r) =>
+      '<button type="button" class="schedule-child-results__item" data-anketa-id="' + r.id +
+      '" data-child-name="' + escapeHtml(r.child_full_name || "") + '">' + escapeHtml(r.child_full_name || "(без імені)") + "</button>"
+    ).join("");
+    el.hidden = false;
+  }
+
+  function onChildInput(e) {
+    // Any manual edit invalidates a previous selection — must re-pick
+    // from the list, never save arbitrary typed text as the child.
+    selectedAnketaId = null;
+    selectedChildName = "";
+    const query = e.target.value.trim();
+    clearTimeout(childSearchTimer);
+    if (query.length < CHILD_SEARCH_MIN_LEN) { hideChildResults(); return; }
+    const token = ++childSearchToken;
+    childSearchTimer = setTimeout(async () => {
+      const results = await searchAnketas(query);
+      if (token !== childSearchToken) return; // a newer search superseded this one
+      renderChildResults(results);
+    }, CHILD_SEARCH_DEBOUNCE_MS);
+  }
+
+  function onChildResultsClick(e) {
+    const btn = e.target.closest("[data-anketa-id]");
+    if (!btn) return;
+    selectedAnketaId = btn.getAttribute("data-anketa-id");
+    selectedChildName = btn.getAttribute("data-child-name") || "";
+    document.getElementById("cell-child-input").value = selectedChildName;
+    hideChildResults();
+  }
+
+  // ---------- Cell (slot) modal ----------
+  function populateCellSpecialistSelect(currentId) {
+    const select = document.getElementById("cell-specialist-select");
+    select.innerHTML = '<option value="">— оберіть спеціаліста —</option>' + board.specialists.map((s) =>
+      '<option value="' + s.id + '"' + (s.id === currentId ? " selected" : "") + ">" + escapeHtml(s.name || "Без імені") + "</option>"
+    ).join("");
+  }
+
+  function openCellModal(room, hour) {
+    const dateIso = toISODate(currentDate);
+    editingKey = cellKey(room.id, dateIso, hour);
+    editingRoomId = room.id;
+    editingHour = hour;
+
+    const entry = board.cells[editingKey] || null;
+    selectedAnketaId = entry ? entry.anketaId : null;
+    selectedChildName = entry ? (entry.childName || "") : "";
+
+    document.getElementById("cell-modal-title").textContent = room.name + " · " + hourLabel(hour);
+    document.getElementById("cell-modal-meta").textContent = formatDayLabel(currentDate);
+    populateCellSpecialistSelect(entry ? entry.specialistId : null);
+    document.getElementById("cell-child-input").value = selectedChildName;
+    hideChildResults();
+    document.getElementById("cell-clear-btn").hidden = !entry;
+
+    document.getElementById("cell-modal-overlay").hidden = false;
+    document.getElementById("cell-child-input").focus();
+  }
+
+  function closeCellModal() {
+    document.getElementById("cell-modal-overlay").hidden = true;
+    editingKey = null;
+    editingRoomId = null;
+    editingHour = null;
+    selectedAnketaId = null;
+    selectedChildName = "";
+    hideChildResults();
+  }
+
+  function saveCellFromModal() {
+    if (!editingKey) return;
+    const specialistId = document.getElementById("cell-specialist-select").value || null;
+    if (!specialistId || !selectedAnketaId) {
+      window.alert("Оберіть спеціаліста і дитину зі списку (дитину — саме зі списку підказок, не просто текстом).");
+      return;
+    }
+    board.cells[editingKey] = { specialistId, anketaId: selectedAnketaId, childName: selectedChildName };
+    render();
+    flushSave();
+    closeCellModal();
+  }
+
+  function clearCellFromModal() {
+    if (!editingKey) return;
+    delete board.cells[editingKey];
+    render();
+    flushSave();
+    closeCellModal();
   }
 
   function wireEvents() {
     const table = document.getElementById("schedule-table");
 
-    // The "Керування залом"/"Керування спеціалістом" groups are tucked
-    // behind this toggle by default — they're edited rarely compared to
-    // just picking rooms in the grid, so keeping them collapsed keeps
-    // the toolbar from looking cluttered.
     document.getElementById("toggle-management-btn").addEventListener("click", () => {
       const btn = document.getElementById("toggle-management-btn");
       const panel = document.getElementById("management-panel");
@@ -451,61 +511,29 @@
       btn.setAttribute("aria-expanded", String(!expanded));
     });
 
-    document.getElementById("prev-week-btn").addEventListener("click", () => goToWeek(addDays(weekStart, -7)));
-    document.getElementById("next-week-btn").addEventListener("click", () => goToWeek(addDays(weekStart, 7)));
+    document.getElementById("prev-day-btn").addEventListener("click", () => goToDay(addDays(currentDate, -1)));
+    document.getElementById("next-day-btn").addEventListener("click", () => goToDay(addDays(currentDate, 1)));
+    document.getElementById("today-btn").addEventListener("click", () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      goToDay(today);
+    });
 
-    // A real <input type="date"> gives us a full native calendar picker
-    // for free — the button just opens it instead of showing the input
-    // itself (see .schedule-calendar-input in schedule.css).
     document.getElementById("open-calendar-btn").addEventListener("click", () => {
       const input = document.getElementById("calendar-date-input");
       try { input.showPicker(); } catch (e) { input.focus(); input.click(); }
     });
     document.getElementById("calendar-date-input").addEventListener("change", (e) => {
       if (!e.target.value) return;
-      goToWeek(startOfWeek(parseISODate(e.target.value)));
-    });
-
-    // Room cells and each row's specialist dropdown are both rebuilt on
-    // every render() — handled via delegation on the table rather than
-    // per-element listeners that would be lost on the next render.
-    table.addEventListener("change", (e) => {
-      const cellSelect = e.target.closest("[data-cell]");
-      if (cellSelect) {
-        const key = cellSelect.getAttribute("data-cell");
-        const roomId = cellSelect.value;
-        if (roomId) board.cells[key] = roomId; else delete board.cells[key];
-
-        // Update just this cell's tint in place instead of a full
-        // render() — keeps scroll position and avoids rebuilding every
-        // other select.
-        const room = board.rooms.find((r) => r.id === roomId) || null;
-        const td = cellSelect.closest("td");
-        td.className = room ? "schedule-cell--" + room.color : "";
-        cellSelect.dataset.empty = String(!roomId);
-
-        flushSave();
-        return;
-      }
-
-      const rowSelect = e.target.closest("[data-row-specialist]");
-      if (rowSelect) {
-        const row = board.rows.find((r) => r.id === rowSelect.getAttribute("data-row-specialist"));
-        if (!row) return;
-        row.specialistId = rowSelect.value || null;
-        // Keep that row's day-cell aria-labels (which name the current
-        // specialist) accurate without a full re-render.
-        table.querySelectorAll('tr[data-row="' + row.id + '"] [data-cell]').forEach((sel, i) => {
-          const day = currentWeekDays[i];
-          sel.setAttribute("aria-label", "Зал: " + specialistName(row.specialistId) + ", " + (day ? day.label + " " + day.dateLabel : ""));
-        });
-        flushSave();
-      }
+      goToDay(parseISODate(e.target.value));
     });
 
     table.addEventListener("click", (e) => {
-      const removeBtn = e.target.closest("[data-remove-row]");
-      if (removeBtn) removeRow(removeBtn.getAttribute("data-remove-row"));
+      const btn = e.target.closest("[data-cell]");
+      if (!btn) return;
+      const room = board.rooms.find((r) => r.id === btn.getAttribute("data-room"));
+      if (!room) return;
+      openCellModal(room, Number(btn.getAttribute("data-hour")));
     });
 
     document.getElementById("add-room-btn").addEventListener("click", addRoom);
@@ -516,16 +544,16 @@
       updateRoomNameField();
     });
 
-    // Renaming updates every matching <option> in place — the toolbar's
-    // own select plus that room's option inside every specialist × day
-    // cell dropdown — instead of going through populateRoomSelect() /
-    // render(), so nothing loses focus mid-keystroke.
     const roomNameInput = document.getElementById("room-name-input");
     roomNameInput.addEventListener("input", (e) => {
       const room = getManagedRoom();
       if (!room) return;
       room.name = e.target.value;
-      document.querySelectorAll('option[value="' + room.id + '"]').forEach((opt) => { opt.textContent = room.name; });
+      document.querySelectorAll('#room-select option[value="' + room.id + '"]').forEach((opt) => { opt.textContent = room.name; });
+      // Room names live only in <th> text (several rooms can share a
+      // color, so there's no unique selector to patch in place) — a
+      // thead-only re-render is cheap and keeps focus in the input.
+      renderThead();
       scheduleSave();
     });
     roomNameInput.addEventListener("focusout", flushSave);
@@ -538,29 +566,39 @@
       updateSpecialistNameField();
     });
 
-    // Renaming updates the toolbar's own <option> plus that specialist's
-    // <option> inside every row's dropdown (there can be several, or
-    // zero) instead of going through populateSpecialistSelect() /
-    // render(), so nothing loses focus mid-keystroke.
     const specialistNameInput = document.getElementById("specialist-name-input");
     specialistNameInput.addEventListener("input", (e) => {
       const spec = getManagedSpecialist();
       if (!spec) return;
       spec.name = e.target.value;
       const label = spec.name || "Без імені";
-      document.querySelectorAll(
-        '#specialist-select option[value="' + spec.id + '"], [data-row-specialist] option[value="' + spec.id + '"]'
-      ).forEach((opt) => { opt.textContent = label; });
+      document.querySelectorAll('#specialist-select option[value="' + spec.id + '"]').forEach((opt) => { opt.textContent = label; });
+      // Slot buttons show the specialist's name in already-rendered cells
+      // — cheapest correct way to keep those in sync while typing is a
+      // full render() rather than hunting down every matching cell.
+      render();
       scheduleSave();
     });
     specialistNameInput.addEventListener("focusout", flushSave);
+
+    // ---------- Cell modal ----------
+    const cellOverlay = document.getElementById("cell-modal-overlay");
+    document.getElementById("cell-modal-close").addEventListener("click", closeCellModal);
+    cellOverlay.addEventListener("click", (e) => { if (e.target === cellOverlay) closeCellModal(); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !cellOverlay.hidden) closeCellModal();
+    });
+    document.getElementById("cell-save-btn").addEventListener("click", saveCellFromModal);
+    document.getElementById("cell-clear-btn").addEventListener("click", clearCellFromModal);
+    document.getElementById("cell-child-input").addEventListener("input", onChildInput);
+    document.getElementById("cell-child-results").addEventListener("click", onChildResultsClick);
   }
 
   window.ScheduleBoard = {
     async init(profileId) {
       currentProfileId = profileId;
       wireEvents();
-      updateWeekControls();
+      updateDayControls();
       board = await loadBoard();
       managedRoomId = board.rooms.length ? board.rooms[0].id : null;
       managedSpecialistId = board.specialists.length ? board.specialists[0].id : null;

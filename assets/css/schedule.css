@@ -1,11 +1,11 @@
 /* Schedule board (admin/schedule.html) — built on top of anketa.css's
-   shell/topbar/table primitives (.anketa-shell, .anketa-table, ...), same
-   pattern anketa.css itself follows on top of styles.css. Rooms and
-   specialists are both flat lists managed from the toolbar (add/rename/
-   delete); the table itself is specialists × days, with each cell its
-   own room dropdown tinted with whichever room is currently picked in
-   it. Scoped to .schedule-* classes so nothing here leaks into the rest
-   of the admin panel. */
+   shell/topbar/table/modal primitives (.anketa-shell, .anketa-table,
+   .anketa-modal, ...), same pattern anketa.css itself follows on top of
+   styles.css. One working day (08:00–19:00) at a time: rooms are the
+   table's columns (all visible together), hours are the rows. Clicking a
+   cell opens a modal to assign a specialist + a child (picked from the
+   existing anketas via search). Scoped to .schedule-* classes so nothing
+   here leaks into the rest of the admin panel. */
 
 .schedule-main {
   max-width: none;
@@ -99,7 +99,7 @@
 .schedule-save-status[data-state="saved"] { color: var(--color-sage-deep); }
 .schedule-save-status[data-state="error"] { color: var(--color-destructive); }
 
-/* ---------- Week navigation ---------- */
+/* ---------- Day navigation ---------- */
 .schedule-week-nav {
   display: flex;
   align-items: center;
@@ -128,7 +128,7 @@
 }
 
 .schedule-week-nav__label {
-  min-width: 190px;
+  min-width: 240px;
   font-weight: 700;
   color: var(--color-ink);
   font-size: .95rem;
@@ -154,41 +154,9 @@
   pointer-events: none;
 }
 
-/* ---------- Two-line day header (date + weekday) ---------- */
-.schedule-day-th__inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: .2rem;
-}
-.schedule-day-th__date {
-  font-size: .82rem;
-  font-weight: 800;
-  color: #FFFFFF;
-  line-height: 1;
-}
-.schedule-day-th__weekday {
-  font-size: .68rem;
-  color: rgba(255, 255, 255, .68);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-}
-/* Today's column gets a little bright "pill" around the date instead of
-   changing the whole cell's background — reads as a marker, not just a
-   different shade in an already-dark header row. */
-.schedule-day-th--today .schedule-day-th__date {
-  display: inline-block;
-  background: var(--color-apricot);
-  color: #3A1F00;
-  padding: .1rem .55rem;
-  border-radius: 999px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
-}
-
-/* The board can get wide (days × rooms) — scroll horizontally instead of
-   squeezing every column, and let the specialist column stay pinned so
-   you always know which row you're looking at. */
+/* The board can get wide (rooms × hours) — scroll horizontally instead
+   of squeezing every column, and let the time column stay pinned so you
+   always know which hour you're looking at. */
 .schedule-table-wrap {
   overflow-x: auto;
 }
@@ -210,182 +178,174 @@
 .schedule-table th:last-child,
 .schedule-table td:last-child { border-right: none; }
 
-/* Same teal → indigo → fuchsia idea as before (still a three-hue blend
-   so it doesn't match any single room color) but desaturated into a
-   dustier, matte version — the earlier fully-saturated stops were too
-   punchy to stare at for a whole shift. Fixed, theme-independent
-   colors, same reasoning as the room hex values below: it needs to stay
-   put in both the light and cosmic themes since the room palette is
-   fixed too. */
 .schedule-table thead th {
   text-align: center;
   font-weight: 700;
-  font-size: .78rem;
-  letter-spacing: .04em;
-  color: #FFFFFF;
-  background: linear-gradient(120deg, #3E8E8B, #5B5EA6, #A6559C);
-  border-bottom: 3px solid var(--color-apricot);
-  border-right-color: rgba(255, 255, 255, .14);
-  padding: .6rem .5rem;
+  font-size: .85rem;
+  letter-spacing: .02em;
+  padding: .65rem .6rem;
 }
 
-.schedule-day-th {
-  position: relative;
-  padding: .55rem .5rem !important;
-}
-
-/* First column: specialist names, pinned while the rest scrolls. The
-   header cell gets a solid (non-gradient) fill — it's sticky, so a
-   gradient sliding under it while the table scrolls would look broken —
-   one shade deeper than the row gradient so it still reads as the
-   "anchor" corner of the header. */
-.schedule-col-specialist {
+/* First column: hour labels, pinned while the rest scrolls. */
+.schedule-col-time {
   position: sticky;
   left: 0;
   z-index: 2;
-  min-width: 190px;
-  text-align: left !important;
-}
-th.schedule-col-specialist {
-  /* The indigo midpoint of the day headers' gradient, as a solid fill —
-     a gradient here would slide oddly under it while the column stays
-     pinned during horizontal scroll. */
-  background: #5B5EA6;
-  color: #FFFFFF;
-}
-td.schedule-col-specialist {
+  min-width: 118px;
+  text-align: center !important;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--color-ink-soft);
   background: var(--color-surface);
-  z-index: 1;
 }
-/* Faint zebra striping on just this column (room cells already carry
-   their own tint, so striping there would fight it) — enough rhythm to
-   make a long roster easier to scan down. */
-.schedule-table tbody tr:nth-child(even) td.schedule-col-specialist {
+th.schedule-col-time {
+  background: #3E3E5E;
+  color: #FFFFFF;
+  z-index: 3;
+}
+.schedule-table tbody tr:nth-child(even) td.schedule-col-time {
   background: color-mix(in srgb, var(--color-surface-alt) 55%, var(--color-surface));
 }
-.schedule-table tbody tr:hover td.schedule-col-specialist { background: var(--color-surface-alt); }
 
-/* First cell of each row: a dropdown over the saved specialists roster
-   (managed from the toolbar's "Керування спеціалістом" group) plus a
-   small button to delete the row itself. */
-.schedule-row-header {
-  display: flex;
-  align-items: center;
-  gap: .35rem;
-  padding: .35rem .5rem .35rem .75rem;
-}
-
-.schedule-row-specialist-select {
-  flex: 1;
-  min-width: 0;
-  padding: .35rem .4rem;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--color-ink);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-.schedule-row-specialist-select:focus {
-  outline: none;
-  background: var(--color-bg);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-sky) 35%, transparent);
-}
-.schedule-row-specialist-select option[value=""] { color: var(--color-ink-faint); }
-
-.schedule-remove-btn {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  color: var(--color-ink-faint);
-  border-radius: 999px;
-  cursor: pointer;
-  line-height: 1;
-  font-size: .95rem;
-}
-.schedule-remove-btn:hover {
-  background: color-mix(in srgb, var(--color-destructive) 14%, transparent);
-  color: var(--color-destructive);
-}
-
-/* ---------- Room tint ----------
+/* ---------- Room columns ----------
    Bold, saturated colors (not the public site's pastel tokens — those
    are deliberately muted for sensory-sensitive visitors, but this table
    is a staff-only tool where the priority is telling rooms apart at a
-   glance from across the screen) so whichever room is picked in a
-   cell's dropdown is unmistakable. Hover switches to a deeper shade of
-   the same hue for extra emphasis. */
-.schedule-cell--yellow { background: #FFD23F; color: #4A3800; }
-.schedule-cell--red { background: #E5484D; color: #4A0A0C; }
-.schedule-cell--blue { background: #2F8FE6; color: #06253F; }
+   glance) so each room's column is unmistakable. Higher specificity than
+   the base "thead th" rule above so the tint always wins. */
+.schedule-table thead th.schedule-room-th.schedule-cell--yellow { background: #FFD23F; color: #4A3800; }
+.schedule-table thead th.schedule-room-th.schedule-cell--red { background: #E5484D; color: #FFFFFF; }
+.schedule-table thead th.schedule-room-th.schedule-cell--blue { background: #2F8FE6; color: #FFFFFF; }
 
-.schedule-table tbody tr:hover td.schedule-cell--yellow { background: #E6B800; color: #3A2C00; }
-.schedule-table tbody tr:hover td.schedule-cell--red { background: #C1272D; color: #FFFFFF; }
-.schedule-table tbody tr:hover td.schedule-cell--blue { background: #1B6FC2; color: #FFFFFF; }
+.schedule-cell--yellow { background: color-mix(in srgb, #FFD23F 30%, var(--color-surface)); }
+.schedule-cell--red { background: color-mix(in srgb, #E5484D 22%, var(--color-surface)); }
+.schedule-cell--blue { background: color-mix(in srgb, #2F8FE6 22%, var(--color-surface)); }
 
-.schedule-cell--yellow .schedule-cell-select,
-.schedule-cell--red .schedule-cell-select,
-.schedule-cell--blue .schedule-cell-select { color: inherit; }
+/* ---------- Slot cells ---------- */
+.schedule-slot-cell { padding: 0 !important; }
 
-.schedule-cell-select {
+.schedule-slot-btn {
   width: 100%;
-  min-width: 100px;
+  min-width: 150px;
+  min-height: 52px;
   border: none;
   background: transparent;
   color: var(--color-ink);
   font: inherit;
-  font-size: .85rem;
-  font-weight: 600;
-  padding: .55rem .5rem;
-  text-align: center;
-  text-align-last: center;
+  padding: .4rem .6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .1rem;
   cursor: pointer;
+  text-align: center;
+  transition: background .15s ease;
 }
-/* Stays transparent on focus/open too — an opaque surface color here
-   would paint right over the room tint on the <td> underneath, so the
-   cell would flash white the moment you click it to pick a room. Just
-   the ring communicates focus; the color underneath never disappears. */
-.schedule-cell-select:focus {
+.schedule-slot-btn:hover { background: color-mix(in srgb, var(--color-ink) 8%, transparent); }
+.schedule-slot-btn:focus-visible {
   outline: none;
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-ink) 55%, transparent);
 }
 
-/* The <option> list is a browser-native popup, not part of normal page
-   layout — its text color only inherits from the <select> reliably once
-   the browser gets around to repainting it, which on some browsers
-   (mostly Chrome/Windows when the OS is in dark mode) doesn't happen on
-   the very first paint. Until then it falls back to a UA dark-mode
-   default: white text on a white popup, unreadable, self-corrects on
-   the first repaint (e.g. a hover) — which is the "white for a second"
-   flash. Setting color/background directly on every <option>, instead
-   of leaving it to inherit from the select, gives the browser an
-   explicit value to paint immediately and removes the race entirely. */
-.schedule-main select option {
-  color: var(--color-ink);
-  background-color: var(--color-surface);
+.schedule-slot-specialist {
+  font-size: .8rem;
+  font-weight: 700;
+  white-space: normal;
+  line-height: 1.15;
 }
-/* Empty ("—") selection reads as a placeholder, not a room name. */
-.schedule-cell-select:invalid,
-.schedule-cell-select[data-empty="true"] {
-  color: var(--color-ink-faint);
-  font-weight: 400;
+.schedule-slot-child {
+  font-size: .76rem;
+  color: var(--color-ink-soft);
+  white-space: normal;
+  line-height: 1.15;
 }
 
-.schedule-empty-hint {
+.schedule-slot-add {
+  font-size: 1.1rem;
+  font-weight: 300;
+  color: var(--color-ink-faint);
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+.schedule-slot-btn:hover .schedule-slot-add,
+.schedule-slot-btn:focus-visible .schedule-slot-add { opacity: 1; }
+
+.anketa-table-empty {
   padding: 2rem 1rem;
   text-align: center;
   color: var(--color-ink-soft);
   font-size: .9rem;
 }
 
+/* ---------- Slot editor modal ---------- */
+.schedule-cell-modal { max-width: 420px; }
+
+/* An <option> popup is browser-native, and some browsers (Chrome/Windows
+   with the OS in dark mode especially) skip inheriting the author color
+   on the very first paint, flashing white-on-white until the next
+   repaint. Setting it directly on every <option> instead of relying on
+   inheritance removes that race — covers the toolbar's room/specialist
+   selects and the slot editor's specialist select alike. */
+.schedule-main select option,
+#cell-specialist-select option {
+  color: var(--color-ink);
+  background-color: var(--color-surface);
+}
+
+.schedule-cell-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: .6rem;
+  margin-top: 1.2rem;
+}
+
+.schedule-child-field { position: relative; }
+.schedule-child-autocomplete { position: relative; }
+
+.schedule-child-results {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 5;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
+}
+
+.schedule-child-results__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: .55rem .8rem;
+  border: none;
+  background: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: .85rem;
+  cursor: pointer;
+}
+.schedule-child-results__item:hover,
+.schedule-child-results__item:focus-visible {
+  background: var(--color-surface-alt);
+  outline: none;
+}
+.schedule-child-results__item + .schedule-child-results__item {
+  border-top: 1px solid var(--color-border);
+}
+
+.schedule-child-results__empty {
+  padding: .6rem .8rem;
+  font-size: .82rem;
+  color: var(--color-ink-faint);
+}
+
 @media (max-width: 640px) {
   .schedule-main { padding-left: .75rem; padding-right: .75rem; }
-  .schedule-col-specialist { min-width: 140px; }
-  .schedule-cell-select { min-width: 84px; font-size: .78rem; }
+  .schedule-col-time { min-width: 90px; font-size: .74rem; }
+  .schedule-slot-btn { min-width: 118px; }
 }
