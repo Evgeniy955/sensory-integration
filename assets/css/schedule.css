@@ -285,6 +285,18 @@ th.schedule-col-time {
 .schedule-slot-btn:hover .schedule-slot-add,
 .schedule-slot-btn:focus-visible .schedule-slot-add { opacity: 1; }
 
+/* A no-show slot keeps its specialist/child text (still useful info)
+   but reads as "didn't happen" via strikethrough + a small red label,
+   rather than losing the booking details entirely. */
+.schedule-slot-text--noshow { text-decoration: line-through; opacity: .7; }
+.schedule-slot-noshow-badge {
+  font-size: .68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--color-destructive);
+}
+
 .anketa-table-empty {
   padding: 2rem 1rem;
   text-align: center;
@@ -305,6 +317,27 @@ th.schedule-col-time {
 #cell-specialist-select option {
   color: var(--color-ink);
   background-color: var(--color-surface);
+}
+
+.schedule-noshow-btn {
+  width: 100%;
+  justify-content: center;
+  margin-top: 1rem;
+  font-weight: 600;
+  border-color: var(--color-destructive);
+  color: var(--color-destructive);
+  background: transparent;
+}
+.schedule-noshow-btn:hover { background: color-mix(in srgb, var(--color-destructive) 12%, transparent); }
+.schedule-noshow-btn--active {
+  background: var(--color-destructive);
+  color: #FFFFFF;
+}
+.schedule-noshow-btn--active:hover { background: var(--color-destructive); filter: brightness(1.08); }
+
+.schedule-noshow-hint {
+  margin: .5rem 0 0 !important;
+  font-size: .78rem !important;
 }
 
 .schedule-cell-modal__actions {

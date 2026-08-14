@@ -317,22 +317,39 @@
 
       const cells = (data && data.data && data.data.cells) || {};
       const today = todayIso();
-      const dates = new Set();
+      // Per date, not per slot: a date only counts as a no-show if every
+      // slot that day was marked as one - if the child had two bookings
+      // the same day and showed up for at least one, the day still
+      // counts as a visit.
+      const dateStatus = {}; // dateIso -> "attended" | "noshow"
       Object.keys(cells).forEach((key) => {
         const parts = key.split("|");
         if (parts.length !== 3) return;
         const [, dateIso] = parts;
         const entry = cells[key];
-        if (entry && entry.anketaId === anketaId && dateIso < today) dates.add(dateIso);
+        if (!entry || entry.anketaId !== anketaId || dateIso >= today) return;
+        if (entry.noShow) {
+          if (dateStatus[dateIso] !== "attended") dateStatus[dateIso] = "noshow";
+        } else {
+          dateStatus[dateIso] = "attended";
+        }
       });
 
-      const sorted = Array.from(dates).sort().reverse();
-      countEl.textContent = "Відвідувань: " + sorted.length;
-      bodyEl.innerHTML = sorted.length
-        ? "<ul class=\"anketa-view-siblings\" style=\"list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:.4rem;\">" +
-          sorted.map((iso) => "<li>" + new Date(iso + "T00:00:00").toLocaleDateString("uk-UA", { day: "2-digit", month: "long", year: "numeric" }) + "</li>").join("") +
-          "</ul>"
+      const formatDate = (iso) => new Date(iso + "T00:00:00").toLocaleDateString("uk-UA", { day: "2-digit", month: "long", year: "numeric" });
+      const listHtml = (dates) => "<ul style=\"list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:.4rem;\">" +
+        dates.map((iso) => "<li>" + formatDate(iso) + "</li>").join("") + "</ul>";
+
+      const attended = Object.keys(dateStatus).filter((d) => dateStatus[d] === "attended").sort().reverse();
+      const noShow = Object.keys(dateStatus).filter((d) => dateStatus[d] === "noshow").sort().reverse();
+
+      countEl.textContent = "Відвідувань: " + attended.length + (noShow.length ? " · Не з'явився: " + noShow.length : "");
+      let html = attended.length
+        ? listHtml(attended)
         : "<p class=\"anketa-modal__hint\" style=\"margin:0;\">Ще немає жодного завершеного заняття за розкладом.</p>";
+      if (noShow.length) {
+        html += "<h3 style=\"margin:1.2rem 0 .4rem;font-size:.9rem;color:var(--color-destructive);\">Не з'явився</h3>" + listHtml(noShow);
+      }
+      bodyEl.innerHTML = html;
     }
 
     document.getElementById("view-modal-attendance-btn").addEventListener("click", (e) => {

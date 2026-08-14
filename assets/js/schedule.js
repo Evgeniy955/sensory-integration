@@ -11,16 +11,19 @@
 //   - board.specialists — the saved roster (managed from "Керування
 //     спеціалістом"), offered as a dropdown when filling a slot.
 //   - board.cells — keyed "roomId|YYYY-MM-DD|HH" (a specific room, date
-//     *and* hour), value { specialistId, anketaId, childName }. Only one
-//     day is shown at a time; `currentDate` (module state, not saved)
-//     tracks which one, moved by the ◀ / ▶ buttons or the calendar
-//     picker.
+//     *and* hour), value { specialistId, anketaId, childName, noShow }.
+//     Only one day is shown at a time; `currentDate` (module state, not
+//     saved) tracks which one, moved by the ◀ / ▶ buttons or the
+//     calendar picker.
 //
 // A slot's child is picked from the existing anketas (parent
 // questionnaires) table via search-as-you-type — never free text — so a
 // schedule entry always points at a real anketa row (anketaId), which is
 // what lets the anketa page compute "visited on these dates" later by
-// scanning this same board.
+// scanning this same board. `noShow` exists because a past slot counts
+// as an attended visit by default (nobody confirms attendance one by
+// one) — marking it lets that same anketa-page count exclude days the
+// child was booked but didn't actually come.
 
 (function () {
   const WEEKDAY_FULL = ["неділя", "понеділок", "вівторок", "середа", "четвер", "п'ятниця", "субота"];
@@ -70,6 +73,7 @@
   let editingHour = null;
   let selectedAnketaId = null;
   let selectedChildName = "";
+  let editingNoShow = false;
   let childSearchTimer = null;
   let childSearchToken = 0; // discards stale async results if a newer search started
 
@@ -167,6 +171,7 @@
           specialistId: value.specialistId ? String(value.specialistId) : null,
           anketaId: value.anketaId ? String(value.anketaId) : null,
           childName: value.childName ? String(value.childName) : "",
+          noShow: !!value.noShow,
         };
       });
     }
@@ -269,12 +274,14 @@
     const specColor = entry ? specialistColor(entry.specialistId) : null;
     const colorClass = entry ? "schedule-specialist--" + (specColor || "none") : "";
     const label = hourLabel(hour);
+    const noShowClass = entry && entry.noShow ? " schedule-slot-text--noshow" : "";
     const inner = entry
-      ? '<span class="schedule-slot-specialist">' + escapeHtml(specialistName(entry.specialistId)) + "</span>" +
-        '<span class="schedule-slot-child">' + escapeHtml(entry.childName || "") + "</span>"
+      ? '<span class="schedule-slot-specialist' + noShowClass + '">' + escapeHtml(specialistName(entry.specialistId)) + "</span>" +
+        '<span class="schedule-slot-child' + noShowClass + '">' + escapeHtml(entry.childName || "") + "</span>" +
+        (entry.noShow ? '<span class="schedule-slot-noshow-badge">не прийшов</span>' : "")
       : '<span class="schedule-slot-add" aria-hidden="true">+</span>';
     const ariaLabel = room.name + ", " + label +
-      (entry ? ": " + specialistName(entry.specialistId) + ", " + (entry.childName || "") : ": вільно");
+      (entry ? ": " + specialistName(entry.specialistId) + ", " + (entry.childName || "") + (entry.noShow ? ", дитина не прийшла" : "") : ": вільно");
     return '<td class="schedule-slot-cell ' + colorClass + '">' +
       '<button type="button" class="schedule-slot-btn" data-cell="' + key + '" data-room="' + room.id +
       '" data-hour="' + hour + '" aria-label="' + escapeHtml(ariaLabel) + '">' + inner + "</button></td>";
@@ -472,6 +479,13 @@
     ).join("");
   }
 
+  function updateNoShowToggleUI() {
+    const btn = document.getElementById("cell-noshow-toggle");
+    btn.setAttribute("aria-pressed", String(editingNoShow));
+    btn.classList.toggle("schedule-noshow-btn--active", editingNoShow);
+    btn.textContent = editingNoShow ? "✕ Дитина не прийшла" : "Позначити «Не прийшов»";
+  }
+
   function openCellModal(room, hour) {
     const dateIso = toISODate(currentDate);
     editingKey = cellKey(room.id, dateIso, hour);
@@ -481,6 +495,7 @@
     const entry = board.cells[editingKey] || null;
     selectedAnketaId = entry ? entry.anketaId : null;
     selectedChildName = entry ? (entry.childName || "") : "";
+    editingNoShow = entry ? !!entry.noShow : false;
 
     document.getElementById("cell-modal-title").textContent = room.name + " · " + hourLabel(hour);
     document.getElementById("cell-modal-meta").textContent = formatDayLabel(currentDate);
@@ -488,6 +503,10 @@
     document.getElementById("cell-child-input").value = selectedChildName;
     hideChildResults();
     document.getElementById("cell-clear-btn").hidden = !entry;
+    // Marking a no-show only makes sense for a slot that already has
+    // someone booked — a brand-new, empty slot has nobody to not show up.
+    document.getElementById("cell-noshow-toggle").hidden = !entry;
+    updateNoShowToggleUI();
 
     document.getElementById("cell-modal-overlay").hidden = false;
     document.getElementById("cell-child-input").focus();
@@ -500,6 +519,7 @@
     editingHour = null;
     selectedAnketaId = null;
     selectedChildName = "";
+    editingNoShow = false;
     hideChildResults();
   }
 
@@ -510,7 +530,7 @@
       window.alert("Оберіть спеціаліста і дитину зі списку (дитину — саме зі списку підказок, не просто текстом).");
       return;
     }
-    board.cells[editingKey] = { specialistId, anketaId: selectedAnketaId, childName: selectedChildName };
+    board.cells[editingKey] = { specialistId, anketaId: selectedAnketaId, childName: selectedChildName, noShow: editingNoShow };
     render();
     flushSave();
     closeCellModal();
@@ -616,6 +636,10 @@
     document.getElementById("cell-clear-btn").addEventListener("click", clearCellFromModal);
     document.getElementById("cell-child-input").addEventListener("input", onChildInput);
     document.getElementById("cell-child-results").addEventListener("click", onChildResultsClick);
+    document.getElementById("cell-noshow-toggle").addEventListener("click", () => {
+      editingNoShow = !editingNoShow;
+      updateNoShowToggleUI();
+    });
   }
 
   window.ScheduleBoard = {
