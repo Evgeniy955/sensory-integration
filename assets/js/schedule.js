@@ -274,9 +274,11 @@
     const specColor = entry ? specialistColor(entry.specialistId) : null;
     const colorClass = entry ? "schedule-specialist--" + (specColor || "none") : "";
     const label = hourLabel(hour);
+    // Only the child's name reads as "didn't happen" — the specialist
+    // still gets paid for a no-show, so their name stays normal.
     const noShowClass = entry && entry.noShow ? " schedule-slot-text--noshow" : "";
     const inner = entry
-      ? '<span class="schedule-slot-specialist' + noShowClass + '">' + escapeHtml(specialistName(entry.specialistId)) + "</span>" +
+      ? '<span class="schedule-slot-specialist">' + escapeHtml(specialistName(entry.specialistId)) + "</span>" +
         '<span class="schedule-slot-child' + noShowClass + '">' + escapeHtml(entry.childName || "") + "</span>" +
         (entry.noShow ? '<span class="schedule-slot-noshow-badge">не прийшов</span>' : "")
       : '<span class="schedule-slot-add" aria-hidden="true">+</span>';
