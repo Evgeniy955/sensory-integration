@@ -226,13 +226,13 @@ th.schedule-col-time {
 
 .schedule-slot-btn {
   width: 100%;
-  min-width: 150px;
-  min-height: 52px;
+  min-width: 168px;
+  min-height: 64px;
   border: none;
   background: transparent;
   color: var(--color-ink);
   font: inherit;
-  padding: .4rem .6rem;
+  padding: .5rem .7rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -249,16 +249,17 @@ th.schedule-col-time {
 }
 
 .schedule-slot-specialist {
-  font-size: .8rem;
+  font-size: .95rem;
   font-weight: 700;
   white-space: normal;
-  line-height: 1.15;
+  line-height: 1.2;
 }
 .schedule-slot-child {
-  font-size: .76rem;
+  font-size: .92rem;
+  font-weight: 600;
   color: var(--color-ink-soft);
   white-space: normal;
-  line-height: 1.15;
+  line-height: 1.2;
 }
 
 .schedule-slot-add {
