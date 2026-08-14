@@ -126,18 +126,53 @@ td.schedule-col-specialist {
 }
 .schedule-table tbody tr:hover td.schedule-col-specialist { background: var(--color-surface-alt); }
 
-/* Specialists are now managed from the toolbar (mirrors "Керування
-   залом"), so this cell is just a label, not an editable field. */
-.schedule-specialist-label {
-  display: block;
-  padding: .55rem .75rem;
-  font-weight: 600;
-  color: var(--color-ink);
+/* First cell of each row: a dropdown over the saved specialists roster
+   (managed from the toolbar's "Керування спеціалістом" group) plus a
+   small button to delete the row itself. */
+.schedule-row-header {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .35rem .5rem .35rem .75rem;
 }
-.schedule-specialist-label[data-empty="true"] {
+
+.schedule-row-specialist-select {
+  flex: 1;
+  min-width: 0;
+  padding: .35rem .4rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.schedule-row-specialist-select:focus {
+  outline: none;
+  background: var(--color-bg);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-sky) 35%, transparent);
+}
+.schedule-row-specialist-select option[value=""] { color: var(--color-ink-faint); }
+
+.schedule-remove-btn {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
   color: var(--color-ink-faint);
-  font-weight: 400;
-  font-style: italic;
+  border-radius: 999px;
+  cursor: pointer;
+  line-height: 1;
+  font-size: .95rem;
+}
+.schedule-remove-btn:hover {
+  background: color-mix(in srgb, var(--color-destructive) 14%, transparent);
+  color: var(--color-destructive);
 }
 
 /* ---------- Room tint ----------

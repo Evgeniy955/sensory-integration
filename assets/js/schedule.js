@@ -2,12 +2,18 @@
 // stored as a single JSONB row in public.schedule_boards (id='main').
 // Loaded after supabase-config.js + admin-auth.js (needs window.sbClient).
 //
-// The whole board — room list, specialist list, and which room (if any)
-// each specialist × day cell is assigned to — lives in one in-memory
-// object (`board`) that's re-rendered top to bottom on every change and
-// pushed to Supabase shortly after. Each cell is its own room dropdown
-// (board.cells["specialistId|dayKey"] = roomId), so any specialist can
-// be in a different room on any given day.
+// The whole board lives in one in-memory object (`board`) that's
+// re-rendered top to bottom on every change and pushed to Supabase
+// shortly after:
+//   - board.specialists — the saved roster (managed from the toolbar,
+//     add/rename/delete), independent of which rows currently exist.
+//   - board.rows — the table's visible rows, each { id, specialistId }.
+//     The first cell of a row is a dropdown over board.specialists, so
+//     which saved specialist sits in a row can be changed at any time
+//     without retyping a name or losing that row's room assignments.
+//   - board.cells — room assignments keyed by "rowId|dayKey" (NOT by
+//     specialist), so a row's schedule survives reassigning it to a
+//     different specialist.
 
 (function () {
   const DAYS = [
@@ -46,8 +52,8 @@
     }[c]));
   }
 
-  function cellKey(specialistId, dayKey) {
-    return specialistId + "|" + dayKey;
+  function cellKey(rowId, dayKey) {
+    return rowId + "|" + dayKey;
   }
 
   function defaultBoard() {
@@ -58,6 +64,7 @@
         { id: uid(), name: "Зал 3", color: "green" },
       ],
       specialists: [],
+      rows: [],
       cells: {},
     };
   }
@@ -77,16 +84,29 @@
   function normalizeBoard(raw) {
     const fallback = defaultBoard();
     if (!raw || typeof raw !== "object") return fallback;
+
     const rooms = Array.isArray(raw.rooms) && raw.rooms.length
       ? raw.rooms.filter((r) => r && r.id && r.name != null).map((r) => ({
           id: String(r.id), name: String(r.name), color: normalizeRoomColor(r.color),
         }))
       : fallback.rooms;
+
     const specialists = Array.isArray(raw.specialists)
       ? raw.specialists.filter((s) => s && s.id).map((s) => ({ id: String(s.id), name: String(s.name || "") }))
       : [];
+
+    // Boards saved before `rows` existed had one row per specialist,
+    // keyed the same way — reuse each specialist's id as its row id so
+    // old board.cells entries ("specialistId|day") still resolve
+    // correctly without a separate migration step.
+    const rows = Array.isArray(raw.rows)
+      ? raw.rows.filter((r) => r && r.id).map((r) => ({
+          id: String(r.id), specialistId: r.specialistId ? String(r.specialistId) : null,
+        }))
+      : specialists.map((s) => ({ id: s.id, specialistId: s.id }));
+
     const cells = (raw.cells && typeof raw.cells === "object") ? raw.cells : {};
-    return { rooms, specialists, cells };
+    return { rooms, specialists, rows, cells };
   }
 
   function setStatus(state, detail) {
@@ -128,8 +148,8 @@
 
   // Typed text edits (renaming a room/specialist) debounce so we don't
   // fire a write per keystroke; discrete actions (add/remove a row,
-  // picking a room in a cell's dropdown) call saveBoard() directly since
-  // those are already one-click, infrequent actions.
+  // picking a room or specialist in a dropdown) call saveBoard() directly
+  // since those are already one-click, infrequent actions.
   function scheduleSave() {
     setStatus("saving");
     clearTimeout(saveTimer);
@@ -144,6 +164,15 @@
     return board.rooms.find((r) => r.id === managedRoomId) || null;
   }
 
+  function getManagedSpecialist() {
+    return board.specialists.find((s) => s.id === managedSpecialistId) || null;
+  }
+
+  function specialistName(id) {
+    const spec = board.specialists.find((s) => s.id === id);
+    return spec ? (spec.name || "Без імені") : "спеціаліст";
+  }
+
   function renderThead() {
     const thead = document.getElementById("schedule-thead");
     thead.innerHTML = "<tr>" +
@@ -152,8 +181,8 @@
       "</tr>";
   }
 
-  function cellSelectHtml(spec, day) {
-    const key = cellKey(spec.id, day.key);
+  function cellSelectHtml(row, day) {
+    const key = cellKey(row.id, day.key);
     const roomId = board.cells[key] || "";
     const room = board.rooms.find((r) => r.id === roomId) || null;
     const colorClass = room ? "schedule-cell--" + room.color : "";
@@ -161,28 +190,37 @@
       '<option value="' + r.id + '"' + (r.id === roomId ? " selected" : "") + ">" + escapeHtml(r.name) + "</option>"
     ).join("");
     return '<td class="' + colorClass + '">' +
-      '<select class="schedule-cell-select" data-cell="' + key + '" data-empty="' + (roomId ? "false" : "true") + '" aria-label="Зал: ' + escapeHtml(spec.name || "спеціаліст") + ", " + day.label + '">' +
+      '<select class="schedule-cell-select" data-cell="' + key + '" data-empty="' + (roomId ? "false" : "true") + '" aria-label="Зал: ' + escapeHtml(specialistName(row.specialistId)) + ", " + day.label + '">' +
       options + "</select></td>";
   }
 
-  function specialistRowHtml(spec) {
-    const cells = DAYS.map((day) => cellSelectHtml(spec, day)).join("");
-    const label = spec.name
-      ? '<span class="schedule-specialist-label">' + escapeHtml(spec.name) + "</span>"
-      : '<span class="schedule-specialist-label" data-empty="true">Без імені</span>';
-    return '<tr data-specialist-row="' + spec.id + '">' +
-      '<td class="schedule-col-specialist">' + label + "</td>" + cells + "</tr>";
+  // The row's own specialist dropdown — picks from the saved roster
+  // (board.specialists), independent of which row this is.
+  function rowSpecialistSelectHtml(row) {
+    const options = '<option value="">— оберіть спеціаліста —</option>' + board.specialists.map((s) =>
+      '<option value="' + s.id + '"' + (s.id === row.specialistId ? " selected" : "") + ">" + escapeHtml(s.name || "Без імені") + "</option>"
+    ).join("");
+    return '<select class="schedule-row-specialist-select" data-row-specialist="' + row.id + '" aria-label="Спеціаліст у цьому рядку">' + options + "</select>";
+  }
+
+  function rowHtml(row) {
+    const cells = DAYS.map((day) => cellSelectHtml(row, day)).join("");
+    return '<tr data-row="' + row.id + '">' +
+      '<td class="schedule-col-specialist"><div class="schedule-row-header">' +
+      rowSpecialistSelectHtml(row) +
+      '<button type="button" class="schedule-remove-btn" data-remove-row="' + row.id + '" title="Видалити рядок" aria-label="Видалити рядок">×</button>' +
+      "</div></td>" + cells + "</tr>";
   }
 
   function renderTbody() {
     const tbody = document.getElementById("schedule-tbody");
-    if (!board.specialists.length) {
+    if (!board.rows.length) {
       const span = 1 + DAYS.length;
       tbody.innerHTML = '<tr><td colspan="' + span + '" class="schedule-empty-hint">' +
-        "Ще немає жодного спеціаліста. Натисніть «Додати спеціаліста» вище." + "</td></tr>";
+        "Ще немає жодного рядка. Натисніть «Додати спеціаліста» вище." + "</td></tr>";
       return;
     }
-    tbody.innerHTML = board.specialists.map(specialistRowHtml).join("");
+    tbody.innerHTML = board.rows.map(rowHtml).join("");
   }
 
   // Rebuilds the toolbar's room-management <option> list, keeping it
@@ -215,10 +253,6 @@
     render();
   }
 
-  function getManagedSpecialist() {
-    return board.specialists.find((s) => s.id === managedSpecialistId) || null;
-  }
-
   // Mirrors populateRoomSelect()/updateRoomNameField() for the
   // specialists toolbar group.
   function populateSpecialistSelect() {
@@ -248,24 +282,45 @@
     renderTbody();
   }
 
+  // Adds a new saved specialist to the roster *and* a table row already
+  // pointing at them — the common case (someone new joins) still takes
+  // one click. The row can be reassigned to a different saved specialist
+  // later via its own dropdown, or removed independently of the roster.
   function addSpecialist() {
     const spec = { id: uid(), name: "" };
     board.specialists.push(spec);
-    managedSpecialistId = spec.id; // jump the toolbar straight to the newly added specialist
+    board.rows.push({ id: uid(), specialistId: spec.id });
+    managedSpecialistId = spec.id;
     syncSpecialistControls();
     flushSave();
     document.getElementById("specialist-name-input").focus();
   }
 
+  // Removes a specialist from the saved roster. Rows that pointed at
+  // them become unassigned ("— оберіть спеціаліста —") rather than being
+  // deleted, so their room schedule isn't lost — reassign or remove the
+  // row separately if it's no longer needed.
   function removeSpecialist(id) {
     if (!id) return;
     const spec = board.specialists.find((s) => s.id === id);
     if (!spec) return;
-    const confirmed = window.confirm("Видалити спеціаліста" + (spec.name ? " «" + spec.name + "»" : "") + " з розкладу?");
+    const confirmed = window.confirm(
+      "Видалити спеціаліста" + (spec.name ? " «" + spec.name + "»" : "") + " зі списку? Рядки з ним стануть непризначеними (дані розкладу збережуться)."
+    );
     if (!confirmed) return;
     board.specialists = board.specialists.filter((s) => s.id !== id);
-    Object.keys(board.cells).forEach((key) => { if (key.startsWith(id + "|")) delete board.cells[key]; });
+    board.rows.forEach((r) => { if (r.specialistId === id) r.specialistId = null; });
     syncSpecialistControls();
+    flushSave();
+  }
+
+  function removeRow(id) {
+    if (!id) return;
+    const confirmed = window.confirm("Видалити цей рядок розкладу разом з усіма призначеннями в ньому?");
+    if (!confirmed) return;
+    board.rows = board.rows.filter((r) => r.id !== id);
+    Object.keys(board.cells).forEach((key) => { if (key.startsWith(id + "|")) delete board.cells[key]; });
+    render();
     flushSave();
   }
 
@@ -297,24 +352,45 @@
   function wireEvents() {
     const table = document.getElementById("schedule-table");
 
-    // Each specialist × day cell is its own room dropdown, rebuilt on
+    // Room cells and each row's specialist dropdown are both rebuilt on
     // every render() — handled via delegation on the table rather than
     // per-element listeners that would be lost on the next render.
     table.addEventListener("change", (e) => {
       const cellSelect = e.target.closest("[data-cell]");
-      if (!cellSelect) return;
-      const key = cellSelect.getAttribute("data-cell");
-      const roomId = cellSelect.value;
-      if (roomId) board.cells[key] = roomId; else delete board.cells[key];
+      if (cellSelect) {
+        const key = cellSelect.getAttribute("data-cell");
+        const roomId = cellSelect.value;
+        if (roomId) board.cells[key] = roomId; else delete board.cells[key];
 
-      // Update just this cell's tint in place instead of a full render()
-      // — keeps scroll position and avoids rebuilding every other select.
-      const room = board.rooms.find((r) => r.id === roomId) || null;
-      const td = cellSelect.closest("td");
-      td.className = room ? "schedule-cell--" + room.color : "";
-      cellSelect.dataset.empty = String(!roomId);
+        // Update just this cell's tint in place instead of a full
+        // render() — keeps scroll position and avoids rebuilding every
+        // other select.
+        const room = board.rooms.find((r) => r.id === roomId) || null;
+        const td = cellSelect.closest("td");
+        td.className = room ? "schedule-cell--" + room.color : "";
+        cellSelect.dataset.empty = String(!roomId);
 
-      flushSave();
+        flushSave();
+        return;
+      }
+
+      const rowSelect = e.target.closest("[data-row-specialist]");
+      if (rowSelect) {
+        const row = board.rows.find((r) => r.id === rowSelect.getAttribute("data-row-specialist"));
+        if (!row) return;
+        row.specialistId = rowSelect.value || null;
+        // Keep that row's day-cell aria-labels (which name the current
+        // specialist) accurate without a full re-render.
+        table.querySelectorAll('tr[data-row="' + row.id + '"] [data-cell]').forEach((sel, i) => {
+          sel.setAttribute("aria-label", "Зал: " + specialistName(row.specialistId) + ", " + DAYS[i].label);
+        });
+        flushSave();
+      }
+    });
+
+    table.addEventListener("click", (e) => {
+      const removeBtn = e.target.closest("[data-remove-row]");
+      if (removeBtn) removeRow(removeBtn.getAttribute("data-remove-row"));
     });
 
     document.getElementById("add-room-btn").addEventListener("click", addRoom);
@@ -347,22 +423,19 @@
       updateSpecialistNameField();
     });
 
-    // Renaming updates the toolbar's own <option> and the one matching
-    // row label directly (each specialist has exactly one of each, so no
-    // querySelectorAll needed) instead of calling render(), so the input
-    // doesn't lose focus mid-keystroke.
+    // Renaming updates the toolbar's own <option> plus that specialist's
+    // <option> inside every row's dropdown (there can be several, or
+    // zero) instead of going through populateSpecialistSelect() /
+    // render(), so nothing loses focus mid-keystroke.
     const specialistNameInput = document.getElementById("specialist-name-input");
     specialistNameInput.addEventListener("input", (e) => {
       const spec = getManagedSpecialist();
       if (!spec) return;
       spec.name = e.target.value;
-      const option = document.querySelector('#specialist-select option[value="' + spec.id + '"]');
-      if (option) option.textContent = spec.name || "Без імені";
-      const row = document.querySelector('tr[data-specialist-row="' + spec.id + '"] .schedule-specialist-label');
-      if (row) {
-        row.textContent = spec.name || "Без імені";
-        row.dataset.empty = String(!spec.name);
-      }
+      const label = spec.name || "Без імені";
+      document.querySelectorAll(
+        '#specialist-select option[value="' + spec.id + '"], [data-row-specialist] option[value="' + spec.id + '"]'
+      ).forEach((opt) => { opt.textContent = label; });
       scheduleSave();
     });
     specialistNameInput.addEventListener("focusout", flushSave);
