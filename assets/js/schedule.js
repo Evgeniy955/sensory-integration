@@ -120,23 +120,6 @@
     };
   }
 
-  // Maps colors from earlier palette versions (the original pastel
-  // sage/sky/apricot tokens, and the later 5-hue blue/yellow/green/
-  // orange/purple set) onto today's yellow/red/blue palette, so boards
-  // saved under any previous version keep each room reasonably distinct
-  // instead of every unrecognized color collapsing onto the same
-  // fallback.
-  const LEGACY_ROOM_COLORS = {
-    sage: "blue", sky: "blue", apricot: "yellow",
-    green: "blue", orange: "red", purple: "red",
-  };
-
-  function normalizeRoomColor(color) {
-    if (ROOM_COLORS.includes(color)) return color;
-    if (LEGACY_ROOM_COLORS[color]) return LEGACY_ROOM_COLORS[color];
-    return ROOM_COLORS[0];
-  }
-
   // Boards saved before the calendar existed keyed cells as
   // "rowId|mon".."rowId|sat" (a recurring template, no real date). Those
   // get copied onto the matching weekday of the *current* real week —
@@ -166,9 +149,16 @@
     const fallback = defaultBoard();
     if (!raw || typeof raw !== "object") return fallback;
 
+    // Color is always re-derived from a room's position (not whatever was
+    // last saved): there's no manual color picker anywhere in the UI, so
+    // the stored value is only ever a leftover from a previous palette
+    // version. Deriving it fresh here is what actually guarantees every
+    // existing board shows today's yellow/red/blue cycle after a palette
+    // change, instead of silently keeping an old hex that happens to
+    // share a name ("blue") with a color in the new set too.
     const rooms = Array.isArray(raw.rooms) && raw.rooms.length
-      ? raw.rooms.filter((r) => r && r.id && r.name != null).map((r) => ({
-          id: String(r.id), name: String(r.name), color: normalizeRoomColor(r.color),
+      ? raw.rooms.filter((r) => r && r.id && r.name != null).map((r, i) => ({
+          id: String(r.id), name: String(r.name), color: ROOM_COLORS[i % ROOM_COLORS.length],
         }))
       : fallback.rooms;
 
