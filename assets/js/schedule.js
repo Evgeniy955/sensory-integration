@@ -352,6 +352,18 @@
   function wireEvents() {
     const table = document.getElementById("schedule-table");
 
+    // The "Керування залом"/"Керування спеціалістом" groups are tucked
+    // behind this toggle by default — they're edited rarely compared to
+    // just picking rooms in the grid, so keeping them collapsed keeps
+    // the toolbar from looking cluttered.
+    document.getElementById("toggle-management-btn").addEventListener("click", () => {
+      const btn = document.getElementById("toggle-management-btn");
+      const panel = document.getElementById("management-panel");
+      const expanded = btn.getAttribute("aria-expanded") === "true";
+      panel.hidden = expanded;
+      btn.setAttribute("aria-expanded", String(!expanded));
+    });
+
     // Room cells and each row's specialist dropdown are both rebuilt on
     // every render() — handled via delegation on the table rather than
     // per-element listeners that would be lost on the next render.

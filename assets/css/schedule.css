@@ -13,7 +13,35 @@
   padding-right: 1.5rem;
 }
 
-.schedule-toolbar { margin-bottom: 1rem; }
+.schedule-toolbar { margin-bottom: .75rem; }
+
+.schedule-management-toggle {
+  gap: .5rem;
+}
+
+.schedule-management-toggle__chevron {
+  transition: transform .15s ease;
+}
+.schedule-management-toggle[aria-expanded="true"] .schedule-management-toggle__chevron {
+  transform: rotate(180deg);
+}
+
+.schedule-management-panel {
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.25rem;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+}
+/* Same [hidden] cascade trap documented elsewhere in this codebase
+   (anketa.css, admin.css): the unconditional display:flex above
+   outranks the browser's [hidden]{display:none} default at equal
+   specificity, so without this override the panel shows on load
+   regardless of the hidden attribute. */
+.schedule-management-panel[hidden] { display: none; }
 
 .schedule-room-controls {
   display: flex;

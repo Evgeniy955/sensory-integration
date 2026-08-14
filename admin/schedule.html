@@ -56,6 +56,16 @@
       </div>
 
       <div class="anketa-toolbar schedule-toolbar">
+        <button type="button" class="anketa-btn schedule-management-toggle" id="toggle-management-btn" aria-expanded="false" aria-controls="management-panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          Керування
+          <svg class="schedule-management-toggle__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="anketa-toolbar-spacer"></div>
+        <span class="schedule-save-status" id="save-status" data-state="idle">Завантаження…</span>
+      </div>
+
+      <div class="schedule-management-panel" id="management-panel" hidden>
         <div class="schedule-room-controls">
           <label class="schedule-room-controls__label" for="room-select">Керування залом</label>
           <select id="room-select" class="schedule-room-select" aria-label="Зал для перейменування чи видалення"></select>
@@ -83,9 +93,6 @@
             Додати спеціаліста
           </button>
         </div>
-
-        <div class="anketa-toolbar-spacer"></div>
-        <span class="schedule-save-status" id="save-status" data-state="idle">Завантаження…</span>
       </div>
 
       <div class="anketa-table-wrap schedule-table-wrap">
