@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Розклад — Центр сенсорної інтеграції</title>
+<script>
+(function(){
+  try{
+    var saved = localStorage.getItem('siteTheme');
+    var theme = saved === 'light' || saved === 'cosmic'
+      ? saved
+      : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'cosmic' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  }catch(e){ document.documentElement.setAttribute('data-theme','light'); }
+})();
+</script>
+<link rel="stylesheet" href="../assets/css/styles.css">
+<link rel="stylesheet" href="../assets/css/anketa.css">
+<link rel="stylesheet" href="../assets/css/schedule.css">
+</head>
+<body class="anketa-shell schedule-shell">
+  <header class="anketa-topbar">
+    <a class="anketa-topbar__brand" href="dashboard.html">Центр сенсорної інтеграції</a>
+    <div class="anketa-topbar__user">
+      <span id="whoami">перевіряємо доступ...</span>
+      <button type="button" class="theme-toggle" id="themeToggle" aria-label="Перемкнути тему" aria-pressed="false">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+      <a class="anketa-btn" href="dashboard.html">← Назад</a>
+      <button class="anketa-btn" id="logout-btn" type="button">Вийти</button>
+    </div>
+  </header>
+
+  <main class="anketa-main schedule-main">
+    <div data-admin-status></div>
+
+    <div id="schedule-denied" hidden class="anketa-denied">
+      <div class="anketa-denied__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>
+      </div>
+      <h2>Доступ обмежено</h2>
+      <p>Ця сторінка доступна лише ролям Адмін та Супер адмін. Якщо це помилка — зверніться до вашого супер адміна.</p>
+    </div>
+
+    <div id="schedule-content" hidden>
+      <div class="anketa-intro">
+        <span class="anketa-intro__eyebrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>
+          Розклад
+        </span>
+        <h1>Розклад залів</h1>
+        <p>Хто зі спеціалістів і в якому залі працює по днях тижня. Клікніть у будь-яку клітинку, щоб вписати час чи ім'я дитини — зміни зберігаються автоматично.</p>
+      </div>
+
+      <div class="anketa-toolbar schedule-toolbar">
+        <button type="button" class="anketa-btn anketa-btn--primary" id="add-specialist-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Додати спеціаліста
+        </button>
+        <button type="button" class="anketa-btn" id="add-room-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Додати зал
+        </button>
+        <div class="anketa-toolbar-spacer"></div>
+        <span class="schedule-save-status" id="save-status" data-state="idle">Завантаження…</span>
+      </div>
+
+      <div class="anketa-table-wrap schedule-table-wrap">
+        <table class="anketa-table schedule-table" id="schedule-table">
+          <thead id="schedule-thead"></thead>
+          <tbody id="schedule-tbody">
+            <tr><td class="anketa-table-empty">Завантаження…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/supabase-config.js"></script>
+  <script src="../assets/js/admin-auth.js"></script>
+  <script>
+    // Theme toggle (light / cosmic) — same pattern as anketa.html.
+    (function () {
+      var THEME_KEY = "siteTheme";
+      var themeToggle = document.getElementById("themeToggle");
+      if (!themeToggle) return;
+      var applyTheme = function (theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        themeToggle.setAttribute("aria-pressed", String(theme === "cosmic"));
+        try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* storage unavailable */ }
+      };
+      var current = document.documentElement.getAttribute("data-theme") === "cosmic" ? "cosmic" : "light";
+      themeToggle.setAttribute("aria-pressed", String(current === "cosmic"));
+      themeToggle.addEventListener("click", function () {
+        var active = document.documentElement.getAttribute("data-theme") === "cosmic" ? "cosmic" : "light";
+        applyTheme(active === "cosmic" ? "light" : "cosmic");
+      });
+    })();
+  </script>
+  <script src="../assets/js/schedule.js"></script>
+  <script>
+    (async function () {
+      const AUTH_TIMEOUT_MS = 8000;
+      let profile;
+      try {
+        profile = await Promise.race([
+          window.requireAuth(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), AUTH_TIMEOUT_MS)),
+        ]);
+      } catch (err) {
+        document.getElementById("whoami").textContent = "помилка перевірки доступу";
+        document.querySelector("[data-admin-status]").innerHTML =
+          '<div class="anketa-denied" style="margin-top:1.5rem;">' +
+          "<p>Не вдалося перевірити сесію (" + (err && err.message === "timeout" ? "немає відповіді від сервера — перевірте інтернет-з'єднання" : (err && err.message) || "невідома помилка") + ").</p>" +
+          '<p style="margin-top:.5rem;">Відкрийте сторінку у звичайному вікні браузера (не у вбудованому прев\'ю редактора) і спробуйте ще раз, або <a href="login.html" style="color:var(--cx-sky);">увійдіть заново</a>.</p>' +
+          "</div>";
+        return;
+      }
+      if (!profile) return; // requireAuth already redirected to login.html
+
+      const allowedRoles = ["admin", "super_admin"];
+      if (!allowedRoles.includes(profile.role)) {
+        document.getElementById("schedule-denied").hidden = false;
+        return;
+      }
+
+      const ROLE_LABELS = { super_admin: "Супер адмін", admin: "Адмін", instructor: "Інструктор" };
+      const whoamiEl = document.getElementById("whoami");
+      whoamiEl.textContent = (profile.full_name || profile.email) + " · " + (ROLE_LABELS[profile.role] || profile.role);
+      whoamiEl.title = profile.email;
+
+      document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
+      document.getElementById("schedule-content").hidden = false;
+
+      window.ScheduleBoard.init(profile.id);
+    })();
+  </script>
+</body>
+</html>

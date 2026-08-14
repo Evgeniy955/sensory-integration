@@ -1,0 +1,209 @@
+/* Schedule board (admin/schedule.html) — built on top of anketa.css's
+   shell/topbar/table primitives (.anketa-shell, .anketa-table, ...), same
+   pattern anketa.css itself follows on top of styles.css. This file only
+   adds the schedule-specific grid: a sticky specialist column, day/room
+   header groups, and the pastel per-room tint. Scoped to .schedule-*
+   classes so nothing here leaks into the rest of the admin panel. */
+
+.schedule-main {
+  max-width: none;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.schedule-toolbar { margin-bottom: 1rem; }
+
+.schedule-save-status {
+  font-size: .82rem;
+  color: var(--color-ink-faint);
+  white-space: nowrap;
+}
+.schedule-save-status[data-state="saving"] { color: var(--color-ink-soft); }
+.schedule-save-status[data-state="saved"] { color: var(--color-sage-deep); }
+.schedule-save-status[data-state="error"] { color: var(--color-destructive); }
+
+/* The board can get wide (days × rooms) — scroll horizontally instead of
+   squeezing every column, and let the specialist column stay pinned so
+   you always know which row you're looking at. */
+.schedule-table-wrap {
+  overflow-x: auto;
+}
+
+.schedule-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: auto;
+  min-width: 100%;
+}
+
+.schedule-table th,
+.schedule-table td {
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  padding: 0;
+  white-space: nowrap;
+}
+.schedule-table th:last-child,
+.schedule-table td:last-child { border-right: none; }
+
+/* Thicker rule after each day's last room column, so the seven day
+   groups read as distinct blocks instead of one continuous grid. */
+.schedule-day-end { border-right: 2px solid var(--color-ink-faint) !important; }
+
+.schedule-table thead th {
+  text-align: center;
+  font-weight: 700;
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--color-ink-soft);
+  background: var(--color-surface-alt);
+  padding: .6rem .5rem;
+}
+
+.schedule-day-th {
+  position: relative;
+  padding: .55rem .5rem !important;
+}
+
+.schedule-room-th {
+  position: relative;
+  padding: .45rem .6rem !important;
+  font-size: .74rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 600;
+}
+
+.schedule-room-th__row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .3rem;
+}
+
+.schedule-room-name-input {
+  width: 76px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: center;
+  padding: .15rem;
+  border-radius: 6px;
+}
+.schedule-room-name-input:focus {
+  outline: none;
+  background: var(--color-surface);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-sky) 35%, transparent);
+}
+
+/* First column: specialist names, pinned while the rest scrolls. */
+.schedule-col-specialist {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  min-width: 190px;
+  background: var(--color-surface-alt);
+  text-align: left !important;
+}
+td.schedule-col-specialist {
+  background: var(--color-surface);
+  z-index: 1;
+}
+.schedule-table tbody tr:hover td.schedule-col-specialist { background: var(--color-surface-alt); }
+
+.schedule-specialist-row {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .4rem .5rem .4rem .75rem;
+}
+
+.schedule-name-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  font-weight: 600;
+  padding: .3rem .35rem;
+  border-radius: 8px;
+}
+.schedule-name-input:focus {
+  outline: none;
+  background: var(--color-bg);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-sky) 35%, transparent);
+}
+.schedule-name-input::placeholder { color: var(--color-ink-faint); font-weight: 400; }
+
+.schedule-remove-btn {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-ink-faint);
+  border-radius: 999px;
+  cursor: pointer;
+  line-height: 1;
+  font-size: .95rem;
+}
+.schedule-remove-btn:hover {
+  background: color-mix(in srgb, var(--color-destructive) 14%, transparent);
+  color: var(--color-destructive);
+}
+
+/* ---------- Room tint ----------
+   Each room gets a subtle wash of one of the site's existing pastel
+   accent colors (same tokens as the admin role badges) so a glance down
+   a column tells you which hall it belongs to, without introducing new,
+   sensorially-loud colors. Header cells use the fuller tint; body cells
+   use a softened version blended into the surface so typed text stays
+   easy to read. */
+.schedule-room-th--sage { background: var(--color-sage-tint); color: var(--color-sage-deep); }
+.schedule-room-th--sky { background: var(--color-sky-tint); color: var(--color-sky-deep); }
+.schedule-room-th--apricot { background: var(--color-apricot-tint); color: var(--color-apricot-deep); }
+
+.schedule-cell--sage { background: color-mix(in srgb, var(--color-sage-tint) 55%, var(--color-surface)); }
+.schedule-cell--sky { background: color-mix(in srgb, var(--color-sky-tint) 55%, var(--color-surface)); }
+.schedule-cell--apricot { background: color-mix(in srgb, var(--color-apricot-tint) 55%, var(--color-surface)); }
+
+.schedule-table tbody tr:hover td.schedule-cell--sage { background: color-mix(in srgb, var(--color-sage-tint) 80%, var(--color-surface)); }
+.schedule-table tbody tr:hover td.schedule-cell--sky { background: color-mix(in srgb, var(--color-sky-tint) 80%, var(--color-surface)); }
+.schedule-table tbody tr:hover td.schedule-cell--apricot { background: color-mix(in srgb, var(--color-apricot-tint) 80%, var(--color-surface)); }
+
+.schedule-cell-input {
+  width: 92px;
+  border: none;
+  background: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: .85rem;
+  padding: .55rem .5rem;
+  text-align: center;
+}
+.schedule-cell-input::placeholder { color: color-mix(in srgb, var(--color-ink-faint) 70%, transparent); }
+.schedule-cell-input:focus {
+  outline: none;
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-sky) 40%, transparent);
+}
+
+.schedule-empty-hint {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--color-ink-soft);
+  font-size: .9rem;
+}
+
+@media (max-width: 640px) {
+  .schedule-main { padding-left: .75rem; padding-right: .75rem; }
+  .schedule-col-specialist { min-width: 140px; }
+  .schedule-cell-input { width: 74px; }
+}

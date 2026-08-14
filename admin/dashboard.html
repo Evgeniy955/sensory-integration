@@ -25,6 +25,7 @@
     <div class="admin-topbar__user">
       <span id="whoami">Завантаження...</span>
       <a class="admin-btn admin-btn--ghost" id="anketa-link" href="anketa.html" style="width:auto;" hidden>Анкети</a>
+      <a class="admin-btn admin-btn--ghost" id="schedule-link" href="schedule.html" style="width:auto;" hidden>Розклад</a>
       <button class="admin-btn admin-btn--ghost" id="logout-btn" style="width:auto;">Вийти</button>
     </div>
   </header>
@@ -300,10 +301,12 @@
         document.getElementById("create-user-section").hidden = false;
         document.getElementById("users-section").hidden = false;
         document.getElementById("anketa-link").hidden = false;
+        document.getElementById("schedule-link").hidden = false;
         loadUsers();
       } else if (profile.role === "admin") {
         document.getElementById("users-section").hidden = false;
         document.getElementById("anketa-link").hidden = false;
+        document.getElementById("schedule-link").hidden = false;
         loadUsers();
       } else {
         document.getElementById("placeholder-section").hidden = false;

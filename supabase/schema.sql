@@ -176,7 +176,42 @@ create policy "Admins can delete anketas"
   on public.anketas for delete
   using (public.current_user_role() in ('admin', 'super_admin'));
 
--- 7. Bootstrap: make yourself super_admin -------------------------------
+-- 7. Schedule board (room/specialist timetable) -------------------------
+-- The whole board (list of specialists, list of rooms, and the grid of
+-- cell contents) is stored as one JSONB blob in a single row, same
+-- flexible-schema idea as anketas.data — specialists and rooms are added
+-- or removed freely from the admin UI without ever needing a migration.
+-- `id` is a fixed text key ('main') instead of a generated uuid because
+-- there is currently only ever one board; upsert-by-id from the client
+-- is what keeps "load or create if missing" a single round trip.
+create table if not exists public.schedule_boards (
+  id text primary key default 'main',
+  data jsonb not null default '{"rooms": [], "specialists": [], "cells": {}}'::jsonb,
+  updated_by uuid references auth.users(id) on delete set null,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.schedule_boards enable row level security;
+
+-- Same admin/super_admin shared-ownership model as anketas: any admin can
+-- read and edit the board, not just whoever last saved it.
+drop policy if exists "Admins can view schedule" on public.schedule_boards;
+create policy "Admins can view schedule"
+  on public.schedule_boards for select
+  using (public.current_user_role() in ('admin', 'super_admin'));
+
+drop policy if exists "Admins can insert schedule" on public.schedule_boards;
+create policy "Admins can insert schedule"
+  on public.schedule_boards for insert
+  with check (public.current_user_role() in ('admin', 'super_admin'));
+
+drop policy if exists "Admins can update schedule" on public.schedule_boards;
+create policy "Admins can update schedule"
+  on public.schedule_boards for update
+  using (public.current_user_role() in ('admin', 'super_admin'))
+  with check (public.current_user_role() in ('admin', 'super_admin'));
+
+-- 8. Bootstrap: make yourself super_admin -------------------------------
 -- 1) Sign up once through admin/login.html (use "Forgot password" style
 --    flow isn't needed — just create your own account via Supabase Auth
 --    dashboard: Authentication → Users → Add user, or sign up on the page).
