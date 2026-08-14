@@ -164,26 +164,26 @@
 .schedule-day-th__date {
   font-size: .82rem;
   font-weight: 800;
-  color: #0B0C22;
+  color: #FFFFFF;
   line-height: 1;
 }
 .schedule-day-th__weekday {
   font-size: .68rem;
-  color: color-mix(in srgb, #0B0C22 65%, transparent);
+  color: rgba(255, 255, 255, .68);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: .06em;
 }
-/* Today's column gets a little white "pill" around the date instead of
+/* Today's column gets a little bright "pill" around the date instead of
    changing the whole cell's background — reads as a marker, not just a
-   different shade in an already-colorful header row. */
+   different shade in an already-dark header row. */
 .schedule-day-th--today .schedule-day-th__date {
   display: inline-block;
-  background: #FFFFFF;
-  color: var(--color-sky-deep);
+  background: var(--color-apricot);
+  color: #3A1F00;
   padding: .1rem .55rem;
   border-radius: 999px;
-  box-shadow: 0 1px 3px rgba(11, 12, 34, .25);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
 }
 
 /* The board can get wide (days × rooms) — scroll horizontally instead of
@@ -210,19 +210,22 @@
 .schedule-table th:last-child,
 .schedule-table td:last-child { border-right: none; }
 
-/* The plain grey header row was the flattest thing on the page — swap in
-   the same sage→sky gradient already used for primary buttons and the
-   section top-borders elsewhere on the site, so the table opens with
-   some color instead of a monotone strip. */
+/* A pastel sage→sky gradient sat too close in hue to the room colors
+   right underneath it (esp. the blue/green rooms), so the header edge
+   disappeared instead of reading as a separate bar. Fixed, theme-
+   independent dark navy (not a --color-* token, same reasoning as the
+   room hex values below: it has to stay dark in both the light and
+   cosmic themes to keep contrasting the room palette, which is also
+   fixed) gives a clean, unmistakable break between header and body. */
 .schedule-table thead th {
   text-align: center;
   font-weight: 700;
   font-size: .78rem;
   letter-spacing: .04em;
-  color: #0B0C22;
-  background: linear-gradient(135deg, var(--color-sage), var(--color-sky));
-  border-bottom: 2px solid color-mix(in srgb, var(--color-sky-deep) 45%, transparent);
-  border-right-color: color-mix(in srgb, #0B0C22 12%, transparent);
+  color: #F3F6F4;
+  background: linear-gradient(135deg, #1F3B2E, #13293D);
+  border-bottom: 3px solid var(--color-apricot);
+  border-right-color: rgba(255, 255, 255, .1);
   padding: .6rem .5rem;
 }
 
@@ -244,12 +247,12 @@
   text-align: left !important;
 }
 th.schedule-col-specialist {
-  /* Plain --color-sage (not -deep): in the cosmic theme "-deep" tokens
-     flip to a *lighter* shade for text-on-tint contrast elsewhere, which
-     would make white text unreadable here — the base tone plus dark ink
-     stays legible in both themes, same as the gradient header cells. */
-  background: var(--color-sage);
-  color: #0B0C22;
+  /* Matches the dark navy of the day headers (fixed, not a --color-*
+     token, for the same reason noted above) — one solid fill instead of
+     the gradient since a gradient would slide oddly under it while the
+     column stays pinned during horizontal scroll. */
+  background: #1A3226;
+  color: #FFFFFF;
 }
 td.schedule-col-specialist {
   background: var(--color-surface);
