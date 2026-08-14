@@ -1,12 +1,13 @@
-// Schedule board (admin/schedule.html): specialists × (day of week × room)
-// grid, stored as a single JSONB row in public.schedule_boards (id='main').
-// Loaded after supabase-config.js + admin-auth.js (needs window.sbClient).
+// Schedule board (admin/schedule.html): specialists × day-of-week grid for
+// one room at a time, stored as a single JSONB row in
+// public.schedule_boards (id='main'). Loaded after supabase-config.js +
+// admin-auth.js (needs window.sbClient).
 //
 // The whole board — room list, specialist list, and every cell's text —
 // lives in one in-memory object (`board`) that's re-rendered top to
-// bottom on every change and pushed to Supabase shortly after. That
-// keeps "add a room" / "rename a specialist" / "type into a cell" all
-// going through the same save path instead of three different ones.
+// bottom on every change and pushed to Supabase shortly after. The room
+// dropdown in the toolbar just changes which room's cells the table
+// currently shows (`selectedRoomId`); it doesn't change what's stored.
 
 (function () {
   const DAYS = [
@@ -28,6 +29,7 @@
   let board = null;
   let currentProfileId = null;
   let saveTimer = null;
+  let selectedRoomId = null;
 
   function uid() {
     return (window.crypto && window.crypto.randomUUID)
@@ -123,46 +125,29 @@
     saveBoard();
   }
 
-  function roomThHtml(room, dayIndex, isLastRoomOfDay) {
-    const classes = ["schedule-room-th", "schedule-room-th--" + room.color];
-    if (isLastRoomOfDay) classes.push("schedule-day-end");
-    // Only the first day's copy of each room carries the delete control —
-    // rooms are shared across every day, so one delete button per room
-    // (not one per day × room cell) is enough and avoids clutter.
-    const removeBtn = dayIndex === 0
-      ? '<button type="button" class="schedule-remove-btn" data-remove-room="' + room.id + '" title="Видалити зал" aria-label="Видалити зал ' + escapeHtml(room.name) + '">×</button>'
-      : "";
-    return '<th class="' + classes.join(" ") + '">' +
-      '<div class="schedule-room-th__row">' +
-      '<input class="schedule-room-name-input" data-room-name="' + room.id + '" value="' + escapeHtml(room.name) + '">' +
-      removeBtn +
-      "</div></th>";
+  function getSelectedRoom() {
+    return board.rooms.find((r) => r.id === selectedRoomId) || null;
   }
 
   function renderThead() {
     const thead = document.getElementById("schedule-thead");
-    const row1 = '<tr>' +
-      '<th class="schedule-col-specialist" rowspan="2">Спеціаліст</th>' +
-      DAYS.map((day) => '<th class="schedule-day-th" colspan="' + board.rooms.length + '">' + day.label + "</th>").join("") +
+    const room = getSelectedRoom();
+    const colorClass = room ? "schedule-room-th--" + room.color : "";
+    thead.innerHTML = "<tr>" +
+      '<th class="schedule-col-specialist">Спеціаліст</th>' +
+      DAYS.map((day) => '<th class="schedule-day-th ' + colorClass + '">' + day.label + "</th>").join("") +
       "</tr>";
-    const row2 = "<tr>" +
-      DAYS.map(() => board.rooms.map((room, i) => roomThHtml(room, i, i === board.rooms.length - 1)).join("")).join("") +
-      "</tr>";
-    thead.innerHTML = row1 + row2;
   }
 
-  function specialistRowHtml(spec) {
-    const cells = DAYS.map((day) =>
-      board.rooms.map((room, i) => {
-        const key = cellKey(spec.id, day.key, room.id);
-        const val = board.cells[key] || "";
-        const classes = ["schedule-cell--" + room.color];
-        if (i === board.rooms.length - 1) classes.push("schedule-day-end");
-        return '<td class="' + classes.join(" ") + '">' +
-          '<input class="schedule-cell-input" data-cell="' + key + '" value="' + escapeHtml(val) + '" placeholder="—">' +
-          "</td>";
-      }).join("")
-    ).join("");
+  function specialistRowHtml(spec, colorClass) {
+    const room = getSelectedRoom();
+    const cells = DAYS.map((day) => {
+      const key = room ? cellKey(spec.id, day.key, room.id) : null;
+      const val = key ? (board.cells[key] || "") : "";
+      return '<td class="' + colorClass + '">' +
+        '<input class="schedule-cell-input" data-cell="' + (key || "") + '" value="' + escapeHtml(val) + '" placeholder="—"' + (key ? "" : " disabled") + ">" +
+        "</td>";
+    }).join("");
 
     return '<tr data-specialist-row="' + spec.id + '">' +
       '<td class="schedule-col-specialist"><div class="schedule-specialist-row">' +
@@ -173,13 +158,44 @@
 
   function renderTbody() {
     const tbody = document.getElementById("schedule-tbody");
+    const room = getSelectedRoom();
+    const colorClass = room ? "schedule-cell--" + room.color : "";
     if (!board.specialists.length) {
-      const span = 1 + DAYS.length * board.rooms.length;
+      const span = 1 + DAYS.length;
       tbody.innerHTML = '<tr><td colspan="' + span + '" class="schedule-empty-hint">' +
         "Ще немає жодного спеціаліста. Натисніть «Додати спеціаліста» вище." + "</td></tr>";
       return;
     }
-    tbody.innerHTML = board.specialists.map(specialistRowHtml).join("");
+    tbody.innerHTML = board.specialists.map((spec) => specialistRowHtml(spec, colorClass)).join("");
+  }
+
+  // Rebuilds the <option> list from board.rooms and keeps it pointed at
+  // selectedRoomId. Only called after rooms are added/removed — renaming
+  // updates the existing <option>'s text in place instead (see
+  // wireEvents' room-name-input listener) so the dropdown doesn't lose
+  // focus mid-keystroke.
+  function populateRoomSelect() {
+    const select = document.getElementById("room-select");
+    select.innerHTML = board.rooms.map((r) =>
+      '<option value="' + r.id + '"' + (r.id === selectedRoomId ? " selected" : "") + ">" + escapeHtml(r.name) + "</option>"
+    ).join("");
+  }
+
+  function updateRoomNameField() {
+    const room = getSelectedRoom();
+    document.getElementById("room-name-input").value = room ? room.name : "";
+  }
+
+  // Called after any add/remove of a room: makes sure selectedRoomId still
+  // points at a real room (falling back to the first one), then refreshes
+  // the dropdown, the rename field, and the table.
+  function syncRoomControls() {
+    if (!board.rooms.some((r) => r.id === selectedRoomId)) {
+      selectedRoomId = board.rooms.length ? board.rooms[0].id : null;
+    }
+    populateRoomSelect();
+    updateRoomNameField();
+    render();
   }
 
   function render() {
@@ -208,12 +224,15 @@
 
   function addRoom() {
     const color = ROOM_COLORS[board.rooms.length % ROOM_COLORS.length];
-    board.rooms.push({ id: uid(), name: "Зал " + (board.rooms.length + 1), color });
-    render();
+    const room = { id: uid(), name: "Зал " + (board.rooms.length + 1), color };
+    board.rooms.push(room);
+    selectedRoomId = room.id; // jump straight to the newly added room
+    syncRoomControls();
     flushSave();
   }
 
   function removeRoom(id) {
+    if (!id) return;
     if (board.rooms.length <= 1) {
       window.alert("Має залишитися хоча б один зал.");
       return;
@@ -224,7 +243,7 @@
     if (!confirmed) return;
     board.rooms = board.rooms.filter((r) => r.id !== id);
     Object.keys(board.cells).forEach((key) => { if (key.split("|")[2] === id) delete board.cells[key]; });
-    render();
+    syncRoomControls();
     flushSave();
   }
 
@@ -234,38 +253,51 @@
     table.addEventListener("input", (e) => {
       const cellInput = e.target.closest("[data-cell]");
       if (cellInput) {
-        board.cells[cellInput.getAttribute("data-cell")] = cellInput.value;
-        scheduleSave();
+        const key = cellInput.getAttribute("data-cell");
+        if (key) { board.cells[key] = cellInput.value; scheduleSave(); }
         return;
       }
       const specName = e.target.closest("[data-specialist-name]");
       if (specName) {
         const s = board.specialists.find((s) => s.id === specName.getAttribute("data-specialist-name"));
         if (s) { s.name = specName.value; scheduleSave(); }
-        return;
-      }
-      const roomName = e.target.closest("[data-room-name]");
-      if (roomName) {
-        const r = board.rooms.find((r) => r.id === roomName.getAttribute("data-room-name"));
-        if (r) { r.name = roomName.value; scheduleSave(); }
       }
     });
 
     // Flush on blur too, so a quick edit-then-close-tab isn't silently
     // lost while the 700ms debounce is still pending.
     table.addEventListener("focusout", (e) => {
-      if (e.target.closest("[data-cell], [data-specialist-name], [data-room-name]")) flushSave();
+      if (e.target.closest("[data-cell], [data-specialist-name]")) flushSave();
     });
 
     table.addEventListener("click", (e) => {
       const removeSpec = e.target.closest("[data-remove-specialist]");
-      if (removeSpec) { removeSpecialist(removeSpec.getAttribute("data-remove-specialist")); return; }
-      const removeRm = e.target.closest("[data-remove-room]");
-      if (removeRm) removeRoom(removeRm.getAttribute("data-remove-room"));
+      if (removeSpec) removeSpecialist(removeSpec.getAttribute("data-remove-specialist"));
     });
 
     document.getElementById("add-specialist-btn").addEventListener("click", addSpecialist);
     document.getElementById("add-room-btn").addEventListener("click", addRoom);
+    document.getElementById("remove-room-btn").addEventListener("click", () => removeRoom(selectedRoomId));
+
+    document.getElementById("room-select").addEventListener("change", (e) => {
+      selectedRoomId = e.target.value;
+      updateRoomNameField();
+      render();
+    });
+
+    // Renaming updates the matching <option> text directly instead of
+    // going through populateRoomSelect(), so the <select> isn't rebuilt
+    // (and the input doesn't lose focus) on every keystroke.
+    const roomNameInput = document.getElementById("room-name-input");
+    roomNameInput.addEventListener("input", (e) => {
+      const room = getSelectedRoom();
+      if (!room) return;
+      room.name = e.target.value;
+      const option = document.querySelector('#room-select option[value="' + room.id + '"]');
+      if (option) option.textContent = room.name;
+      scheduleSave();
+    });
+    roomNameInput.addEventListener("focusout", flushSave);
   }
 
   window.ScheduleBoard = {
@@ -273,6 +305,9 @@
       currentProfileId = profileId;
       wireEvents();
       board = await loadBoard();
+      selectedRoomId = board.rooms.length ? board.rooms[0].id : null;
+      populateRoomSelect();
+      updateRoomNameField();
       render();
       if (document.getElementById("save-status").dataset.state !== "error") setStatus("idle");
     },

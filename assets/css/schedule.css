@@ -1,9 +1,10 @@
 /* Schedule board (admin/schedule.html) — built on top of anketa.css's
    shell/topbar/table primitives (.anketa-shell, .anketa-table, ...), same
-   pattern anketa.css itself follows on top of styles.css. This file only
-   adds the schedule-specific grid: a sticky specialist column, day/room
-   header groups, and the pastel per-room tint. Scoped to .schedule-*
-   classes so nothing here leaks into the rest of the admin panel. */
+   pattern anketa.css itself follows on top of styles.css. The table shows
+   one room at a time (picked via the dropdown in the toolbar): a sticky
+   specialist column, then one column per day of week, tinted with that
+   room's pastel color. Scoped to .schedule-* classes so nothing here
+   leaks into the rest of the admin panel. */
 
 .schedule-main {
   max-width: none;
@@ -12,6 +13,53 @@
 }
 
 .schedule-toolbar { margin-bottom: 1rem; }
+
+.schedule-room-controls {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.schedule-room-controls__label {
+  font-size: .82rem;
+  color: var(--color-ink-soft);
+  font-weight: 600;
+}
+
+.schedule-room-select {
+  padding: .55rem .8rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: .85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.schedule-room-select:focus {
+  outline: none;
+  border-color: var(--color-sky);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-sky) 25%, transparent);
+}
+
+.schedule-room-name-field {
+  width: 150px;
+  padding: .55rem .8rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: .85rem;
+}
+.schedule-room-name-field::placeholder { color: var(--color-ink-faint); }
+.schedule-room-name-field:focus {
+  outline: none;
+  border-color: var(--color-sky);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-sky) 25%, transparent);
+}
 
 .schedule-save-status {
   font-size: .82rem;
@@ -46,10 +94,6 @@
 .schedule-table th:last-child,
 .schedule-table td:last-child { border-right: none; }
 
-/* Thicker rule after each day's last room column, so the seven day
-   groups read as distinct blocks instead of one continuous grid. */
-.schedule-day-end { border-right: 2px solid var(--color-ink-faint) !important; }
-
 .schedule-table thead th {
   text-align: center;
   font-weight: 700;
@@ -64,39 +108,6 @@
 .schedule-day-th {
   position: relative;
   padding: .55rem .5rem !important;
-}
-
-.schedule-room-th {
-  position: relative;
-  padding: .45rem .6rem !important;
-  font-size: .74rem;
-  text-transform: none;
-  letter-spacing: normal;
-  font-weight: 600;
-}
-
-.schedule-room-th__row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: .3rem;
-}
-
-.schedule-room-name-input {
-  width: 76px;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-weight: 600;
-  text-align: center;
-  padding: .15rem;
-  border-radius: 6px;
-}
-.schedule-room-name-input:focus {
-  outline: none;
-  background: var(--color-surface);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-sky) 35%, transparent);
 }
 
 /* First column: specialist names, pinned while the rest scrolls. */
@@ -160,12 +171,14 @@ td.schedule-col-specialist {
 }
 
 /* ---------- Room tint ----------
-   Each room gets a subtle wash of one of the site's existing pastel
-   accent colors (same tokens as the admin role badges) so a glance down
-   a column tells you which hall it belongs to, without introducing new,
-   sensorially-loud colors. Header cells use the fuller tint; body cells
-   use a softened version blended into the surface so typed text stays
-   easy to read. */
+   The currently selected room (see the dropdown in the toolbar) washes
+   the whole table in one of the site's existing pastel accent colors
+   (same tokens as the admin role badges), so it's visually obvious which
+   hall you're editing without introducing new, sensorially-loud colors.
+   Header cells (.schedule-room-th--*, applied to the day-of-week header
+   row) use the fuller tint; body cells (.schedule-cell--*) use a
+   softened version blended into the surface so typed text stays easy to
+   read. */
 .schedule-room-th--sage { background: var(--color-sage-tint); color: var(--color-sage-deep); }
 .schedule-room-th--sky { background: var(--color-sky-tint); color: var(--color-sky-deep); }
 .schedule-room-th--apricot { background: var(--color-apricot-tint); color: var(--color-apricot-deep); }
