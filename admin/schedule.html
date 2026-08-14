@@ -69,10 +69,21 @@
             Додати зал
           </button>
         </div>
-        <button type="button" class="anketa-btn anketa-btn--primary" id="add-specialist-btn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-          Додати спеціаліста
-        </button>
+
+        <div class="schedule-room-controls">
+          <label class="schedule-room-controls__label" for="specialist-select">Керування спеціалістом</label>
+          <select id="specialist-select" class="schedule-room-select" aria-label="Спеціаліст для перейменування чи видалення"></select>
+          <input type="text" id="specialist-name-input" class="schedule-room-name-field" placeholder="Ім'я спеціаліста" aria-label="Ім'я обраного спеціаліста">
+          <button type="button" class="anketa-btn anketa-btn--danger" id="remove-specialist-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><path d="M4 6h16M9 6V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V6m2 0v13.5A1.5 1.5 0 0 1 15.5 21h-7A1.5 1.5 0 0 1 7 19.5V6h10Z"/></svg>
+            Видалити спеціаліста
+          </button>
+          <button type="button" class="anketa-btn anketa-btn--primary" id="add-specialist-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Додати спеціаліста
+          </button>
+        </div>
+
         <div class="anketa-toolbar-spacer"></div>
         <span class="schedule-save-status" id="save-status" data-state="idle">Завантаження…</span>
       </div>

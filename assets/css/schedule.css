@@ -1,10 +1,11 @@
 /* Schedule board (admin/schedule.html) — built on top of anketa.css's
    shell/topbar/table primitives (.anketa-shell, .anketa-table, ...), same
-   pattern anketa.css itself follows on top of styles.css. One column per
-   day of week; each specialist × day cell is its own room dropdown, and
-   the cell tints with whichever room is currently picked in it. Scoped
-   to .schedule-* classes so nothing here leaks into the rest of the
-   admin panel. */
+   pattern anketa.css itself follows on top of styles.css. Rooms and
+   specialists are both flat lists managed from the toolbar (add/rename/
+   delete); the table itself is specialists × days, with each cell its
+   own room dropdown tinted with whichever room is currently picked in
+   it. Scoped to .schedule-* classes so nothing here leaks into the rest
+   of the admin panel. */
 
 .schedule-main {
   max-width: none;
@@ -125,49 +126,18 @@ td.schedule-col-specialist {
 }
 .schedule-table tbody tr:hover td.schedule-col-specialist { background: var(--color-surface-alt); }
 
-.schedule-specialist-row {
-  display: flex;
-  align-items: center;
-  gap: .4rem;
-  padding: .4rem .5rem .4rem .75rem;
-}
-
-.schedule-name-input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  background: transparent;
-  color: var(--color-ink);
-  font: inherit;
+/* Specialists are now managed from the toolbar (mirrors "Керування
+   залом"), so this cell is just a label, not an editable field. */
+.schedule-specialist-label {
+  display: block;
+  padding: .55rem .75rem;
   font-weight: 600;
-  padding: .3rem .35rem;
-  border-radius: 8px;
+  color: var(--color-ink);
 }
-.schedule-name-input:focus {
-  outline: none;
-  background: var(--color-bg);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-sky) 35%, transparent);
-}
-.schedule-name-input::placeholder { color: var(--color-ink-faint); font-weight: 400; }
-
-.schedule-remove-btn {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
+.schedule-specialist-label[data-empty="true"] {
   color: var(--color-ink-faint);
-  border-radius: 999px;
-  cursor: pointer;
-  line-height: 1;
-  font-size: .95rem;
-}
-.schedule-remove-btn:hover {
-  background: color-mix(in srgb, var(--color-destructive) 14%, transparent);
-  color: var(--color-destructive);
+  font-weight: 400;
+  font-style: italic;
 }
 
 /* ---------- Room tint ----------

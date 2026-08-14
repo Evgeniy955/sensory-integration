@@ -30,6 +30,7 @@
   let currentProfileId = null;
   let saveTimer = null;
   let managedRoomId = null; // room targeted by the toolbar's rename/delete controls
+  let managedSpecialistId = null; // specialist targeted by the toolbar's rename/delete controls
 
   function uid() {
     return (window.crypto && window.crypto.randomUUID)
@@ -152,11 +153,11 @@
 
   function specialistRowHtml(spec) {
     const cells = DAYS.map((day) => cellSelectHtml(spec, day)).join("");
+    const label = spec.name
+      ? '<span class="schedule-specialist-label">' + escapeHtml(spec.name) + "</span>"
+      : '<span class="schedule-specialist-label" data-empty="true">Без імені</span>';
     return '<tr data-specialist-row="' + spec.id + '">' +
-      '<td class="schedule-col-specialist"><div class="schedule-specialist-row">' +
-      '<input class="schedule-name-input" data-specialist-name="' + spec.id + '" value="' + escapeHtml(spec.name) + '" placeholder="Ім\'я спеціаліста">' +
-      '<button type="button" class="schedule-remove-btn" data-remove-specialist="' + spec.id + '" title="Видалити спеціаліста" aria-label="Видалити спеціаліста ' + escapeHtml(spec.name) + '">×</button>' +
-      "</div></td>" + cells + "</tr>";
+      '<td class="schedule-col-specialist">' + label + "</td>" + cells + "</tr>";
   }
 
   function renderTbody() {
@@ -200,27 +201,57 @@
     render();
   }
 
+  function getManagedSpecialist() {
+    return board.specialists.find((s) => s.id === managedSpecialistId) || null;
+  }
+
+  // Mirrors populateRoomSelect()/updateRoomNameField() for the
+  // specialists toolbar group.
+  function populateSpecialistSelect() {
+    const select = document.getElementById("specialist-select");
+    select.innerHTML = board.specialists.map((s) =>
+      '<option value="' + s.id + '"' + (s.id === managedSpecialistId ? " selected" : "") + ">" + escapeHtml(s.name || "Без імені") + "</option>"
+    ).join("");
+  }
+
+  function updateSpecialistNameField() {
+    const spec = getManagedSpecialist();
+    document.getElementById("specialist-name-input").value = spec ? spec.name : "";
+  }
+
+  // Mirrors syncRoomControls(): called after add/remove of a specialist.
+  function syncSpecialistControls() {
+    if (!board.specialists.some((s) => s.id === managedSpecialistId)) {
+      managedSpecialistId = board.specialists.length ? board.specialists[0].id : null;
+    }
+    populateSpecialistSelect();
+    updateSpecialistNameField();
+    render();
+  }
+
   function render() {
     renderThead();
     renderTbody();
   }
 
   function addSpecialist() {
-    board.specialists.push({ id: uid(), name: "" });
-    render();
+    const spec = { id: uid(), name: "" };
+    board.specialists.push(spec);
+    managedSpecialistId = spec.id; // jump the toolbar straight to the newly added specialist
+    syncSpecialistControls();
     flushSave();
-    const input = document.querySelector('.schedule-name-input[data-specialist-name="' + board.specialists[board.specialists.length - 1].id + '"]');
-    if (input) input.focus();
+    document.getElementById("specialist-name-input").focus();
   }
 
   function removeSpecialist(id) {
+    if (!id) return;
     const spec = board.specialists.find((s) => s.id === id);
     if (!spec) return;
     const confirmed = window.confirm("Видалити спеціаліста" + (spec.name ? " «" + spec.name + "»" : "") + " з розкладу?");
     if (!confirmed) return;
     board.specialists = board.specialists.filter((s) => s.id !== id);
     Object.keys(board.cells).forEach((key) => { if (key.startsWith(id + "|")) delete board.cells[key]; });
-    render();
+    syncSpecialistControls();
     flushSave();
   }
 
@@ -252,29 +283,9 @@
   function wireEvents() {
     const table = document.getElementById("schedule-table");
 
-    table.addEventListener("input", (e) => {
-      const specName = e.target.closest("[data-specialist-name]");
-      if (specName) {
-        const s = board.specialists.find((s) => s.id === specName.getAttribute("data-specialist-name"));
-        if (s) { s.name = specName.value; scheduleSave(); }
-      }
-    });
-
-    // Flush on blur too, so a quick edit-then-close-tab isn't silently
-    // lost while the 700ms debounce is still pending.
-    table.addEventListener("focusout", (e) => {
-      if (e.target.closest("[data-specialist-name]")) flushSave();
-    });
-
-    table.addEventListener("click", (e) => {
-      const removeSpec = e.target.closest("[data-remove-specialist]");
-      if (removeSpec) removeSpecialist(removeSpec.getAttribute("data-remove-specialist"));
-    });
-
-    // Each specialist × day cell is its own room dropdown (rebuilt on
-    // every render), so — same as the specialist-name inputs — it's
-    // handled via delegation on the table rather than per-element
-    // listeners that would be lost on the next render.
+    // Each specialist × day cell is its own room dropdown, rebuilt on
+    // every render() — handled via delegation on the table rather than
+    // per-element listeners that would be lost on the next render.
     table.addEventListener("change", (e) => {
       const cellSelect = e.target.closest("[data-cell]");
       if (!cellSelect) return;
@@ -292,7 +303,6 @@
       flushSave();
     });
 
-    document.getElementById("add-specialist-btn").addEventListener("click", addSpecialist);
     document.getElementById("add-room-btn").addEventListener("click", addRoom);
     document.getElementById("remove-room-btn").addEventListener("click", () => removeRoom(managedRoomId));
 
@@ -314,6 +324,34 @@
       scheduleSave();
     });
     roomNameInput.addEventListener("focusout", flushSave);
+
+    document.getElementById("add-specialist-btn").addEventListener("click", addSpecialist);
+    document.getElementById("remove-specialist-btn").addEventListener("click", () => removeSpecialist(managedSpecialistId));
+
+    document.getElementById("specialist-select").addEventListener("change", (e) => {
+      managedSpecialistId = e.target.value;
+      updateSpecialistNameField();
+    });
+
+    // Renaming updates the toolbar's own <option> and the one matching
+    // row label directly (each specialist has exactly one of each, so no
+    // querySelectorAll needed) instead of calling render(), so the input
+    // doesn't lose focus mid-keystroke.
+    const specialistNameInput = document.getElementById("specialist-name-input");
+    specialistNameInput.addEventListener("input", (e) => {
+      const spec = getManagedSpecialist();
+      if (!spec) return;
+      spec.name = e.target.value;
+      const option = document.querySelector('#specialist-select option[value="' + spec.id + '"]');
+      if (option) option.textContent = spec.name || "Без імені";
+      const row = document.querySelector('tr[data-specialist-row="' + spec.id + '"] .schedule-specialist-label');
+      if (row) {
+        row.textContent = spec.name || "Без імені";
+        row.dataset.empty = String(!spec.name);
+      }
+      scheduleSave();
+    });
+    specialistNameInput.addEventListener("focusout", flushSave);
   }
 
   window.ScheduleBoard = {
@@ -322,8 +360,11 @@
       wireEvents();
       board = await loadBoard();
       managedRoomId = board.rooms.length ? board.rooms[0].id : null;
+      managedSpecialistId = board.specialists.length ? board.specialists[0].id : null;
       populateRoomSelect();
       updateRoomNameField();
+      populateSpecialistSelect();
+      updateSpecialistNameField();
       render();
       if (document.getElementById("save-status").dataset.state !== "error") setStatus("idle");
     },
