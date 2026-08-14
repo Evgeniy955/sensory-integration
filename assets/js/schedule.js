@@ -1,4 +1,4 @@
-// Schedule board (admin/schedule.html): specialists × day-of-week grid,
+// Schedule board (admin/schedule.html): specialists × week-of-dates grid,
 // stored as a single JSONB row in public.schedule_boards (id='main').
 // Loaded after supabase-config.js + admin-auth.js (needs window.sbClient).
 //
@@ -11,18 +11,19 @@
 //     The first cell of a row is a dropdown over board.specialists, so
 //     which saved specialist sits in a row can be changed at any time
 //     without retyping a name or losing that row's room assignments.
-//   - board.cells — room assignments keyed by "rowId|dayKey" (NOT by
-//     specialist), so a row's schedule survives reassigning it to a
-//     different specialist.
+//   - board.cells — room assignments keyed by "rowId|YYYY-MM-DD" (an
+//     actual calendar date, not just a weekday name), so every week can
+//     hold its own, different assignments. Only one week (Mon–Sat) is
+//     shown at a time; `weekStart` (module state, not saved) tracks
+//     which one, moved by the ◀ / ▶ buttons or the calendar picker.
 
 (function () {
-  const DAYS = [
-    { key: "mon", label: "Пн" },
-    { key: "tue", label: "Вт" },
-    { key: "wed", label: "Ср" },
-    { key: "thu", label: "Чт" },
-    { key: "fri", label: "Пт" },
-    { key: "sat", label: "Сб" },
+  // Mon..Sat labels for the currently displayed week — see getWeekDays().
+  const DAY_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+
+  const MONTHS_GENITIVE = [
+    "січня", "лютого", "березня", "квітня", "травня", "червня",
+    "липня", "серпня", "вересня", "жовтня", "листопада", "грудня",
   ];
 
   // Cycled across rooms in creation order. Bold/saturated on purpose (see
@@ -39,6 +40,8 @@
   let saveTimer = null;
   let managedRoomId = null; // room targeted by the toolbar's rename/delete controls
   let managedSpecialistId = null; // specialist targeted by the toolbar's rename/delete controls
+  let weekStart = startOfWeek(new Date()); // Monday of the currently displayed week
+  let currentWeekDays = []; // refreshed by render(); used outside render() for aria-label updates
 
   function uid() {
     return (window.crypto && window.crypto.randomUUID)
@@ -52,8 +55,56 @@
     }[c]));
   }
 
-  function cellKey(rowId, dayKey) {
-    return rowId + "|" + dayKey;
+  // ---------- Date helpers (no library — just plain Date math) ----------
+  function pad2(n) { return String(n).padStart(2, "0"); }
+
+  function toISODate(d) {
+    return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+  }
+
+  function parseISODate(s) {
+    const parts = String(s).split("-").map(Number);
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+
+  function addDays(d, n) {
+    const r = new Date(d);
+    r.setDate(r.getDate() + n);
+    return r;
+  }
+
+  // Monday-based week start, midnight local time.
+  function startOfWeek(d) {
+    const day = d.getDay(); // 0 = Sun, 1 = Mon, ... 6 = Sat
+    const diff = day === 0 ? -6 : 1 - day;
+    const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  }
+
+  // Six {iso, label, dateLabel, isToday} entries — Monday through
+  // Saturday of the given week start.
+  function getWeekDays(weekStartDate) {
+    const todayIso = toISODate(new Date());
+    return DAY_LABELS.map((label, i) => {
+      const date = addDays(weekStartDate, i);
+      const iso = toISODate(date);
+      return { iso, label, dateLabel: pad2(date.getDate()) + "." + pad2(date.getMonth() + 1), isToday: iso === todayIso };
+    });
+  }
+
+  function formatWeekRange(weekStartDate) {
+    const weekEnd = addDays(weekStartDate, 5); // Saturday
+    const d1 = weekStartDate.getDate(), d2 = weekEnd.getDate();
+    const m1 = weekStartDate.getMonth(), m2 = weekEnd.getMonth();
+    const y1 = weekStartDate.getFullYear(), y2 = weekEnd.getFullYear();
+    if (y1 !== y2) return d1 + " " + MONTHS_GENITIVE[m1] + " " + y1 + " – " + d2 + " " + MONTHS_GENITIVE[m2] + " " + y2;
+    if (m1 !== m2) return d1 + " " + MONTHS_GENITIVE[m1] + " – " + d2 + " " + MONTHS_GENITIVE[m2] + " " + y1;
+    return d1 + "–" + d2 + " " + MONTHS_GENITIVE[m1] + " " + y1;
+  }
+
+  function cellKey(rowId, dateIso) {
+    return rowId + "|" + dateIso;
   }
 
   function defaultBoard() {
@@ -81,6 +132,31 @@
     return ROOM_COLORS[0];
   }
 
+  // Boards saved before the calendar existed keyed cells as
+  // "rowId|mon".."rowId|sat" (a recurring template, no real date). Those
+  // get copied onto the matching weekday of the *current* real week —
+  // one-time, best-effort — so existing assignments aren't silently
+  // dropped; anything already date-keyed passes through unchanged.
+  const LEGACY_DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat"];
+
+  function migrateLegacyCells(rawCells) {
+    const out = {};
+    const thisWeek = getWeekDays(startOfWeek(new Date()));
+    Object.keys(rawCells || {}).forEach((key) => {
+      const idx = key.lastIndexOf("|");
+      if (idx === -1) return;
+      const rowId = key.slice(0, idx);
+      const suffix = key.slice(idx + 1);
+      const legacyIndex = LEGACY_DAY_KEYS.indexOf(suffix);
+      if (legacyIndex !== -1) {
+        out[cellKey(rowId, thisWeek[legacyIndex].iso)] = rawCells[key];
+      } else {
+        out[key] = rawCells[key];
+      }
+    });
+    return out;
+  }
+
   function normalizeBoard(raw) {
     const fallback = defaultBoard();
     if (!raw || typeof raw !== "object") return fallback;
@@ -97,15 +173,14 @@
 
     // Boards saved before `rows` existed had one row per specialist,
     // keyed the same way — reuse each specialist's id as its row id so
-    // old board.cells entries ("specialistId|day") still resolve
-    // correctly without a separate migration step.
+    // old board.cells entries keep resolving correctly.
     const rows = Array.isArray(raw.rows)
       ? raw.rows.filter((r) => r && r.id).map((r) => ({
           id: String(r.id), specialistId: r.specialistId ? String(r.specialistId) : null,
         }))
       : specialists.map((s) => ({ id: s.id, specialistId: s.id }));
 
-    const cells = (raw.cells && typeof raw.cells === "object") ? raw.cells : {};
+    const cells = migrateLegacyCells((raw.cells && typeof raw.cells === "object") ? raw.cells : {});
     return { rooms, specialists, rows, cells };
   }
 
@@ -173,16 +248,20 @@
     return spec ? (spec.name || "Без імені") : "спеціаліст";
   }
 
-  function renderThead() {
+  function renderThead(days) {
     const thead = document.getElementById("schedule-thead");
     thead.innerHTML = "<tr>" +
       '<th class="schedule-col-specialist">Спеціаліст</th>' +
-      DAYS.map((day) => '<th class="schedule-day-th">' + day.label + "</th>").join("") +
+      days.map((day) => '<th class="schedule-day-th' + (day.isToday ? " schedule-day-th--today" : "") + '">' +
+        '<div class="schedule-day-th__inner">' +
+        '<span class="schedule-day-th__date">' + day.dateLabel + "</span>" +
+        '<span class="schedule-day-th__weekday">' + day.label + "</span>" +
+        "</div></th>").join("") +
       "</tr>";
   }
 
   function cellSelectHtml(row, day) {
-    const key = cellKey(row.id, day.key);
+    const key = cellKey(row.id, day.iso);
     const roomId = board.cells[key] || "";
     const room = board.rooms.find((r) => r.id === roomId) || null;
     const colorClass = room ? "schedule-cell--" + room.color : "";
@@ -190,7 +269,7 @@
       '<option value="' + r.id + '"' + (r.id === roomId ? " selected" : "") + ">" + escapeHtml(r.name) + "</option>"
     ).join("");
     return '<td class="' + colorClass + '">' +
-      '<select class="schedule-cell-select" data-cell="' + key + '" data-empty="' + (roomId ? "false" : "true") + '" aria-label="Зал: ' + escapeHtml(specialistName(row.specialistId)) + ", " + day.label + '">' +
+      '<select class="schedule-cell-select" data-cell="' + key + '" data-empty="' + (roomId ? "false" : "true") + '" aria-label="Зал: ' + escapeHtml(specialistName(row.specialistId)) + ", " + day.label + " " + day.dateLabel + '">' +
       options + "</select></td>";
   }
 
@@ -203,8 +282,8 @@
     return '<select class="schedule-row-specialist-select" data-row-specialist="' + row.id + '" aria-label="Спеціаліст у цьому рядку">' + options + "</select>";
   }
 
-  function rowHtml(row) {
-    const cells = DAYS.map((day) => cellSelectHtml(row, day)).join("");
+  function rowHtml(row, days) {
+    const cells = days.map((day) => cellSelectHtml(row, day)).join("");
     return '<tr data-row="' + row.id + '">' +
       '<td class="schedule-col-specialist"><div class="schedule-row-header">' +
       rowSpecialistSelectHtml(row) +
@@ -212,15 +291,15 @@
       "</div></td>" + cells + "</tr>";
   }
 
-  function renderTbody() {
+  function renderTbody(days) {
     const tbody = document.getElementById("schedule-tbody");
     if (!board.rows.length) {
-      const span = 1 + DAYS.length;
+      const span = 1 + days.length;
       tbody.innerHTML = '<tr><td colspan="' + span + '" class="schedule-empty-hint">' +
         "Ще немає жодного рядка. Натисніть «Додати спеціаліста» вище." + "</td></tr>";
       return;
     }
-    tbody.innerHTML = board.rows.map(rowHtml).join("");
+    tbody.innerHTML = board.rows.map((row) => rowHtml(row, days)).join("");
   }
 
   // Rebuilds the toolbar's room-management <option> list, keeping it
@@ -277,9 +356,22 @@
     render();
   }
 
+  function updateWeekControls() {
+    document.getElementById("week-label").textContent = formatWeekRange(weekStart);
+    const dateInput = document.getElementById("calendar-date-input");
+    if (dateInput) dateInput.value = toISODate(weekStart);
+  }
+
+  function goToWeek(newWeekStart) {
+    weekStart = newWeekStart;
+    updateWeekControls();
+    render();
+  }
+
   function render() {
-    renderThead();
-    renderTbody();
+    currentWeekDays = getWeekDays(weekStart);
+    renderThead(currentWeekDays);
+    renderTbody(currentWeekDays);
   }
 
   // Adds a new saved specialist to the roster *and* a table row already
@@ -364,6 +456,21 @@
       btn.setAttribute("aria-expanded", String(!expanded));
     });
 
+    document.getElementById("prev-week-btn").addEventListener("click", () => goToWeek(addDays(weekStart, -7)));
+    document.getElementById("next-week-btn").addEventListener("click", () => goToWeek(addDays(weekStart, 7)));
+
+    // A real <input type="date"> gives us a full native calendar picker
+    // for free — the button just opens it instead of showing the input
+    // itself (see .schedule-calendar-input in schedule.css).
+    document.getElementById("open-calendar-btn").addEventListener("click", () => {
+      const input = document.getElementById("calendar-date-input");
+      try { input.showPicker(); } catch (e) { input.focus(); input.click(); }
+    });
+    document.getElementById("calendar-date-input").addEventListener("change", (e) => {
+      if (!e.target.value) return;
+      goToWeek(startOfWeek(parseISODate(e.target.value)));
+    });
+
     // Room cells and each row's specialist dropdown are both rebuilt on
     // every render() — handled via delegation on the table rather than
     // per-element listeners that would be lost on the next render.
@@ -394,7 +501,8 @@
         // Keep that row's day-cell aria-labels (which name the current
         // specialist) accurate without a full re-render.
         table.querySelectorAll('tr[data-row="' + row.id + '"] [data-cell]').forEach((sel, i) => {
-          sel.setAttribute("aria-label", "Зал: " + specialistName(row.specialistId) + ", " + DAYS[i].label);
+          const day = currentWeekDays[i];
+          sel.setAttribute("aria-label", "Зал: " + specialistName(row.specialistId) + ", " + (day ? day.label + " " + day.dateLabel : ""));
         });
         flushSave();
       }
@@ -457,6 +565,7 @@
     async init(profileId) {
       currentProfileId = profileId;
       wireEvents();
+      updateWeekControls();
       board = await loadBoard();
       managedRoomId = board.rooms.length ? board.rooms[0].id : null;
       managedSpecialistId = board.specialists.length ? board.specialists[0].id : null;

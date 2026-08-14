@@ -52,7 +52,7 @@
           Розклад
         </span>
         <h1>Розклад залів</h1>
-        <p>У першому стовпці оберіть спеціаліста зі збереженого списку, а в кожній клітинці на перетині з днем тижня — зал: клітинка підсвітиться кольором цього залу. Зміни зберігаються автоматично.</p>
+        <p>Таблиця показує один тиждень одразу — перемикайтеся стрілками або відкрийте календар, щоб перейти на конкретну дату. У першому стовпці оберіть спеціаліста зі збереженого списку, а в кожній клітинці на перетині з днем — зал: клітинка підсвітиться кольором цього залу. Зміни зберігаються автоматично.</p>
       </div>
 
       <div class="anketa-toolbar schedule-toolbar">
@@ -92,6 +92,24 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
             Додати спеціаліста
           </button>
+        </div>
+      </div>
+
+      <div class="schedule-week-nav">
+        <button type="button" class="schedule-week-nav__arrow" id="prev-week-btn" aria-label="Попередній тиждень">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <div class="schedule-week-nav__label" id="week-label">—</div>
+        <button type="button" class="schedule-week-nav__arrow" id="next-week-btn" aria-label="Наступний тиждень">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <div class="schedule-week-nav-spacer"></div>
+        <div class="schedule-calendar-trigger">
+          <button type="button" class="anketa-btn" id="open-calendar-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>
+            Відкрити календар
+          </button>
+          <input type="date" id="calendar-date-input" class="schedule-calendar-input" aria-label="Обрати дату для переходу на її тиждень" tabindex="-1">
         </div>
       </div>
 

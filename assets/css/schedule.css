@@ -99,6 +99,84 @@
 .schedule-save-status[data-state="saved"] { color: var(--color-sage-deep); }
 .schedule-save-status[data-state="error"] { color: var(--color-destructive); }
 
+/* ---------- Week navigation ---------- */
+.schedule-week-nav {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.schedule-week-nav__arrow {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-ink-soft);
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.schedule-week-nav__arrow:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-ink);
+}
+
+.schedule-week-nav__label {
+  min-width: 190px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-size: .95rem;
+  text-align: center;
+}
+
+.schedule-week-nav-spacer { flex: 1 1 auto; }
+
+/* The button is what's clickable and visible; the native date input
+   just needs to exist and be "on screen" (not display:none) for
+   showPicker()/click() to open its calendar — sized to nothing and
+   tucked under the button instead of shown as a normal field. */
+.schedule-calendar-trigger { position: relative; }
+.schedule-calendar-input {
+  position: absolute;
+  inset: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------- Two-line day header (date + weekday) ---------- */
+.schedule-day-th__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .1rem;
+}
+.schedule-day-th__date {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+.schedule-day-th__weekday {
+  font-size: .72rem;
+  color: var(--color-ink-soft);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.schedule-day-th--today {
+  background: color-mix(in srgb, var(--color-sky) 16%, var(--color-surface-alt));
+}
+.schedule-day-th--today .schedule-day-th__date { color: var(--color-sky-deep); }
+
 /* The board can get wide (days × rooms) — scroll horizontally instead of
    squeezing every column, and let the specialist column stay pinned so
    you always know which row you're looking at. */
