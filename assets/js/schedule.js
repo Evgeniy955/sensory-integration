@@ -19,10 +19,12 @@
     { key: "sat", label: "Сб" },
   ];
 
-  // Cycled across rooms in creation order — three existing pastel design
-  // tokens (see assets/css/styles.css), reused rather than inventing new
-  // colors so a 4th/5th room still matches the site's palette.
-  const ROOM_COLORS = ["sage", "sky", "apricot"];
+  // Cycled across rooms in creation order. Bold/saturated on purpose (see
+  // the "Room tint" comment in schedule.css) rather than the public
+  // site's pastel tokens — legibility across a crowded staff table
+  // matters more here than the sensory-gentle palette the landing page
+  // uses. Five hues before a 6th room repeats a color.
+  const ROOM_COLORS = ["blue", "yellow", "green", "orange", "purple"];
 
   const BOARD_ROW_ID = "main";
 
@@ -51,13 +53,25 @@
   function defaultBoard() {
     return {
       rooms: [
-        { id: uid(), name: "Зал 1", color: "sage" },
-        { id: uid(), name: "Зал 2", color: "sky" },
-        { id: uid(), name: "Зал 3", color: "apricot" },
+        { id: uid(), name: "Зал 1", color: "blue" },
+        { id: uid(), name: "Зал 2", color: "yellow" },
+        { id: uid(), name: "Зал 3", color: "green" },
       ],
       specialists: [],
       cells: {},
     };
+  }
+
+  // Maps the old pastel palette (sage/sky/apricot) to its closest new
+  // bright hue, so boards saved before this change keep each room
+  // visually distinct instead of every legacy room collapsing to the
+  // same fallback color.
+  const LEGACY_ROOM_COLORS = { sage: "green", sky: "blue", apricot: "yellow" };
+
+  function normalizeRoomColor(color) {
+    if (ROOM_COLORS.includes(color)) return color;
+    if (LEGACY_ROOM_COLORS[color]) return LEGACY_ROOM_COLORS[color];
+    return ROOM_COLORS[0];
   }
 
   function normalizeBoard(raw) {
@@ -65,7 +79,7 @@
     if (!raw || typeof raw !== "object") return fallback;
     const rooms = Array.isArray(raw.rooms) && raw.rooms.length
       ? raw.rooms.filter((r) => r && r.id && r.name != null).map((r) => ({
-          id: String(r.id), name: String(r.name), color: ROOM_COLORS.includes(r.color) ? r.color : "sage",
+          id: String(r.id), name: String(r.name), color: normalizeRoomColor(r.color),
         }))
       : fallback.rooms;
     const specialists = Array.isArray(raw.specialists)

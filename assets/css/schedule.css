@@ -141,19 +141,29 @@ td.schedule-col-specialist {
 }
 
 /* ---------- Room tint ----------
-   Whichever room is picked in a cell's own dropdown washes that cell in
-   the full strength of one of the site's existing pastel accent colors
-   (same tokens as the admin role badges), so it's clearly visible which
-   hall each specialist is in each day at a glance, without introducing
-   new, sensorially-loud colors. Hover mixes in a touch of the deeper
-   solid accent for extra emphasis. */
-.schedule-cell--sage { background: var(--color-sage-tint); }
-.schedule-cell--sky { background: var(--color-sky-tint); }
-.schedule-cell--apricot { background: var(--color-apricot-tint); }
+   Bold, saturated colors (not the public site's pastel tokens — those
+   are deliberately muted for sensory-sensitive visitors, but this table
+   is a staff-only tool where the priority is telling rooms apart at a
+   glance from across the screen) so whichever room is picked in a
+   cell's dropdown is unmistakable. Hover switches to a deeper shade of
+   the same hue for extra emphasis. */
+.schedule-cell--blue { background: #2F8FE6; color: #06253F; }
+.schedule-cell--yellow { background: #FFD23F; color: #4A3800; }
+.schedule-cell--green { background: #2ECC71; color: #063D22; }
+.schedule-cell--orange { background: #FF8A3D; color: #4A2200; }
+.schedule-cell--purple { background: #A66BF0; color: #2B0F4A; }
 
-.schedule-table tbody tr:hover td.schedule-cell--sage { background: color-mix(in srgb, var(--color-sage) 30%, var(--color-sage-tint)); }
-.schedule-table tbody tr:hover td.schedule-cell--sky { background: color-mix(in srgb, var(--color-sky) 30%, var(--color-sky-tint)); }
-.schedule-table tbody tr:hover td.schedule-cell--apricot { background: color-mix(in srgb, var(--color-apricot) 30%, var(--color-apricot-tint)); }
+.schedule-table tbody tr:hover td.schedule-cell--blue { background: #1B6FC2; color: #FFFFFF; }
+.schedule-table tbody tr:hover td.schedule-cell--yellow { background: #E6B800; color: #3A2C00; }
+.schedule-table tbody tr:hover td.schedule-cell--green { background: #1FA85A; color: #FFFFFF; }
+.schedule-table tbody tr:hover td.schedule-cell--orange { background: #E36F1E; color: #FFFFFF; }
+.schedule-table tbody tr:hover td.schedule-cell--purple { background: #8A47D6; color: #FFFFFF; }
+
+.schedule-cell--blue .schedule-cell-select,
+.schedule-cell--yellow .schedule-cell-select,
+.schedule-cell--green .schedule-cell-select,
+.schedule-cell--orange .schedule-cell-select,
+.schedule-cell--purple .schedule-cell-select { color: inherit; }
 
 .schedule-cell-select {
   width: 100%;
