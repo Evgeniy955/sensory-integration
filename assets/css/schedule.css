@@ -159,23 +159,32 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: .1rem;
+  gap: .2rem;
 }
 .schedule-day-th__date {
-  font-size: .78rem;
-  font-weight: 700;
-  color: var(--color-ink);
+  font-size: .82rem;
+  font-weight: 800;
+  color: #0B0C22;
+  line-height: 1;
 }
 .schedule-day-th__weekday {
-  font-size: .72rem;
-  color: var(--color-ink-soft);
+  font-size: .68rem;
+  color: color-mix(in srgb, #0B0C22 65%, transparent);
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: .04em;
+  letter-spacing: .06em;
 }
-.schedule-day-th--today {
-  background: color-mix(in srgb, var(--color-sky) 16%, var(--color-surface-alt));
+/* Today's column gets a little white "pill" around the date instead of
+   changing the whole cell's background — reads as a marker, not just a
+   different shade in an already-colorful header row. */
+.schedule-day-th--today .schedule-day-th__date {
+  display: inline-block;
+  background: #FFFFFF;
+  color: var(--color-sky-deep);
+  padding: .1rem .55rem;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(11, 12, 34, .25);
 }
-.schedule-day-th--today .schedule-day-th__date { color: var(--color-sky-deep); }
 
 /* The board can get wide (days × rooms) — scroll horizontally instead of
    squeezing every column, and let the specialist column stay pinned so
@@ -201,14 +210,19 @@
 .schedule-table th:last-child,
 .schedule-table td:last-child { border-right: none; }
 
+/* The plain grey header row was the flattest thing on the page — swap in
+   the same sage→sky gradient already used for primary buttons and the
+   section top-borders elsewhere on the site, so the table opens with
+   some color instead of a monotone strip. */
 .schedule-table thead th {
   text-align: center;
   font-weight: 700;
   font-size: .78rem;
-  text-transform: uppercase;
   letter-spacing: .04em;
-  color: var(--color-ink-soft);
-  background: var(--color-surface-alt);
+  color: #0B0C22;
+  background: linear-gradient(135deg, var(--color-sage), var(--color-sky));
+  border-bottom: 2px solid color-mix(in srgb, var(--color-sky-deep) 45%, transparent);
+  border-right-color: color-mix(in srgb, #0B0C22 12%, transparent);
   padding: .6rem .5rem;
 }
 
@@ -217,18 +231,35 @@
   padding: .55rem .5rem !important;
 }
 
-/* First column: specialist names, pinned while the rest scrolls. */
+/* First column: specialist names, pinned while the rest scrolls. The
+   header cell gets a solid (non-gradient) fill — it's sticky, so a
+   gradient sliding under it while the table scrolls would look broken —
+   one shade deeper than the row gradient so it still reads as the
+   "anchor" corner of the header. */
 .schedule-col-specialist {
   position: sticky;
   left: 0;
   z-index: 2;
   min-width: 190px;
-  background: var(--color-surface-alt);
   text-align: left !important;
+}
+th.schedule-col-specialist {
+  /* Plain --color-sage (not -deep): in the cosmic theme "-deep" tokens
+     flip to a *lighter* shade for text-on-tint contrast elsewhere, which
+     would make white text unreadable here — the base tone plus dark ink
+     stays legible in both themes, same as the gradient header cells. */
+  background: var(--color-sage);
+  color: #0B0C22;
 }
 td.schedule-col-specialist {
   background: var(--color-surface);
   z-index: 1;
+}
+/* Faint zebra striping on just this column (room cells already carry
+   their own tint, so striping there would fight it) — enough rhythm to
+   make a long roster easier to scan down. */
+.schedule-table tbody tr:nth-child(even) td.schedule-col-specialist {
+  background: color-mix(in srgb, var(--color-surface-alt) 55%, var(--color-surface));
 }
 .schedule-table tbody tr:hover td.schedule-col-specialist { background: var(--color-surface-alt); }
 
