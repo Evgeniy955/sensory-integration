@@ -44,6 +44,12 @@
   // uses. Three hues before a 4th room repeats a color.
   const ROOM_COLORS = ["yellow", "red", "blue"];
 
+  // A wider cycle than rooms — there are usually more specialists than
+  // rooms, and the point here is telling *people* apart across the grid
+  // (a booked cell is tinted by whoever's in it, not by which room it's
+  // in), so more distinct hues before repeating matters more.
+  const SPECIALIST_COLORS = ["teal", "violet", "orange", "lime", "cyan", "rose", "amber", "slate"];
+
   const BOARD_ROW_ID = "main";
   const CHILD_SEARCH_MIN_LEN = 2;
   const CHILD_SEARCH_DEBOUNCE_MS = 250;
@@ -141,8 +147,11 @@
         }))
       : fallback.rooms;
 
+    // Same index-derived-color reasoning as rooms above.
     const specialists = Array.isArray(raw.specialists)
-      ? raw.specialists.filter((s) => s && s.id).map((s) => ({ id: String(s.id), name: String(s.name || "") }))
+      ? raw.specialists.filter((s) => s && s.id).map((s, i) => ({
+          id: String(s.id), name: String(s.name || ""), color: SPECIALIST_COLORS[i % SPECIALIST_COLORS.length],
+        }))
       : [];
 
     const roomIds = new Set(rooms.map((r) => r.id));
@@ -230,6 +239,19 @@
     return spec ? (spec.name || "Без імені") : "спеціаліст видалений";
   }
 
+  // Slot backgrounds are tinted by *specialist*, not room — the room is
+  // already identified by which column a cell sits in (headers carry the
+  // room color), so using the cell's own background to carry the
+  // specialist's identity instead is what actually lets you spot "where
+  // is this person today" across every room at a glance. Falls back to a
+  // neutral, uncolored tint if the specialist was removed from the
+  // roster since this slot was booked.
+  function specialistColor(id) {
+    if (!id) return null;
+    const spec = board.specialists.find((s) => s.id === id);
+    return spec ? spec.color : null;
+  }
+
   // ---------- Grid rendering ----------
   function renderThead() {
     const thead = document.getElementById("schedule-thead");
@@ -244,7 +266,8 @@
   function slotCellHtml(room, hour, dateIso) {
     const key = cellKey(room.id, dateIso, hour);
     const entry = board.cells[key];
-    const colorClass = entry ? "schedule-cell--" + room.color : "";
+    const specColor = entry ? specialistColor(entry.specialistId) : null;
+    const colorClass = entry ? "schedule-specialist--" + (specColor || "none") : "";
     const label = hourLabel(hour);
     const inner = entry
       ? '<span class="schedule-slot-specialist">' + escapeHtml(specialistName(entry.specialistId)) + "</span>" +
@@ -356,7 +379,8 @@
 
   // ---------- Specialists ----------
   function addSpecialist() {
-    const spec = { id: uid(), name: "" };
+    const color = SPECIALIST_COLORS[board.specialists.length % SPECIALIST_COLORS.length];
+    const spec = { id: uid(), name: "", color };
     board.specialists.push(spec);
     managedSpecialistId = spec.id;
     syncSpecialistControls();

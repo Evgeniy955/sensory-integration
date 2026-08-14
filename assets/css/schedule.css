@@ -217,9 +217,22 @@ th.schedule-col-time {
 .schedule-table thead th.schedule-room-th.schedule-cell--red { background: #E5484D; color: #FFFFFF; }
 .schedule-table thead th.schedule-room-th.schedule-cell--blue { background: #2F8FE6; color: #FFFFFF; }
 
-.schedule-cell--yellow { background: color-mix(in srgb, #FFD23F 30%, var(--color-surface)); }
-.schedule-cell--red { background: color-mix(in srgb, #E5484D 22%, var(--color-surface)); }
-.schedule-cell--blue { background: color-mix(in srgb, #2F8FE6 22%, var(--color-surface)); }
+/* ---------- Specialist tint ----------
+   A booked slot's background identifies *who* it is, not which room —
+   the room is already obvious from which column the cell sits in
+   (header carries the room color). Same bold-color reasoning as rooms:
+   8 hues before one repeats, since a team is usually bigger than 3
+   rooms. Falls back to a neutral gray if the specialist was since
+   removed from the roster (booking kept, identity lost). */
+.schedule-specialist--teal { background: color-mix(in srgb, #14B8A6 30%, var(--color-surface)); }
+.schedule-specialist--violet { background: color-mix(in srgb, #8B5CF6 26%, var(--color-surface)); }
+.schedule-specialist--orange { background: color-mix(in srgb, #FB923C 32%, var(--color-surface)); }
+.schedule-specialist--lime { background: color-mix(in srgb, #84CC16 30%, var(--color-surface)); }
+.schedule-specialist--cyan { background: color-mix(in srgb, #06B6D4 28%, var(--color-surface)); }
+.schedule-specialist--rose { background: color-mix(in srgb, #F43F5E 26%, var(--color-surface)); }
+.schedule-specialist--amber { background: color-mix(in srgb, #F59E0B 32%, var(--color-surface)); }
+.schedule-specialist--slate { background: color-mix(in srgb, #64748B 26%, var(--color-surface)); }
+.schedule-specialist--none { background: color-mix(in srgb, var(--color-ink-faint) 20%, var(--color-surface)); }
 
 /* ---------- Slot cells ---------- */
 .schedule-slot-cell { padding: 0 !important; }
