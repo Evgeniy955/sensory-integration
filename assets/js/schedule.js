@@ -30,8 +30,8 @@
   // the "Room tint" comment in schedule.css) rather than the public
   // site's pastel tokens — legibility across a crowded staff table
   // matters more here than the sensory-gentle palette the landing page
-  // uses. Five hues before a 6th room repeats a color.
-  const ROOM_COLORS = ["blue", "yellow", "green", "orange", "purple"];
+  // uses. Three hues before a 4th room repeats a color.
+  const ROOM_COLORS = ["yellow", "red", "blue"];
 
   const BOARD_ROW_ID = "main";
 
@@ -110,9 +110,9 @@
   function defaultBoard() {
     return {
       rooms: [
-        { id: uid(), name: "Зал 1", color: "blue" },
-        { id: uid(), name: "Зал 2", color: "yellow" },
-        { id: uid(), name: "Зал 3", color: "green" },
+        { id: uid(), name: "Зал 1", color: "yellow" },
+        { id: uid(), name: "Зал 2", color: "red" },
+        { id: uid(), name: "Зал 3", color: "blue" },
       ],
       specialists: [],
       rows: [],
@@ -120,11 +120,16 @@
     };
   }
 
-  // Maps the old pastel palette (sage/sky/apricot) to its closest new
-  // bright hue, so boards saved before this change keep each room
-  // visually distinct instead of every legacy room collapsing to the
-  // same fallback color.
-  const LEGACY_ROOM_COLORS = { sage: "green", sky: "blue", apricot: "yellow" };
+  // Maps colors from earlier palette versions (the original pastel
+  // sage/sky/apricot tokens, and the later 5-hue blue/yellow/green/
+  // orange/purple set) onto today's yellow/red/blue palette, so boards
+  // saved under any previous version keep each room reasonably distinct
+  // instead of every unrecognized color collapsing onto the same
+  // fallback.
+  const LEGACY_ROOM_COLORS = {
+    sage: "blue", sky: "blue", apricot: "yellow",
+    green: "blue", orange: "red", purple: "red",
+  };
 
   function normalizeRoomColor(color) {
     if (ROOM_COLORS.includes(color)) return color;
