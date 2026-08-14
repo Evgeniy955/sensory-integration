@@ -347,10 +347,13 @@ td.schedule-col-specialist {
   text-align-last: center;
   cursor: pointer;
 }
+/* Stays transparent on focus/open too — an opaque surface color here
+   would paint right over the room tint on the <td> underneath, so the
+   cell would flash white the moment you click it to pick a room. Just
+   the ring communicates focus; the color underneath never disappears. */
 .schedule-cell-select:focus {
   outline: none;
-  background: var(--color-surface);
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-sky) 40%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-ink) 55%, transparent);
 }
 /* Empty ("—") selection reads as a placeholder, not a room name. */
 .schedule-cell-select:invalid,
