@@ -142,18 +142,18 @@ td.schedule-col-specialist {
 
 /* ---------- Room tint ----------
    Whichever room is picked in a cell's own dropdown washes that cell in
-   one of the site's existing pastel accent colors (same tokens as the
-   admin role badges), so a glance down the table tells you which hall
-   each specialist is in each day without introducing new,
-   sensorially-loud colors. A softened tint blended into the surface
-   keeps the select's text easy to read. */
-.schedule-cell--sage { background: color-mix(in srgb, var(--color-sage-tint) 55%, var(--color-surface)); }
-.schedule-cell--sky { background: color-mix(in srgb, var(--color-sky-tint) 55%, var(--color-surface)); }
-.schedule-cell--apricot { background: color-mix(in srgb, var(--color-apricot-tint) 55%, var(--color-surface)); }
+   the full strength of one of the site's existing pastel accent colors
+   (same tokens as the admin role badges), so it's clearly visible which
+   hall each specialist is in each day at a glance, without introducing
+   new, sensorially-loud colors. Hover mixes in a touch of the deeper
+   solid accent for extra emphasis. */
+.schedule-cell--sage { background: var(--color-sage-tint); }
+.schedule-cell--sky { background: var(--color-sky-tint); }
+.schedule-cell--apricot { background: var(--color-apricot-tint); }
 
-.schedule-table tbody tr:hover td.schedule-cell--sage { background: color-mix(in srgb, var(--color-sage-tint) 80%, var(--color-surface)); }
-.schedule-table tbody tr:hover td.schedule-cell--sky { background: color-mix(in srgb, var(--color-sky-tint) 80%, var(--color-surface)); }
-.schedule-table tbody tr:hover td.schedule-cell--apricot { background: color-mix(in srgb, var(--color-apricot-tint) 80%, var(--color-surface)); }
+.schedule-table tbody tr:hover td.schedule-cell--sage { background: color-mix(in srgb, var(--color-sage) 30%, var(--color-sage-tint)); }
+.schedule-table tbody tr:hover td.schedule-cell--sky { background: color-mix(in srgb, var(--color-sky) 30%, var(--color-sky-tint)); }
+.schedule-table tbody tr:hover td.schedule-cell--apricot { background: color-mix(in srgb, var(--color-apricot) 30%, var(--color-apricot-tint)); }
 
 .schedule-cell-select {
   width: 100%;
