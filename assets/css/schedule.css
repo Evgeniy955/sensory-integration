@@ -226,8 +226,8 @@ th.schedule-col-time {
 
 .schedule-slot-btn {
   width: 100%;
-  min-width: 168px;
-  min-height: 64px;
+  min-width: 185px;
+  min-height: 72px;
   border: none;
   background: transparent;
   color: var(--color-ink);
@@ -249,13 +249,13 @@ th.schedule-col-time {
 }
 
 .schedule-slot-specialist {
-  font-size: .95rem;
+  font-size: 1.1rem;
   font-weight: 700;
   white-space: normal;
   line-height: 1.2;
 }
 .schedule-slot-child {
-  font-size: .92rem;
+  font-size: 1.05rem;
   font-weight: 600;
   color: var(--color-ink-soft);
   white-space: normal;
