@@ -58,6 +58,18 @@
   <script src="../assets/js/admin-auth.js"></script>
   <script>
     (async function () {
+      const status = document.querySelector("[data-admin-status]");
+
+      // Bounced back here by requireAuth() (admin-auth.js) because the
+      // account has no profiles row — i.e. nobody with super_admin
+      // invited them. The stray session is already signed out by then;
+      // this is just the explanation.
+      if (new URLSearchParams(window.location.search).get("noaccess") === "1") {
+        status.innerHTML = '<div class="admin-notice admin-notice--error">' +
+          "Цей обліковий запис не має доступу до адмінпанелі. Додати новий обліковий запис може лише супер адмін через «Керування користувачами»." +
+          "</div>";
+      }
+
       // Already logged in? Skip straight to the dashboard.
       const existing = await window.getCurrentProfile();
       if (existing) {
@@ -66,7 +78,6 @@
       }
 
       const form = document.getElementById("login-form");
-      const status = document.querySelector("[data-admin-status]");
       const btn = document.getElementById("login-btn");
 
       form.addEventListener("submit", async (e) => {

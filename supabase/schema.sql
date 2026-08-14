@@ -77,27 +77,20 @@ create policy "Super admins can delete profiles"
   on public.profiles for delete
   using (public.current_user_role() = 'super_admin');
 
--- 5. Auto-create a profile row whenever a new auth user signs up --------
--- New users default to 'instructor'; a super_admin can change the role
--- afterwards (or the admin-create-user Edge Function sets it directly).
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  insert into public.profiles (id, email, role)
-  values (new.id, new.email, 'instructor')
-  on conflict (id) do nothing;
-  return new;
-end;
-$$;
-
+-- 5. New sign-ins no longer get an automatic profile ---------------------
+-- Previously, any new auth user (e.g. anyone who completed the "Увійти
+-- через Google" flow on login.html) got an automatic profiles row
+-- defaulting to 'instructor' — which accidentally granted admin-panel
+-- access to whoever showed up, and cluttered "Керування користувачами"
+-- with self-added accounts nobody invited. Dropped that trigger: now the
+-- only way a profiles row gets created is a super_admin explicitly adding
+-- someone from "Керування користувачами" (the admin-create-user Edge
+-- Function, which writes the row itself with the chosen role). Anyone who
+-- authenticates without a matching profiles row is signed back out by
+-- getCurrentProfile() (assets/js/admin-auth.js) the moment any admin page
+-- checks — they never reach one.
 drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute procedure public.handle_new_user();
+drop function if exists public.handle_new_user();
 
 -- 6. Anketas (parent questionnaires) ------------------------------------
 -- Each submission is stored as one row: the two fields we need to search
