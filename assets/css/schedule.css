@@ -210,22 +210,22 @@
 .schedule-table th:last-child,
 .schedule-table td:last-child { border-right: none; }
 
-/* A pastel sage→sky gradient sat too close in hue to the room colors
-   right underneath it (esp. the blue/green rooms), so the header edge
-   disappeared instead of reading as a separate bar. Fixed, theme-
-   independent dark navy (not a --color-* token, same reasoning as the
-   room hex values below: it has to stay dark in both the light and
-   cosmic themes to keep contrasting the room palette, which is also
-   fixed) gives a clean, unmistakable break between header and body. */
+/* A three-stop jewel-tone gradient (teal → indigo → fuchsia) — vivid and
+   deliberately not a single hue any room uses, so the header still reads
+   as a clearly separate bar (the earlier flat sage/sky and plain navy
+   versions either blended into the room colors or looked too plain).
+   Fixed, theme-independent colors, same reasoning as the room hex
+   values below: it needs to stay put in both the light and cosmic
+   themes since the room palette is fixed too. */
 .schedule-table thead th {
   text-align: center;
   font-weight: 700;
   font-size: .78rem;
   letter-spacing: .04em;
-  color: #F3F6F4;
-  background: linear-gradient(135deg, #1F3B2E, #13293D);
+  color: #FFFFFF;
+  background: linear-gradient(120deg, #0EA5A4, #6366F1, #D946EF);
   border-bottom: 3px solid var(--color-apricot);
-  border-right-color: rgba(255, 255, 255, .1);
+  border-right-color: rgba(255, 255, 255, .16);
   padding: .6rem .5rem;
 }
 
@@ -247,11 +247,10 @@
   text-align: left !important;
 }
 th.schedule-col-specialist {
-  /* Matches the dark navy of the day headers (fixed, not a --color-*
-     token, for the same reason noted above) — one solid fill instead of
-     the gradient since a gradient would slide oddly under it while the
-     column stays pinned during horizontal scroll. */
-  background: #1A3226;
+  /* The indigo midpoint of the day headers' gradient, as a solid fill —
+     a gradient here would slide oddly under it while the column stays
+     pinned during horizontal scroll. */
+  background: #6366F1;
   color: #FFFFFF;
 }
 td.schedule-col-specialist {
