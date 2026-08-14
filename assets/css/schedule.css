@@ -355,6 +355,21 @@ td.schedule-col-specialist {
   outline: none;
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-ink) 55%, transparent);
 }
+
+/* The <option> list is a browser-native popup, not part of normal page
+   layout — its text color only inherits from the <select> reliably once
+   the browser gets around to repainting it, which on some browsers
+   (mostly Chrome/Windows when the OS is in dark mode) doesn't happen on
+   the very first paint. Until then it falls back to a UA dark-mode
+   default: white text on a white popup, unreadable, self-corrects on
+   the first repaint (e.g. a hover) — which is the "white for a second"
+   flash. Setting color/background directly on every <option>, instead
+   of leaving it to inherit from the select, gives the browser an
+   explicit value to paint immediately and removes the race entirely. */
+.schedule-main select option {
+  color: var(--color-ink);
+  background-color: var(--color-surface);
+}
 /* Empty ("—") selection reads as a placeholder, not a room name. */
 .schedule-cell-select:invalid,
 .schedule-cell-select[data-empty="true"] {
