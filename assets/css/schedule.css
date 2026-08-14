@@ -191,10 +191,10 @@
   position: sticky;
   left: 0;
   z-index: 2;
-  min-width: 118px;
+  min-width: 130px;
   text-align: center !important;
-  font-size: .8rem;
-  font-weight: 600;
+  font-size: .95rem;
+  font-weight: 700;
   color: var(--color-ink-soft);
   background: var(--color-surface);
 }
@@ -347,6 +347,6 @@ th.schedule-col-time {
 
 @media (max-width: 640px) {
   .schedule-main { padding-left: .75rem; padding-right: .75rem; }
-  .schedule-col-time { min-width: 90px; font-size: .74rem; }
+  .schedule-col-time { min-width: 100px; font-size: .84rem; }
   .schedule-slot-btn { min-width: 118px; }
 }
