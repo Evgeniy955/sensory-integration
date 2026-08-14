@@ -43,6 +43,21 @@
       return null;
     }
     if (!profile) {
+      // Supabase Auth created this auth.users row itself as a side effect
+      // of the sign-in (mainly Google OAuth) before any of our code ran —
+      // signing out only ends the *session*, the row stays behind and
+      // would later block a super_admin from inviting this same email
+      // ("already been registered"). Best-effort delete it via the
+      // cleanup function while the session token is still valid (it has
+      // to run before signOut(), not after); if that call fails for any
+      // reason (offline, function not deployed yet, ...) we still sign
+      // out below so access is denied either way.
+      try {
+        await fetch(cfg.url.replace(/\/$/, "") + "/functions/v1/cleanup-unauthorized-signin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token },
+        });
+      } catch (e) { /* ignore — signOut below still denies access */ }
       await client.auth.signOut();
       return null;
     }
