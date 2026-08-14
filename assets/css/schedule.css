@@ -210,22 +210,22 @@
 .schedule-table th:last-child,
 .schedule-table td:last-child { border-right: none; }
 
-/* A three-stop jewel-tone gradient (teal → indigo → fuchsia) — vivid and
-   deliberately not a single hue any room uses, so the header still reads
-   as a clearly separate bar (the earlier flat sage/sky and plain navy
-   versions either blended into the room colors or looked too plain).
-   Fixed, theme-independent colors, same reasoning as the room hex
-   values below: it needs to stay put in both the light and cosmic
-   themes since the room palette is fixed too. */
+/* Same teal → indigo → fuchsia idea as before (still a three-hue blend
+   so it doesn't match any single room color) but desaturated into a
+   dustier, matte version — the earlier fully-saturated stops were too
+   punchy to stare at for a whole shift. Fixed, theme-independent
+   colors, same reasoning as the room hex values below: it needs to stay
+   put in both the light and cosmic themes since the room palette is
+   fixed too. */
 .schedule-table thead th {
   text-align: center;
   font-weight: 700;
   font-size: .78rem;
   letter-spacing: .04em;
   color: #FFFFFF;
-  background: linear-gradient(120deg, #0EA5A4, #6366F1, #D946EF);
+  background: linear-gradient(120deg, #3E8E8B, #5B5EA6, #A6559C);
   border-bottom: 3px solid var(--color-apricot);
-  border-right-color: rgba(255, 255, 255, .16);
+  border-right-color: rgba(255, 255, 255, .14);
   padding: .6rem .5rem;
 }
 
@@ -250,7 +250,7 @@ th.schedule-col-specialist {
   /* The indigo midpoint of the day headers' gradient, as a solid fill —
      a gradient here would slide oddly under it while the column stays
      pinned during horizontal scroll. */
-  background: #6366F1;
+  background: #5B5EA6;
   color: #FFFFFF;
 }
 td.schedule-col-specialist {
