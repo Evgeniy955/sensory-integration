@@ -494,7 +494,27 @@
 }
 .anketa-modal p.anketa-modal__hint { margin: 0 0 1.2rem; color: var(--color-ink-soft); font-size: .88rem; }
 
-.anketa-modal__edit-link { margin: -.4rem 0 1.1rem; }
+/* Plain .anketa-btn styling (transparent fill, pale border) all but
+   disappears here: this link sits on the modal's own white/surface
+   background, so its border (--color-border, a very pale mint) has
+   almost no contrast against it and the button reads as invisible.
+   Give it its own tinted fill + a stronger border so it reads as a
+   clickable action at a glance — apricot to match the "edit" color
+   already used for the Редагувати link in the anketa table. */
+.anketa-modal__edit-link {
+  margin: -.4rem 0 1.1rem;
+  background: var(--color-apricot-tint);
+  border-color: var(--color-apricot-deep);
+  color: var(--color-ink);
+  font-weight: 700;
+}
+.anketa-modal__edit-link svg { stroke: var(--color-apricot-deep); }
+.anketa-modal__edit-link:hover {
+  background: var(--color-apricot);
+  border-color: var(--color-apricot);
+  color: var(--color-ink);
+}
+.anketa-modal__edit-link:hover svg { stroke: var(--color-ink); }
 
 .anketa-import-drop {
   border: 1.5px dashed var(--color-border);
@@ -564,11 +584,20 @@
 
 .anketa-view-section { margin-bottom: 1.35rem; }
 .anketa-view-section:last-child { margin-bottom: 0; }
+/* Was --color-sage-deep at .92rem with no separation from the field rows
+   below — legible on its own, but in the light theme's soft, low-contrast
+   palette it read as just another line of text rather than a block
+   heading. Switched to the same dark ink used for every other heading on
+   the site (much stronger contrast) and added a rule beneath it so each
+   block reads as a clearly separate section at a glance. */
 .anketa-view-section h3 {
   font-family: var(--cx-font-display);
-  font-size: .92rem;
-  margin: 0 0 .6rem;
-  color: var(--color-sage-deep);
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 .7rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-ink);
 }
 .anketa-view-row {
   display: grid;
