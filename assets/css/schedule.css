@@ -1,9 +1,10 @@
 /* Schedule board (admin/schedule.html) — built on top of anketa.css's
    shell/topbar/table primitives (.anketa-shell, .anketa-table, ...), same
-   pattern anketa.css itself follows on top of styles.css. The table shows
-   one room at a time (picked via the dropdown in the toolbar): a sticky
-   specialist column, then one column per day of week, tinted with that
-   room's pastel color. Scoped to .schedule-* classes so nothing here
+   pattern anketa.css itself follows on top of styles.css. One column per
+   day of week; each day has its own room dropdown right in the header,
+   so different days can show different rooms at the same time. A day's
+   column (header + cells) is tinted with whichever room is currently
+   picked for that day. Scoped to .schedule-* classes so nothing here
    leaks into the rest of the admin panel. */
 
 .schedule-main {
@@ -107,7 +108,40 @@
 
 .schedule-day-th {
   position: relative;
-  padding: .55rem .5rem !important;
+  padding: .5rem .5rem !important;
+}
+
+.schedule-day-th__row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .3rem;
+}
+
+.schedule-day-th__label {
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.schedule-day-room-select {
+  font-family: inherit;
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  color: inherit;
+  background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 999px;
+  padding: .2rem .5rem;
+  cursor: pointer;
+  max-width: 100px;
+}
+.schedule-day-room-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-sky) 45%, transparent);
 }
 
 /* First column: specialist names, pinned while the rest scrolls. */
@@ -171,14 +205,14 @@ td.schedule-col-specialist {
 }
 
 /* ---------- Room tint ----------
-   The currently selected room (see the dropdown in the toolbar) washes
-   the whole table in one of the site's existing pastel accent colors
-   (same tokens as the admin role badges), so it's visually obvious which
-   hall you're editing without introducing new, sensorially-loud colors.
-   Header cells (.schedule-room-th--*, applied to the day-of-week header
-   row) use the fuller tint; body cells (.schedule-cell--*) use a
-   softened version blended into the surface so typed text stays easy to
-   read. */
+   Whichever room is picked in a given day's dropdown washes that day's
+   whole column (header + every specialist's cell) in one of the site's
+   existing pastel accent colors (same tokens as the admin role badges),
+   so a glance down a column tells you which hall it's currently showing
+   without introducing new, sensorially-loud colors. Header cells
+   (.schedule-room-th--*) use the fuller tint; body cells
+   (.schedule-cell--*) use a softened version blended into the surface so
+   typed text stays easy to read. */
 .schedule-room-th--sage { background: var(--color-sage-tint); color: var(--color-sage-deep); }
 .schedule-room-th--sky { background: var(--color-sky-tint); color: var(--color-sky-deep); }
 .schedule-room-th--apricot { background: var(--color-apricot-tint); color: var(--color-apricot-deep); }

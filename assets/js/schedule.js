@@ -1,13 +1,14 @@
-// Schedule board (admin/schedule.html): specialists × day-of-week grid for
-// one room at a time, stored as a single JSONB row in
-// public.schedule_boards (id='main'). Loaded after supabase-config.js +
-// admin-auth.js (needs window.sbClient).
+// Schedule board (admin/schedule.html): specialists × day-of-week grid,
+// stored as a single JSONB row in public.schedule_boards (id='main').
+// Loaded after supabase-config.js + admin-auth.js (needs window.sbClient).
 //
 // The whole board — room list, specialist list, and every cell's text —
 // lives in one in-memory object (`board`) that's re-rendered top to
-// bottom on every change and pushed to Supabase shortly after. The room
-// dropdown in the toolbar just changes which room's cells the table
-// currently shows (`selectedRoomId`); it doesn't change what's stored.
+// bottom on every change and pushed to Supabase shortly after. Each day
+// of the week has its own room dropdown in the header
+// (`selectedRoomByDay[dayKey]`), so e.g. Monday can show Зал 1 while
+// Tuesday shows Зал 2 at the same time — that mapping is a local view
+// choice, not something saved to the board itself.
 
 (function () {
   const DAYS = [
@@ -29,7 +30,8 @@
   let board = null;
   let currentProfileId = null;
   let saveTimer = null;
-  let selectedRoomId = null;
+  let managedRoomId = null; // room targeted by the toolbar's rename/delete controls
+  let selectedRoomByDay = {}; // dayKey -> roomId, which room each day's column currently shows
 
   function uid() {
     return (window.crypto && window.crypto.randomUUID)
@@ -125,25 +127,43 @@
     saveBoard();
   }
 
-  function getSelectedRoom() {
-    return board.rooms.find((r) => r.id === selectedRoomId) || null;
+  function getManagedRoom() {
+    return board.rooms.find((r) => r.id === managedRoomId) || null;
+  }
+
+  function getRoomForDay(dayKey) {
+    return board.rooms.find((r) => r.id === selectedRoomByDay[dayKey]) || null;
+  }
+
+  function dayRoomOptionsHtml(dayKey) {
+    return board.rooms.map((r) =>
+      '<option value="' + r.id + '"' + (r.id === selectedRoomByDay[dayKey] ? " selected" : "") + ">" + escapeHtml(r.name) + "</option>"
+    ).join("");
   }
 
   function renderThead() {
     const thead = document.getElementById("schedule-thead");
-    const room = getSelectedRoom();
-    const colorClass = room ? "schedule-room-th--" + room.color : "";
     thead.innerHTML = "<tr>" +
       '<th class="schedule-col-specialist">Спеціаліст</th>' +
-      DAYS.map((day) => '<th class="schedule-day-th ' + colorClass + '">' + day.label + "</th>").join("") +
+      DAYS.map((day) => {
+        const room = getRoomForDay(day.key);
+        const colorClass = room ? "schedule-room-th--" + room.color : "";
+        return '<th class="schedule-day-th ' + colorClass + '">' +
+          '<div class="schedule-day-th__row">' +
+          '<span class="schedule-day-th__label">' + day.label + "</span>" +
+          '<select class="schedule-day-room-select" data-day-select="' + day.key + '" aria-label="Зал у ' + day.label + '">' +
+          dayRoomOptionsHtml(day.key) +
+          "</select></div></th>";
+      }).join("") +
       "</tr>";
   }
 
-  function specialistRowHtml(spec, colorClass) {
-    const room = getSelectedRoom();
+  function specialistRowHtml(spec) {
     const cells = DAYS.map((day) => {
+      const room = getRoomForDay(day.key);
       const key = room ? cellKey(spec.id, day.key, room.id) : null;
       const val = key ? (board.cells[key] || "") : "";
+      const colorClass = room ? "schedule-cell--" + room.color : "";
       return '<td class="' + colorClass + '">' +
         '<input class="schedule-cell-input" data-cell="' + (key || "") + '" value="' + escapeHtml(val) + '" placeholder="—"' + (key ? "" : " disabled") + ">" +
         "</td>";
@@ -158,41 +178,46 @@
 
   function renderTbody() {
     const tbody = document.getElementById("schedule-tbody");
-    const room = getSelectedRoom();
-    const colorClass = room ? "schedule-cell--" + room.color : "";
     if (!board.specialists.length) {
       const span = 1 + DAYS.length;
       tbody.innerHTML = '<tr><td colspan="' + span + '" class="schedule-empty-hint">' +
         "Ще немає жодного спеціаліста. Натисніть «Додати спеціаліста» вище." + "</td></tr>";
       return;
     }
-    tbody.innerHTML = board.specialists.map((spec) => specialistRowHtml(spec, colorClass)).join("");
+    tbody.innerHTML = board.specialists.map(specialistRowHtml).join("");
   }
 
-  // Rebuilds the <option> list from board.rooms and keeps it pointed at
-  // selectedRoomId. Only called after rooms are added/removed — renaming
-  // updates the existing <option>'s text in place instead (see
-  // wireEvents' room-name-input listener) so the dropdown doesn't lose
-  // focus mid-keystroke.
+  // Rebuilds the toolbar's room-management <option> list, keeping it
+  // pointed at managedRoomId. Only called after rooms are added/removed —
+  // renaming updates existing <option> text in place instead (see
+  // wireEvents' room-name-input listener) so nothing loses focus
+  // mid-keystroke.
   function populateRoomSelect() {
     const select = document.getElementById("room-select");
     select.innerHTML = board.rooms.map((r) =>
-      '<option value="' + r.id + '"' + (r.id === selectedRoomId ? " selected" : "") + ">" + escapeHtml(r.name) + "</option>"
+      '<option value="' + r.id + '"' + (r.id === managedRoomId ? " selected" : "") + ">" + escapeHtml(r.name) + "</option>"
     ).join("");
   }
 
   function updateRoomNameField() {
-    const room = getSelectedRoom();
+    const room = getManagedRoom();
     document.getElementById("room-name-input").value = room ? room.name : "";
   }
 
-  // Called after any add/remove of a room: makes sure selectedRoomId still
-  // points at a real room (falling back to the first one), then refreshes
-  // the dropdown, the rename field, and the table.
+  // Called after any add/remove of a room: makes sure managedRoomId and
+  // every day's selectedRoomByDay entry still point at real rooms
+  // (falling back to the first one), then refreshes the toolbar controls
+  // and the table.
   function syncRoomControls() {
-    if (!board.rooms.some((r) => r.id === selectedRoomId)) {
-      selectedRoomId = board.rooms.length ? board.rooms[0].id : null;
+    if (!board.rooms.some((r) => r.id === managedRoomId)) {
+      managedRoomId = board.rooms.length ? board.rooms[0].id : null;
     }
+    const fallbackId = board.rooms.length ? board.rooms[0].id : null;
+    DAYS.forEach((day) => {
+      if (!board.rooms.some((r) => r.id === selectedRoomByDay[day.key])) {
+        selectedRoomByDay[day.key] = fallbackId;
+      }
+    });
     populateRoomSelect();
     updateRoomNameField();
     render();
@@ -226,7 +251,7 @@
     const color = ROOM_COLORS[board.rooms.length % ROOM_COLORS.length];
     const room = { id: uid(), name: "Зал " + (board.rooms.length + 1), color };
     board.rooms.push(room);
-    selectedRoomId = room.id; // jump straight to the newly added room
+    managedRoomId = room.id; // jump the toolbar straight to the newly added room
     syncRoomControls();
     flushSave();
   }
@@ -275,26 +300,35 @@
       if (removeSpec) removeSpecialist(removeSpec.getAttribute("data-remove-specialist"));
     });
 
-    document.getElementById("add-specialist-btn").addEventListener("click", addSpecialist);
-    document.getElementById("add-room-btn").addEventListener("click", addRoom);
-    document.getElementById("remove-room-btn").addEventListener("click", () => removeRoom(selectedRoomId));
-
-    document.getElementById("room-select").addEventListener("change", (e) => {
-      selectedRoomId = e.target.value;
-      updateRoomNameField();
+    // Each day's own room dropdown lives in the (re-rendered) table
+    // header, so it's handled the same delegated way as the cell/name
+    // inputs above rather than a one-time getElementById listener.
+    table.addEventListener("change", (e) => {
+      const daySelect = e.target.closest("[data-day-select]");
+      if (!daySelect) return;
+      selectedRoomByDay[daySelect.getAttribute("data-day-select")] = daySelect.value;
       render();
     });
 
-    // Renaming updates the matching <option> text directly instead of
-    // going through populateRoomSelect(), so the <select> isn't rebuilt
-    // (and the input doesn't lose focus) on every keystroke.
+    document.getElementById("add-specialist-btn").addEventListener("click", addSpecialist);
+    document.getElementById("add-room-btn").addEventListener("click", addRoom);
+    document.getElementById("remove-room-btn").addEventListener("click", () => removeRoom(managedRoomId));
+
+    document.getElementById("room-select").addEventListener("change", (e) => {
+      managedRoomId = e.target.value;
+      updateRoomNameField();
+    });
+
+    // Renaming updates every matching <option> in place (the toolbar's
+    // own select plus each day's header dropdown) instead of going
+    // through populateRoomSelect()/render(), so nothing loses focus
+    // mid-keystroke.
     const roomNameInput = document.getElementById("room-name-input");
     roomNameInput.addEventListener("input", (e) => {
-      const room = getSelectedRoom();
+      const room = getManagedRoom();
       if (!room) return;
       room.name = e.target.value;
-      const option = document.querySelector('#room-select option[value="' + room.id + '"]');
-      if (option) option.textContent = room.name;
+      document.querySelectorAll('option[value="' + room.id + '"]').forEach((opt) => { opt.textContent = room.name; });
       scheduleSave();
     });
     roomNameInput.addEventListener("focusout", flushSave);
@@ -305,7 +339,9 @@
       currentProfileId = profileId;
       wireEvents();
       board = await loadBoard();
-      selectedRoomId = board.rooms.length ? board.rooms[0].id : null;
+      managedRoomId = board.rooms.length ? board.rooms[0].id : null;
+      const fallbackId = managedRoomId;
+      DAYS.forEach((day) => { selectedRoomByDay[day.key] = fallbackId; });
       populateRoomSelect();
       updateRoomNameField();
       render();
