@@ -80,17 +80,44 @@ Deno.serve(async (req: Request) => {
   const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
   const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email);
+
+  let userId: string;
   if (inviteError || !invited?.user) {
-    return json({ error: inviteError?.message ?? "Could not create user" }, 400);
+    // "already been registered" means an auth user with this email exists
+    // but (since they're not showing up here to re-add) has no profiles
+    // row — most likely someone removed the row directly in Supabase's
+    // table editor instead of using the panel's own "Видалити" (which
+    // deletes the auth user too, via admin-delete-user). Rather than
+    // dead-end here, find that existing auth user and just (re)create
+    // their profiles row instead of inviting a duplicate.
+    const alreadyRegistered = (inviteError?.message || "").toLowerCase().includes("already");
+    if (!alreadyRegistered) {
+      return json({ error: inviteError?.message ?? "Could not create user" }, 400);
+    }
+
+    let existing = null;
+    for (let page = 1; page <= 20 && !existing; page++) {
+      const { data: list, error: listError } = await adminClient.auth.admin.listUsers({ page, perPage: 200 });
+      if (listError || !list?.users?.length) break;
+      existing = list.users.find((u) => (u.email || "").toLowerCase() === email.toLowerCase()) || null;
+      if (list.users.length < 200) break; // last page
+    }
+
+    if (!existing) {
+      return json({ error: inviteError?.message ?? "Could not create user" }, 400);
+    }
+    userId = existing.id;
+  } else {
+    userId = invited.user.id;
   }
 
   const { error: upsertError } = await adminClient
     .from("profiles")
-    .upsert({ id: invited.user.id, email, role, full_name: full_name || null });
+    .upsert({ id: userId, email, role, full_name: full_name || null });
 
   if (upsertError) {
     return json({ error: upsertError.message }, 500);
   }
 
-  return json({ success: true, user_id: invited.user.id });
+  return json({ success: true, user_id: userId });
 });
