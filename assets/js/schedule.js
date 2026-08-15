@@ -59,6 +59,7 @@
 
   let board = null;
   let currentProfileId = null;
+  let canEdit = true; // false for instructors — view the grid, cannot change it
   let saveTimer = null;
   let managedRoomId = null; // room targeted by the toolbar's rename/delete controls
   let managedSpecialistId = null; // specialist targeted by the toolbar's rename/delete controls
@@ -576,6 +577,7 @@
     });
 
     table.addEventListener("click", (e) => {
+      if (!canEdit) return; // instructors: view the grid, nothing opens on click
       const btn = e.target.closest("[data-cell]");
       if (!btn) return;
       const room = board.rooms.find((r) => r.id === btn.getAttribute("data-room"));
@@ -646,8 +648,14 @@
   }
 
   window.ScheduleBoard = {
-    async init(profileId) {
+    async init(profileId, canEditFlag) {
       currentProfileId = profileId;
+      canEdit = canEditFlag !== false;
+      document.getElementById("schedule-table").classList.toggle("schedule-table--readonly", !canEdit);
+      // Instructors never see the management panel at all — there's
+      // nothing in it they're allowed to touch, so the toggle button
+      // itself would just be dead weight.
+      if (!canEdit) document.getElementById("toggle-management-btn").hidden = true;
       wireEvents();
       updateDayControls();
       board = await loadBoard();
@@ -658,7 +666,13 @@
       populateSpecialistSelect();
       updateSpecialistNameField();
       render();
-      if (document.getElementById("save-status").dataset.state !== "error") setStatus("idle");
+      if (canEdit) {
+        if (document.getElementById("save-status").dataset.state !== "error") setStatus("idle");
+      } else {
+        // Nothing ever gets saved in read-only mode - no point implying
+        // otherwise with a lingering "idle"/blank save-status slot.
+        document.getElementById("save-status").hidden = true;
+      }
     },
   };
 })();

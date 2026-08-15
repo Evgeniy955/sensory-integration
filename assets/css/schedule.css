@@ -237,6 +237,13 @@ th.schedule-col-time {
 /* ---------- Slot cells ---------- */
 .schedule-slot-cell { padding: 0 !important; }
 
+/* Instructor view: nothing in the grid opens or reacts to a click, so it
+   shouldn't look clickable — plain cursor, and the hover "+" hint for
+   empty slots (which only ever meant "click to book") stays off. */
+.schedule-table--readonly .schedule-slot-btn { cursor: default; }
+.schedule-table--readonly .schedule-slot-btn:hover { background: transparent; }
+.schedule-table--readonly .schedule-slot-add { display: none; }
+
 .schedule-slot-btn {
   width: 100%;
   min-width: 185px;

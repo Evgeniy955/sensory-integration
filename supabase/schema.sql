@@ -142,10 +142,14 @@ drop index if exists public.anketas_child_full_name_unique_idx;
 create unique index if not exists anketas_child_submission_unique_idx
   on public.anketas (lower(trim(child_full_name)), created_at);
 
+-- Instructors get read-only access (the "Анкети" tab shows for them too,
+-- but with no add/import/edit/delete controls at the page level — this
+-- policy is what backs that up server-side, since the UI gate alone
+-- wouldn't stop a direct API call).
 drop policy if exists "Admins can view anketas" on public.anketas;
 create policy "Admins can view anketas"
   on public.anketas for select
-  using (public.current_user_role() in ('admin', 'super_admin'));
+  using (public.current_user_role() in ('admin', 'super_admin', 'instructor'));
 
 drop policy if exists "Admins can insert anketas" on public.anketas;
 create policy "Admins can insert anketas"
@@ -187,11 +191,13 @@ create table if not exists public.schedule_boards (
 alter table public.schedule_boards enable row level security;
 
 -- Same admin/super_admin shared-ownership model as anketas: any admin can
--- read and edit the board, not just whoever last saved it.
+-- read and edit the board, not just whoever last saved it. Instructors
+-- get the same read-only carve-out as anketas above — they can see the
+-- schedule but never write to it.
 drop policy if exists "Admins can view schedule" on public.schedule_boards;
 create policy "Admins can view schedule"
   on public.schedule_boards for select
-  using (public.current_user_role() in ('admin', 'super_admin'));
+  using (public.current_user_role() in ('admin', 'super_admin', 'instructor'));
 
 drop policy if exists "Admins can insert schedule" on public.schedule_boards;
 create policy "Admins can insert schedule"

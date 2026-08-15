@@ -41,7 +41,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>
       </div>
       <h2>Доступ обмежено</h2>
-      <p>Ця сторінка доступна лише ролям Адмін та Супер адмін. Якщо це помилка — зверніться до вашого супер адміна.</p>
+      <p>Ваш обліковий запис не має доступу до цієї сторінки. Якщо це помилка — зверніться до вашого супер адміна.</p>
     </div>
 
     <div id="anketa-list-content" hidden>
@@ -65,7 +65,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M12 3v3M12 18v3M5 12H2M22 12h-3M6.3 6.3 4.2 4.2M19.8 19.8l-2.1-2.1M6.3 17.7l-2.1 2.1M19.8 4.2l-2.1 2.1"/><circle cx="12" cy="12" r="4.2"/></svg>
           AI помічник
         </button>
-        <a class="anketa-btn anketa-btn--primary" href="anketa-form.html">
+        <a id="add-anketa-link" class="anketa-btn anketa-btn--primary" href="anketa-form.html">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
           Додати нову анкету
         </a>
@@ -426,6 +426,7 @@
 
     let importRows = null;
     let currentProfileId = null;
+    let canEdit = true; // false for instructors — set once the role is known, read by renderRows()
 
     function resetImportModal() {
       importRows = null;
@@ -685,12 +686,14 @@
 
       tbody.innerHTML = rows.map((r) => {
         const date = new Date(r.created_at).toLocaleDateString("uk-UA");
+        const editLink = canEdit
+          ? " · <a class=\"anketa-view-link anketa-view-link--edit\" href=\"anketa-form.html?id=" + encodeURIComponent(r.id) + "\">Редагувати</a>"
+          : "";
         return "<tr>" +
           "<td>" + escapeHtml(r.child_full_name || "—") + "</td>" +
           "<td>" + escapeHtml(r.parent_name || "—") + "</td>" +
           "<td>" + date + "</td>" +
-          "<td><button type=\"button\" class=\"anketa-view-link anketa-view-link--primary\" data-view=\"" + r.id + "\">Переглянути</button>" +
-          " · <a class=\"anketa-view-link anketa-view-link--edit\" href=\"anketa-form.html?id=" + encodeURIComponent(r.id) + "\">Редагувати</a></td>" +
+          "<td><button type=\"button\" class=\"anketa-view-link anketa-view-link--primary\" data-view=\"" + r.id + "\">Переглянути</button>" + editLink + "</td>" +
           "</tr>";
       }).join("");
     }
@@ -763,7 +766,7 @@
       }
       if (!profile) return; // requireAuth already redirected to login.html
 
-      const allowedRoles = ["admin", "super_admin"];
+      const allowedRoles = ["admin", "super_admin", "instructor"];
       if (!allowedRoles.includes(profile.role)) {
         document.getElementById("anketa-denied").hidden = false;
         return;
@@ -774,6 +777,16 @@
       whoamiEl.textContent = (profile.full_name || profile.email) + " · " + (ROLE_LABELS[profile.role] || profile.role);
       whoamiEl.title = profile.email;
       currentProfileId = profile.id;
+
+      // Instructors get read-only access — the RLS policies (schema.sql)
+      // already block writes server-side; this just keeps the buttons
+      // that would fail from showing up in the first place.
+      canEdit = profile.role === "admin" || profile.role === "super_admin";
+      if (!canEdit) {
+        document.getElementById("import-btn").hidden = true;
+        document.getElementById("add-anketa-link").hidden = true;
+        document.getElementById("view-modal-edit-link").hidden = true;
+      }
 
       document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
 

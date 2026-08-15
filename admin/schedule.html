@@ -42,7 +42,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>
       </div>
       <h2>Доступ обмежено</h2>
-      <p>Ця сторінка доступна лише ролям Адмін та Супер адмін. Якщо це помилка — зверніться до вашого супер адміна.</p>
+      <p>Ваш обліковий запис не має доступу до цієї сторінки. Якщо це помилка — зверніться до вашого супер адміна.</p>
     </div>
 
     <div id="schedule-content" hidden>
@@ -200,7 +200,7 @@
       }
       if (!profile) return; // requireAuth already redirected to login.html
 
-      const allowedRoles = ["admin", "super_admin"];
+      const allowedRoles = ["admin", "super_admin", "instructor"];
       if (!allowedRoles.includes(profile.role)) {
         document.getElementById("schedule-denied").hidden = false;
         return;
@@ -214,7 +214,12 @@
       document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
       document.getElementById("schedule-content").hidden = false;
 
-      window.ScheduleBoard.init(profile.id);
+      // Instructors get read-only access — the RLS policies (schema.sql)
+      // already block writes server-side; ScheduleBoard.init's canEdit
+      // flag just keeps the management panel and slot editor from
+      // showing up in the first place.
+      const canEdit = profile.role === "admin" || profile.role === "super_admin";
+      window.ScheduleBoard.init(profile.id, canEdit);
     })();
   </script>
 </body>

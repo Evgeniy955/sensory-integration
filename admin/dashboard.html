@@ -308,6 +308,11 @@
         document.getElementById("schedule-link").hidden = false;
         loadUsers();
       } else {
+        // Instructor: read-only access to Анкети/Розклад (their own
+        // pages enforce that — no edit controls, and the RLS policies
+        // back it up), but no user management.
+        document.getElementById("anketa-link").hidden = false;
+        document.getElementById("schedule-link").hidden = false;
         document.getElementById("placeholder-section").hidden = false;
       }
 
