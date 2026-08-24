@@ -26,12 +26,72 @@
   text-decoration: none;
 }
 
+.admin-topbar__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .admin-topbar__user {
   display: flex;
   align-items: center;
   gap: .75rem;
   font-size: .9rem;
   color: var(--color-ink-soft);
+}
+
+/* Hamburger toggle — hidden on desktop, shown only under the mobile
+   breakpoint below where the topbar links move into a collapsible menu. */
+.admin-topbar__toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+  flex: none;
+}
+.admin-topbar__toggle svg { width: 20px; height: 20px; }
+.admin-topbar__toggle .icon-close { display: none; }
+.admin-topbar__toggle[aria-expanded="true"] .icon-menu { display: none; }
+.admin-topbar__toggle[aria-expanded="true"] .icon-close { display: block; }
+
+@media (max-width: 720px) {
+  .admin-topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-topbar__toggle { display: inline-flex; }
+
+  .admin-topbar__user {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: .6rem;
+    margin-top: .9rem;
+    padding-top: .9rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .admin-topbar__user.is-open { display: flex; }
+
+  .admin-topbar__user #whoami {
+    padding-bottom: .2rem;
+  }
+
+  /* Overrides the inline style="width:auto" the topbar links/buttons carry
+     for their desktop layout — only !important reliably beats an inline
+     style from a stylesheet rule. */
+  .admin-topbar__user .admin-btn {
+    width: 100% !important;
+  }
 }
 
 .admin-main {
