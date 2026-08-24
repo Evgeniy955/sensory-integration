@@ -303,6 +303,87 @@
   letter-spacing: .04em;
 }
 
+/* Below 640px the table can't fit Email/Ім'я/Роль/Створено/Дії side by
+   side — instead of clipping (or forcing a horizontal scrollbar), each
+   row becomes its own card and each cell becomes a label: value line,
+   using the data-label attribute the JS in dashboard.html sets per <td>. */
+@media (max-width: 640px) {
+  .admin-table,
+  .admin-table thead,
+  .admin-table tbody,
+  .admin-table tr,
+  .admin-table th,
+  .admin-table td {
+    display: block;
+  }
+
+  .admin-table thead {
+    /* Column headers are replaced by each cell's data-label below. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .admin-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+  }
+
+  .admin-table tr {
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: .25rem .85rem;
+    background: var(--color-surface);
+  }
+
+  .admin-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .55rem 0;
+    border-bottom: 1px dashed var(--color-border);
+    text-align: right;
+  }
+
+  .admin-table td:last-child {
+    border-bottom: none;
+  }
+
+  .admin-table td[data-label]::before {
+    content: attr(data-label);
+    flex: none;
+    font-weight: 600;
+    font-size: .74rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--color-ink-soft);
+    text-align: left;
+  }
+
+  /* The Дії cell holds one or two buttons rather than a single value —
+     let them sit on their own row, left-aligned, and wrap if needed
+     instead of being squeezed flush right next to the label. */
+  .admin-table td[data-label="Дії"] {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .admin-table td[data-label="Дії"]::before {
+    width: 100%;
+  }
+
+  /* Loading/empty/error placeholder rows are a single <td colspan="5">
+     with no data-label — keep those left-aligned rather than right. */
+  .admin-table td:not([data-label]) {
+    justify-content: flex-start;
+    text-align: left;
+  }
+}
+
 .admin-badge {
   display: inline-block;
   padding: .2rem .6rem;

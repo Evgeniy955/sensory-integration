@@ -172,11 +172,11 @@
       }
       const actions = buttons.length ? buttons.join(" ") : "—";
       return "<tr data-user-row=\"" + u.id + "\">" +
-        "<td>" + escapeHtml(u.email) + "</td>" +
-        "<td>" + escapeHtml(u.full_name || "—") + "</td>" +
-        '<td><span class="admin-badge admin-badge--' + u.role + '">' + (ROLE_LABELS[u.role] || u.role) + "</span></td>" +
-        "<td>" + date + "</td>" +
-        "<td style=\"white-space:nowrap;\">" + actions + "</td>" +
+        "<td data-label=\"Email\">" + escapeHtml(u.email) + "</td>" +
+        "<td data-label=\"Ім'я\">" + escapeHtml(u.full_name || "—") + "</td>" +
+        '<td data-label="Роль"><span class="admin-badge admin-badge--' + u.role + '">' + (ROLE_LABELS[u.role] || u.role) + "</span></td>" +
+        "<td data-label=\"Створено\">" + date + "</td>" +
+        "<td data-label=\"Дії\" style=\"white-space:nowrap;\">" + actions + "</td>" +
         "</tr>";
     }
 
@@ -193,11 +193,11 @@
         ? '<span class="admin-badge admin-badge--' + u.role + '">' + ROLE_LABELS[u.role] + "</span><div class=\"admin-hint\" style=\"margin:.25rem 0 0;\">Не можна змінити власну роль</div>"
         : '<select data-edit-role style="width:auto;">' + roleOptions + "</select>";
       return "<tr data-user-row=\"" + u.id + "\">" +
-        "<td>" + escapeHtml(u.email) + "</td>" +
-        "<td><input type=\"text\" data-edit-name value=\"" + escapeHtml(u.full_name || "") + "\" style=\"width:100%;\"></td>" +
-        "<td>" + roleField + "</td>" +
-        "<td>" + new Date(u.created_at).toLocaleDateString("uk-UA") + "</td>" +
-        "<td style=\"white-space:nowrap;\">" +
+        "<td data-label=\"Email\">" + escapeHtml(u.email) + "</td>" +
+        "<td data-label=\"Ім'я\"><input type=\"text\" data-edit-name value=\"" + escapeHtml(u.full_name || "") + "\" style=\"width:100%;\"></td>" +
+        "<td data-label=\"Роль\">" + roleField + "</td>" +
+        "<td data-label=\"Створено\">" + new Date(u.created_at).toLocaleDateString("uk-UA") + "</td>" +
+        "<td data-label=\"Дії\" style=\"white-space:nowrap;\">" +
         '<button type="button" class="admin-btn admin-btn--sm" data-save-user="' + u.id + '" style="width:auto;">Зберегти</button> ' +
         '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cancel-edit style="width:auto;">Скасувати</button>' +
         "</td></tr>";
