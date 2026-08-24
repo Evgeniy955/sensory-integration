@@ -21,8 +21,14 @@
 </head>
 <body class="admin-shell">
   <header class="admin-topbar">
-    <a class="admin-topbar__brand" href="../index.html">Центр сенсорної інтеграції</a>
-    <div class="admin-topbar__user">
+    <div class="admin-topbar__row">
+      <a class="admin-topbar__brand" href="../index.html">Центр сенсорної інтеграції</a>
+      <button type="button" class="admin-topbar__toggle" id="topbar-toggle" aria-label="Меню" aria-expanded="false" aria-controls="topbar-menu">
+        <svg class="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="admin-topbar__user" id="topbar-menu">
       <span id="whoami">Завантаження...</span>
       <a class="admin-btn admin-btn--ghost" id="anketa-link" href="anketa.html" style="width:auto;" hidden>Анкети</a>
       <a class="admin-btn admin-btn--ghost" id="schedule-link" href="schedule.html" style="width:auto;" hidden>Розклад</a>
@@ -99,6 +105,33 @@
 
     document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
 
+    // Mobile menu: collapses the topbar links (Анкети/Розклад/Вийти) into
+    // a toggleable panel below the brand row on narrow screens.
+    (function () {
+      const toggle = document.getElementById("topbar-toggle");
+      const menu = document.getElementById("topbar-menu");
+      if (!toggle || !menu) return;
+
+      const setOpen = (open) => {
+        menu.classList.toggle("is-open", open);
+        toggle.setAttribute("aria-expanded", String(open));
+      };
+
+      toggle.addEventListener("click", () => setOpen(!menu.classList.contains("is-open")));
+
+      // Closing on link/button clicks keeps the menu from staying open
+      // after navigating away or logging out.
+      menu.addEventListener("click", (e) => {
+        if (e.target.closest("a, button")) setOpen(false);
+      });
+
+      // A resize back to desktop width shouldn't leave the menu "open"
+      // in a state that fights the (now irrelevant) mobile CSS.
+      window.addEventListener("resize", () => {
+        if (window.innerWidth > 720) setOpen(false);
+      });
+    })();
+
     // Populated by loadUsers(), keyed by profile id — read back when an
     // edit row is opened/saved so we don't need to re-fetch a single row.
     let usersById = {};
@@ -139,11 +172,11 @@
       }
       const actions = buttons.length ? buttons.join(" ") : "—";
       return "<tr data-user-row=\"" + u.id + "\">" +
-        "<td>" + escapeHtml(u.email) + "</td>" +
-        "<td>" + escapeHtml(u.full_name || "—") + "</td>" +
-        '<td><span class="admin-badge admin-badge--' + u.role + '">' + (ROLE_LABELS[u.role] || u.role) + "</span></td>" +
-        "<td>" + date + "</td>" +
-        "<td style=\"white-space:nowrap;\">" + actions + "</td>" +
+        "<td data-label=\"Email\">" + escapeHtml(u.email) + "</td>" +
+        "<td data-label=\"Ім'я\">" + escapeHtml(u.full_name || "—") + "</td>" +
+        '<td data-label="Роль"><span class="admin-badge admin-badge--' + u.role + '">' + (ROLE_LABELS[u.role] || u.role) + "</span></td>" +
+        "<td data-label=\"Створено\">" + date + "</td>" +
+        "<td data-label=\"Дії\" style=\"white-space:nowrap;\">" + actions + "</td>" +
         "</tr>";
     }
 
@@ -160,11 +193,11 @@
         ? '<span class="admin-badge admin-badge--' + u.role + '">' + ROLE_LABELS[u.role] + "</span><div class=\"admin-hint\" style=\"margin:.25rem 0 0;\">Не можна змінити власну роль</div>"
         : '<select data-edit-role style="width:auto;">' + roleOptions + "</select>";
       return "<tr data-user-row=\"" + u.id + "\">" +
-        "<td>" + escapeHtml(u.email) + "</td>" +
-        "<td><input type=\"text\" data-edit-name value=\"" + escapeHtml(u.full_name || "") + "\" style=\"width:100%;\"></td>" +
-        "<td>" + roleField + "</td>" +
-        "<td>" + new Date(u.created_at).toLocaleDateString("uk-UA") + "</td>" +
-        "<td style=\"white-space:nowrap;\">" +
+        "<td data-label=\"Email\">" + escapeHtml(u.email) + "</td>" +
+        "<td data-label=\"Ім'я\"><input type=\"text\" data-edit-name value=\"" + escapeHtml(u.full_name || "") + "\" style=\"width:100%;\"></td>" +
+        "<td data-label=\"Роль\">" + roleField + "</td>" +
+        "<td data-label=\"Створено\">" + new Date(u.created_at).toLocaleDateString("uk-UA") + "</td>" +
+        "<td data-label=\"Дії\" style=\"white-space:nowrap;\">" +
         '<button type="button" class="admin-btn admin-btn--sm" data-save-user="' + u.id + '" style="width:auto;">Зберегти</button> ' +
         '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cancel-edit style="width:auto;">Скасувати</button>' +
         "</td></tr>";
