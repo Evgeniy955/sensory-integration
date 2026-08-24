@@ -630,7 +630,6 @@ h1,h2,h3,.font-display{
 .social-badge:hover{ transform:translateY(-3px) scale(1.06); box-shadow:var(--shadow-md); }
 .social-viber{ background:#7360F2; }
 .social-telegram{ background:#26A5E4; }
-.social-whatsapp{ background:#25D366; }
 .social-instagram{ background:radial-gradient(circle at 30% 110%, #FDCB52 0%, #F17A38 25%, #E1306C 50%, #C1327B 75%, #833AB4 100%); }
 .footer-bottom{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; padding-top:24px; border-top:1px solid var(--color-border); font-size:12.5px; color:var(--color-ink-faint); }
 
