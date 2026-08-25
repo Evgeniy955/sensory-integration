@@ -33,9 +33,9 @@ sensory integration
    ```
    supabase secrets set GEMINI_API_KEY=<твій ключ>
    ```
-   За потреби можна задати іншу модель (за замовчуванням `gemini-2.5-flash`):
+   За потреби можна задати іншу модель (за замовчуванням `gemini-3.6-flash`):
    ```
-   supabase secrets set GEMINI_MODEL=gemini-2.5-flash
+   supabase secrets set GEMINI_MODEL=gemini-3.6-flash
    ```
 4. Готово — кнопка працює для ролей `admin`, `super_admin`, `instructor` (ті самі, що бачать «Анкети»).
 

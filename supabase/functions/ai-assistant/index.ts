@@ -21,7 +21,7 @@
 // SETUP:
 //   supabase functions deploy ai-assistant
 //   supabase secrets set GEMINI_API_KEY=<your Gemini API key>
-//   (optional) supabase secrets set GEMINI_MODEL=gemini-2.5-flash
+//   (optional) supabase secrets set GEMINI_MODEL=gemini-3.6-flash
 //
 // Get a Gemini API key at https://aistudio.google.com/apikey
 
@@ -30,7 +30,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
