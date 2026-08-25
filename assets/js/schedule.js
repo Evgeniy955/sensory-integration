@@ -24,6 +24,15 @@
 // as an attended visit by default (nobody confirms attendance one by
 // one) — marking it lets that same anketa-page count exclude days the
 // child was booked but didn't actually come.
+//
+// Because the whole board is one row, two people saving at once (even the
+// same admin account open on a phone and a laptop) could otherwise clobber
+// each other silently — whoever's upsert lands last would wipe out the
+// other's change with no warning. saveBoard() guards against that with an
+// optimistic lock on updated_at (see boardUpdatedAt): a save only goes
+// through if the row still has the updated_at this device last saw: if
+// someone else saved in between, the write is refused and the board is
+// reloaded instead of overwritten. See handleSaveConflict().
 
 (function () {
   const WEEKDAY_FULL = ["неділя", "понеділок", "вівторок", "середа", "четвер", "п'ятниця", "субота"];
@@ -58,6 +67,11 @@
   const CHILD_SEARCH_DEBOUNCE_MS = 250;
 
   let board = null;
+  // The board row's updated_at as of the last successful load/save — the
+  // optimistic-lock token that lets saveBoard() detect a save from
+  // somewhere else (another tab, another device, even the same account)
+  // that happened since. null means "no row yet" (brand-new board).
+  let boardUpdatedAt = null;
   let currentProfileId = null;
   let canEdit = true; // false for instructors — view the grid, cannot change it
   let saveTimer = null;
@@ -194,26 +208,74 @@
   async function loadBoard() {
     const { data, error } = await window.sbClient
       .from("schedule_boards")
-      .select("data")
+      .select("data, updated_at")
       .eq("id", BOARD_ROW_ID)
       .maybeSingle();
 
     if (error) {
       setStatus("error", error.message);
+      boardUpdatedAt = null;
       return defaultBoard();
     }
+    boardUpdatedAt = data ? data.updated_at : null;
     return normalizeBoard(data && data.data);
+  }
+
+  // Called when saveBoard() finds the row has moved on without us — i.e.
+  // someone else's save landed since we last loaded/saved. Rather than
+  // silently overwrite whatever they just did (or silently lose our own
+  // edit), refuse the write, tell the person, and pull the real current
+  // board so this device isn't left showing (or building on top of) stale
+  // data. Whatever was mid-edit in the slot modal is discarded — better a
+  // clear "try again" than a change that looked saved but wasn't.
+  async function handleSaveConflict() {
+    setStatus("error", "оновлено на іншому пристрої");
+    closeCellModal();
+    window.alert(
+      "Розклад щойно змінили на іншому пристрої (можливо, під тим самим акаунтом). " +
+      "Ваша остання зміна НЕ збереглася, щоб не затерти ту. Зараз підвантажимо " +
+      "актуальні дані — за потреби внесіть зміну ще раз."
+    );
+    board = await loadBoard();
+    managedRoomId = board.rooms.length ? board.rooms[0].id : null;
+    managedSpecialistId = board.specialists.length ? board.specialists[0].id : null;
+    populateRoomSelect();
+    updateRoomNameField();
+    populateSpecialistSelect();
+    updateSpecialistNameField();
+    render();
+    setStatus("idle");
   }
 
   async function saveBoard() {
     setStatus("saving");
-    const { error } = await window.sbClient.from("schedule_boards").upsert({
-      id: BOARD_ROW_ID,
-      data: board,
-      updated_by: currentProfileId,
-      updated_at: new Date().toISOString(),
-    });
+    const nowIso = new Date().toISOString();
+    const payload = { id: BOARD_ROW_ID, data: board, updated_by: currentProfileId, updated_at: nowIso };
+
+    // Optimistic concurrency: once we have a baseline updated_at, only
+    // write if the row still has that exact value — an UPDATE ... WHERE
+    // is atomic in Postgres, so this can't race with someone else's save
+    // the way "check, then write" from two separate requests could.
+    if (boardUpdatedAt) {
+      const { data, error } = await window.sbClient
+        .from("schedule_boards")
+        .update(payload)
+        .eq("id", BOARD_ROW_ID)
+        .eq("updated_at", boardUpdatedAt)
+        .select("updated_at");
+
+      if (error) { setStatus("error", error.message); return; }
+      if (!data || data.length === 0) { await handleSaveConflict(); return; }
+      boardUpdatedAt = nowIso;
+      setStatus("saved");
+      return;
+    }
+
+    // No baseline yet (row didn't exist when we loaded) — upsert so a
+    // brand-new board still gets created on the very first save.
+    const { error } = await window.sbClient.from("schedule_boards").upsert(payload);
     if (error) { setStatus("error", error.message); return; }
+    boardUpdatedAt = nowIso;
     setStatus("saved");
   }
 
