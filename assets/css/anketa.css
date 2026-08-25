@@ -148,8 +148,9 @@
   }
 
   .anketa-topbar__user.is-open .theme-toggle {
-    justify-content: flex-start;
-    width: auto;
+    /* Opt out of the column flex container's align-items:stretch — without
+       this the circular icon button stretches into a full-width bar. */
+    align-self: flex-start;
   }
 }
 
