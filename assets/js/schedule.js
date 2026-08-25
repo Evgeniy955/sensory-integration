@@ -507,9 +507,11 @@
     document.getElementById("cell-child-input").value = selectedChildName;
     hideChildResults();
     document.getElementById("cell-clear-btn").hidden = !entry;
-    // Marking a no-show only makes sense for a slot that already has
-    // someone booked — a brand-new, empty slot has nobody to not show up.
+    // Marking a no-show, or looking up attendance, only makes sense for a
+    // slot that already has someone booked — a brand-new, empty slot has
+    // nobody to not show up, and no history to look up yet either.
     document.getElementById("cell-noshow-toggle").hidden = !entry;
+    document.getElementById("cell-attendance-btn").hidden = !entry;
     updateNoShowToggleUI();
 
     document.getElementById("cell-modal-overlay").hidden = false;
@@ -546,6 +548,58 @@
     render();
     flushSave();
     closeCellModal();
+  }
+
+  // ---------- Attendance (same computation as admin/anketa.html's, just
+  // reading board.cells straight from memory instead of re-fetching —
+  // this page already has the whole board loaded). ----------
+  function closeAttendanceModal() {
+    document.getElementById("attendance-modal-overlay").hidden = true;
+  }
+
+  function openAttendanceModal(anketaId, childName) {
+    if (!anketaId) return;
+    const overlay = document.getElementById("attendance-modal-overlay");
+    const countEl = document.getElementById("attendance-modal-count");
+    const bodyEl = document.getElementById("attendance-modal-body");
+    document.getElementById("attendance-modal-title").textContent = "Відвідування" + (childName ? " — " + childName : "");
+    overlay.hidden = false;
+
+    const today = toISODate(new Date());
+    // Per date, not per slot: a date only counts as a no-show if every
+    // slot that day was marked as one — if the child had two bookings the
+    // same day and showed up for at least one, the day still counts as a
+    // visit. Today and future dates don't count yet either way — a
+    // schedule entry is a plan, not confirmed attendance.
+    const dateStatus = {};
+    Object.keys(board.cells).forEach((key) => {
+      const parts = key.split("|");
+      if (parts.length !== 3) return;
+      const dateIso = parts[1];
+      const entry = board.cells[key];
+      if (!entry || entry.anketaId !== anketaId || dateIso >= today) return;
+      if (entry.noShow) {
+        if (dateStatus[dateIso] !== "attended") dateStatus[dateIso] = "noshow";
+      } else {
+        dateStatus[dateIso] = "attended";
+      }
+    });
+
+    const formatDate = (iso) => new Date(iso + "T00:00:00").toLocaleDateString("uk-UA", { day: "2-digit", month: "long", year: "numeric" });
+    const listHtml = (dates) => "<ul style=\"list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:.4rem;\">" +
+      dates.map((iso) => "<li>" + formatDate(iso) + "</li>").join("") + "</ul>";
+
+    const attended = Object.keys(dateStatus).filter((d) => dateStatus[d] === "attended").sort().reverse();
+    const noShow = Object.keys(dateStatus).filter((d) => dateStatus[d] === "noshow").sort().reverse();
+
+    countEl.textContent = "Відвідувань: " + attended.length + (noShow.length ? " · Не з'явився: " + noShow.length : "");
+    let html = attended.length
+      ? listHtml(attended)
+      : "<p class=\"anketa-modal__hint\" style=\"margin:0;\">Ще немає жодного завершеного заняття за розкладом.</p>";
+    if (noShow.length) {
+      html += "<h3 style=\"margin:1.2rem 0 .4rem;font-size:.9rem;color:var(--color-destructive);\">Не з'явився</h3>" + listHtml(noShow);
+    }
+    bodyEl.innerHTML = html;
   }
 
   function wireEvents() {
@@ -634,9 +688,6 @@
     const cellOverlay = document.getElementById("cell-modal-overlay");
     document.getElementById("cell-modal-close").addEventListener("click", closeCellModal);
     cellOverlay.addEventListener("click", (e) => { if (e.target === cellOverlay) closeCellModal(); });
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && !cellOverlay.hidden) closeCellModal();
-    });
     document.getElementById("cell-save-btn").addEventListener("click", saveCellFromModal);
     document.getElementById("cell-clear-btn").addEventListener("click", clearCellFromModal);
     document.getElementById("cell-child-input").addEventListener("input", onChildInput);
@@ -644,6 +695,23 @@
     document.getElementById("cell-noshow-toggle").addEventListener("click", () => {
       editingNoShow = !editingNoShow;
       updateNoShowToggleUI();
+    });
+
+    // ---------- Attendance modal (opened from inside the cell modal) ----------
+    const attendanceOverlay = document.getElementById("attendance-modal-overlay");
+    document.getElementById("cell-attendance-btn").addEventListener("click", () => {
+      openAttendanceModal(selectedAnketaId, selectedChildName);
+    });
+    document.getElementById("attendance-modal-close").addEventListener("click", closeAttendanceModal);
+    attendanceOverlay.addEventListener("click", (e) => { if (e.target === attendanceOverlay) closeAttendanceModal(); });
+
+    // Shared Escape handler for both modals — the attendance modal opens
+    // on top of the cell modal, so Escape should close whichever is
+    // actually on top first instead of both reacting to the same keypress.
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      if (!attendanceOverlay.hidden) { closeAttendanceModal(); return; }
+      if (!cellOverlay.hidden) closeCellModal();
     });
   }
 

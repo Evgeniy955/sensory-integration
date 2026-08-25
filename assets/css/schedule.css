@@ -348,6 +348,16 @@ th.schedule-col-time {
   background-color: var(--color-surface);
 }
 
+/* .anketa-modal__edit-link gives this the same apricot "secondary action"
+   look as the equivalent button on anketa.html — this override just fits
+   it into the cell modal's full-width, stacked layout instead of its
+   original spot right under a modal title. */
+.schedule-attendance-btn {
+  width: 100%;
+  justify-content: center;
+  margin: .75rem 0 0;
+}
+
 .schedule-noshow-btn {
   width: 100%;
   justify-content: center;

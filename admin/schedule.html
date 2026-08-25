@@ -151,6 +151,13 @@
         </div>
       </div>
 
+      <!-- Only meaningful once this slot actually has a child booked —
+           hidden until then, same rule as "Очистити"/"Не прийшов" below. -->
+      <button type="button" class="anketa-btn anketa-modal__edit-link schedule-attendance-btn" id="cell-attendance-btn" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/><path d="m8.5 14 2 2 4-4.2"/></svg>
+        Відвідування
+      </button>
+
       <button type="button" class="anketa-btn schedule-noshow-btn" id="cell-noshow-toggle" aria-pressed="false" hidden>Позначити «Не прийшов»</button>
       <p class="anketa-modal__hint schedule-noshow-hint">Якщо заздалегідь не попередили про відсутність, заняття за замовчуванням рахується проведеним — позначте тут, якщо дитина не прийшла.</p>
 
@@ -158,6 +165,19 @@
         <button type="button" class="anketa-btn anketa-btn--danger" id="cell-clear-btn" hidden>Очистити</button>
         <button type="button" class="anketa-submit" id="cell-save-btn">Зберегти</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Attendance: dates this child was scheduled in the past on this board,
+       computed live from board.cells (already in memory) each time it's opened -->
+  <div class="anketa-modal-overlay" id="attendance-modal-overlay" hidden>
+    <div class="anketa-modal" role="dialog" aria-modal="true" aria-labelledby="attendance-modal-title">
+      <button type="button" class="anketa-modal__close" id="attendance-modal-close" aria-label="Закрити">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <h2 id="attendance-modal-title">Відвідування</h2>
+      <p class="anketa-modal__hint" id="attendance-modal-count">Рахуємо…</p>
+      <div id="attendance-modal-body"></div>
     </div>
   </div>
 
