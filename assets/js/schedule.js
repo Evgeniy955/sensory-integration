@@ -231,11 +231,7 @@
   async function handleSaveConflict() {
     setStatus("error", "оновлено на іншому пристрої");
     closeCellModal();
-    window.alert(
-      "Розклад щойно змінили на іншому пристрої (можливо, під тим самим акаунтом). " +
-      "Ваша остання зміна НЕ збереглася, щоб не затерти ту. Зараз підвантажимо " +
-      "актуальні дані — за потреби внесіть зміну ще раз."
-    );
+    document.getElementById("conflict-modal-overlay").hidden = false;
     board = await loadBoard();
     managedRoomId = board.rooms.length ? board.rooms[0].id : null;
     managedSpecialistId = board.specialists.length ? board.specialists[0].id : null;
@@ -767,11 +763,18 @@
     document.getElementById("attendance-modal-close").addEventListener("click", closeAttendanceModal);
     attendanceOverlay.addEventListener("click", (e) => { if (e.target === attendanceOverlay) closeAttendanceModal(); });
 
-    // Shared Escape handler for both modals — the attendance modal opens
-    // on top of the cell modal, so Escape should close whichever is
-    // actually on top first instead of both reacting to the same keypress.
+    // ---------- Save conflict modal (see handleSaveConflict) ----------
+    const conflictOverlay = document.getElementById("conflict-modal-overlay");
+    const closeConflictModal = () => { conflictOverlay.hidden = true; };
+    document.getElementById("conflict-modal-close").addEventListener("click", closeConflictModal);
+    conflictOverlay.addEventListener("click", (e) => { if (e.target === conflictOverlay) closeConflictModal(); });
+
+    // Shared Escape handler for all three modals — later-opened ones sit
+    // on top, so Escape should close whichever is actually on top first
+    // instead of all of them reacting to the same keypress.
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
+      if (!conflictOverlay.hidden) { closeConflictModal(); return; }
       if (!attendanceOverlay.hidden) { closeAttendanceModal(); return; }
       if (!cellOverlay.hidden) closeCellModal();
     });

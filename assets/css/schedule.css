@@ -336,6 +336,15 @@ th.schedule-col-time {
 /* ---------- Slot editor modal ---------- */
 .schedule-cell-modal { max-width: 420px; }
 
+/* ---------- Save conflict modal ---------- */
+.schedule-conflict-modal { max-width: 440px; }
+.schedule-conflict-modal p { margin: 0 0 .75rem; line-height: 1.55; }
+.schedule-conflict-modal p:last-of-type { margin-bottom: 1.1rem; }
+/* .anketa-denied__icon is normally centered in a full-page "access
+   denied" panel; here it just sits above the title instead. */
+.schedule-conflict-modal__icon { margin: 0 0 .9rem; }
+.schedule-conflict-modal__ok { width: 100%; }
+
 /* An <option> popup is browser-native, and some browsers (Chrome/Windows
    with the OS in dark mode especially) skip inheriting the author color
    on the very first paint, flashing white-on-white until the next

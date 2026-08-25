@@ -181,6 +181,23 @@
     </div>
   </div>
 
+  <!-- Save conflict: shown when this device's save was refused because
+       someone else's save (even the same account, elsewhere) already
+       changed the board since it was loaded here — see handleSaveConflict
+       in schedule.js. Replaces a plain window.alert() with something that
+       actually explains what happened and what to do about it. -->
+  <div class="anketa-modal-overlay" id="conflict-modal-overlay" hidden>
+    <div class="anketa-modal schedule-conflict-modal" role="alertdialog" aria-modal="true" aria-labelledby="conflict-modal-title">
+      <div class="anketa-denied__icon schedule-conflict-modal__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
+      </div>
+      <h2 id="conflict-modal-title">Зміну не збережено</h2>
+      <p>Розклад щойно оновили на іншому пристрої — можливо, ви самі відкрили його ще й на телефоні чи в іншій вкладці. Щоб не затерти ту зміну, вашу останню дію не збережено.</p>
+      <p class="anketa-modal__hint">Актуальний розклад нижче ми вже підвантажили. Якщо ваша зміна досі потрібна — просто внесіть її ще раз.</p>
+      <button type="button" class="anketa-submit schedule-conflict-modal__ok" id="conflict-modal-close">Зрозуміло</button>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../assets/js/supabase-config.js"></script>
   <script src="../assets/js/admin-auth.js"></script>
