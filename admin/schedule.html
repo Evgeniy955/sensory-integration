@@ -21,9 +21,9 @@
 <link rel="stylesheet" href="../assets/css/schedule.css">
 </head>
 <body class="anketa-shell schedule-shell">
-  <header class="anketa-topbar">
+  <header class="anketa-topbar anketa-topbar--collapsible">
     <a class="anketa-btn" href="../index.html">На головну сторінку</a>
-    <div class="anketa-topbar__user">
+    <div class="anketa-topbar__user" id="topbar-menu">
       <span id="whoami">перевіряємо доступ...</span>
       <button type="button" class="theme-toggle" id="themeToggle" aria-label="Перемкнути тему" aria-pressed="false">
         <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
@@ -32,6 +32,10 @@
       <a class="anketa-btn" href="dashboard.html">← Назад</a>
       <button class="anketa-btn" id="logout-btn" type="button">Вийти</button>
     </div>
+    <button type="button" class="anketa-topbar__toggle" id="topbar-toggle" aria-label="Меню" aria-expanded="false" aria-controls="topbar-menu">
+      <svg class="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
   </header>
 
   <main class="anketa-main schedule-main">
@@ -176,6 +180,29 @@
       themeToggle.addEventListener("click", function () {
         var active = document.documentElement.getAttribute("data-theme") === "cosmic" ? "cosmic" : "light";
         applyTheme(active === "cosmic" ? "light" : "cosmic");
+      });
+    })();
+  </script>
+  <script>
+    // Mobile menu: on narrow screens only "На головну сторінку" and
+    // "← Назад" stay on the topbar row — who's-signed-in, the theme
+    // switch, and "Вийти" collapse into this toggleable panel.
+    (function () {
+      var toggle = document.getElementById("topbar-toggle");
+      var menu = document.getElementById("topbar-menu");
+      if (!toggle || !menu) return;
+
+      var setOpen = function (open) {
+        menu.classList.toggle("is-open", open);
+        toggle.setAttribute("aria-expanded", String(open));
+      };
+
+      toggle.addEventListener("click", function () {
+        setOpen(!menu.classList.contains("is-open"));
+      });
+
+      window.addEventListener("resize", function () {
+        if (window.innerWidth > 720) setOpen(false);
       });
     })();
   </script>

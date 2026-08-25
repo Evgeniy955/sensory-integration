@@ -85,6 +85,74 @@
    first .anketa-btn actually toggled via hidden, so this is needed now. */
 .anketa-btn[hidden] { display: none; }
 
+/* Hamburger toggle for the collapsible topbar (Анкети/Розклад). Hidden by
+   default; only shown under the mobile breakpoint below. Scoped to
+   .anketa-topbar--collapsible's markup only, so plain .anketa-topbar__user
+   usages elsewhere (anketa-form.html) are unaffected. */
+.anketa-topbar__toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+  flex: none;
+}
+.anketa-topbar__toggle svg { width: 20px; height: 20px; }
+.anketa-topbar__toggle .icon-close { display: none; }
+.anketa-topbar__toggle[aria-expanded="true"] .icon-menu { display: none; }
+.anketa-topbar__toggle[aria-expanded="true"] .icon-close { display: block; }
+
+@media (max-width: 720px) {
+  .anketa-topbar--collapsible {
+    flex-wrap: wrap;
+  }
+
+  .anketa-topbar--collapsible .anketa-topbar__toggle {
+    display: inline-flex;
+  }
+
+  /* Collapsed by default: whoami, the theme switch, and "Вийти" hide —
+     "← Назад" (also inside .anketa-topbar__user) is left alone, so it
+     stays visible next to "На головну сторінку" and the toggle. */
+  .anketa-topbar--collapsible .anketa-topbar__user #whoami,
+  .anketa-topbar--collapsible .anketa-topbar__user .theme-toggle,
+  .anketa-topbar--collapsible .anketa-topbar__user #logout-btn {
+    display: none;
+  }
+
+  .anketa-topbar__user.is-open {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: .6rem;
+    margin-top: .9rem;
+    padding-top: .9rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .anketa-topbar__user.is-open #whoami,
+  .anketa-topbar__user.is-open .theme-toggle,
+  .anketa-topbar__user.is-open #logout-btn {
+    display: flex;
+  }
+
+  .anketa-topbar__user.is-open .anketa-btn {
+    width: 100%;
+  }
+
+  .anketa-topbar__user.is-open .theme-toggle {
+    justify-content: flex-start;
+    width: auto;
+  }
+}
+
 /* ---------- Layout ---------- */
 .anketa-main {
   position: relative;
