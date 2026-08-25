@@ -23,6 +23,24 @@ sensory integration
    update public.profiles set role = 'super_admin' where email = 'твій@email';
    ```
 
+**AI помічник (Анкети, опційно):**
+
+Кнопка «AI помічник» на сторінці `admin/anketa.html` дозволяє ставити запитання про збережені анкети природною мовою — відповідає Gemini (Google), спираючись лише на дані анкет.
+
+1. Отримати API-ключ на https://aistudio.google.com/apikey.
+2. Задеплоїти Edge Function: `supabase functions deploy ai-assistant`.
+3. Задати секрет (тільки через CLI/Dashboard, ніколи в код):
+   ```
+   supabase secrets set GEMINI_API_KEY=<твій ключ>
+   ```
+   За потреби можна задати іншу модель (за замовчуванням `gemini-2.5-flash`):
+   ```
+   supabase secrets set GEMINI_MODEL=gemini-2.5-flash
+   ```
+4. Готово — кнопка працює для ролей `admin`, `super_admin`, `instructor` (ті самі, що бачать «Анкети»).
+
+Важливо: анкети містять чутливу інформацію про дітей (медичні дані). Кожен запит до AI помічника надсилає стислий зведений опис збережених анкет у Gemini API для обробки — переконайся, що це прийнятно з точки зору політики конфіденційності центру, перш ніж вмикати функцію.
+
 **Вхід через Google (опційно):**
 1. Google Cloud Console → створити OAuth-клієнт (тип "Web application").
    Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`

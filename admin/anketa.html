@@ -170,17 +170,33 @@
     </div>
   </div>
 
-  <!-- AI assistant stub -->
+  <!-- AI assistant -->
   <div class="anketa-modal-overlay" id="ai-modal-overlay" hidden>
-    <div class="anketa-modal" role="dialog" aria-modal="true" aria-labelledby="ai-modal-title">
+    <div class="anketa-modal anketa-modal--ai" role="dialog" aria-modal="true" aria-labelledby="ai-modal-title">
       <button type="button" class="anketa-modal__close" id="ai-modal-close" aria-label="Закрити">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
       </button>
       <h2 id="ai-modal-title">AI помічник</h2>
       <p class="anketa-modal__hint">
-        Функція в розробці. Незабаром тут можна буде ставити запитання про анкети природною мовою —
-        наприклад, «які діти мають проблеми зі сном» — і отримувати відповідь на основі збережених даних.
+        Запитуйте про анкети природною мовою — наприклад, «у яких дітей є проблеми зі сном» або
+        «яка основна причина звернення в анкеті Іваненко Олега». Відповідь будується на основі збережених
+        анкет і надсилається у Gemini (Google) для обробки.
       </p>
+
+      <div id="ai-chat-log" class="ai-chat-log" aria-live="polite">
+        <p class="ai-chat-empty">Ще немає запитань — почніть розмову нижче.</p>
+      </div>
+
+      <form id="ai-chat-form" class="ai-chat-form">
+        <textarea id="ai-chat-input" class="ai-chat-input" rows="2" placeholder="Наприклад: у яких дітей є проблеми зі сном?" required></textarea>
+        <div class="anketa-submit-row" style="margin-top:.7rem;">
+          <button type="submit" class="anketa-submit" id="ai-chat-send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
+            Запитати
+          </button>
+          <button type="button" class="anketa-btn" id="ai-chat-reset">Нова розмова</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -265,6 +281,91 @@
 
     document.getElementById("ai-assistant-btn").addEventListener("click", () => {
       openModal(document.getElementById("ai-modal-overlay"));
+      document.getElementById("ai-chat-input").focus();
+    });
+
+    // ---------- AI assistant (Gemini, via the ai-assistant Edge Function) ----------
+    // History is kept in memory only (per browser tab, while the modal's
+    // conversation is open) — never persisted — so a follow-up question
+    // like "а що щодо..." still has context, without storing chat
+    // transcripts anywhere.
+    let aiChatHistory = []; // { role: "user" | "model", text }
+    let aiChatBusy = false;
+
+    function renderAiChatLog() {
+      const log = document.getElementById("ai-chat-log");
+      if (!aiChatHistory.length) {
+        log.innerHTML = '<p class="ai-chat-empty">Ще немає запитань — почніть розмову нижче.</p>';
+        return;
+      }
+      log.innerHTML = aiChatHistory.map((turn) =>
+        '<div class="ai-chat-msg ai-chat-msg--' + (turn.role === "model" ? "ai" : "user") + '">' +
+        '<div class="ai-chat-msg__bubble">' + (turn.pending ? '<span class="ai-chat-typing">Друкує…</span>' : escapeHtml(turn.text).replace(/\n/g, "<br>")) + "</div>" +
+        "</div>"
+      ).join("");
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function resetAiChat() {
+      aiChatHistory = [];
+      renderAiChatLog();
+      document.getElementById("ai-chat-input").value = "";
+    }
+
+    document.getElementById("ai-chat-reset").addEventListener("click", resetAiChat);
+
+    document.getElementById("ai-chat-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (aiChatBusy) return;
+
+      const input = document.getElementById("ai-chat-input");
+      const question = input.value.trim();
+      if (!question) return;
+
+      const sendBtn = document.getElementById("ai-chat-send");
+      aiChatBusy = true;
+      sendBtn.disabled = true;
+      input.value = "";
+
+      // History sent to the function is everything *before* this question —
+      // it appends the question itself server-side as the final turn.
+      const historyForRequest = aiChatHistory.map((t) => ({ role: t.role, text: t.text }));
+
+      aiChatHistory.push({ role: "user", text: question });
+      aiChatHistory.push({ role: "model", text: "", pending: true });
+      renderAiChatLog();
+
+      try {
+        const { data, error } = await window.sbClient.functions.invoke("ai-assistant", {
+          body: { question: question, history: historyForRequest },
+        });
+
+        const pendingTurn = aiChatHistory[aiChatHistory.length - 1];
+        if (error) {
+          // supabase-js puts a non-2xx response body on error.context;
+          // fall back to error.message if that's not available.
+          let msg = error.message || "Не вдалося отримати відповідь.";
+          try {
+            const parsed = error.context && typeof error.context.json === "function"
+              ? await error.context.json()
+              : null;
+            if (parsed && parsed.error) msg = parsed.error;
+          } catch (e2) { /* keep default msg */ }
+          pendingTurn.text = "⚠️ " + msg;
+        } else {
+          pendingTurn.text = (data && data.answer) || "Не вдалося отримати відповідь.";
+        }
+        delete pendingTurn.pending;
+      } catch (err) {
+        const pendingTurn = aiChatHistory[aiChatHistory.length - 1];
+        pendingTurn.text = "⚠️ " + (err && err.message ? err.message : "Сталася помилка запиту.");
+        delete pendingTurn.pending;
+      }
+
+      renderAiChatLog();
+      aiChatBusy = false;
+      sendBtn.disabled = false;
+      input.focus();
     });
 
     function renderAnketaDetail(row) {
