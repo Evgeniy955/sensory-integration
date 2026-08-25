@@ -115,6 +115,12 @@
 
   .anketa-topbar--collapsible .anketa-topbar__toggle {
     display: inline-flex;
+    /* When "На головну сторінку" + the back link don't leave room for the
+       toggle on the same line, it wraps onto its own line — and being the
+       only item there, justify-content:space-between pins a lone item to
+       the start (left) instead of the end. margin-left:auto keeps it on
+       the right whether it shares the line with the buttons or not. */
+    margin-left: auto;
   }
 
   /* Collapsed by default: whoami, the theme switch, and "Вийти" hide —
