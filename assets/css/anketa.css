@@ -676,6 +676,17 @@
   color: var(--color-sage-deep);
 }
 
+.anketa-history-item__delete {
+  padding: 0 .9rem;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-ink-faint);
+  cursor: pointer;
+  font-size: .95rem;
+}
+.anketa-history-item__delete:hover { color: var(--color-destructive); }
+
 .anketa-diff-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;

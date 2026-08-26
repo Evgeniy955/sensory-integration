@@ -717,6 +717,11 @@
       listEl.innerHTML = versions.map((v) => {
         const checked = historySelection.includes(v.id) ? " checked" : "";
         const badge = v.id === currentRowId ? ' <span class="anketa-history-item__badge">поточна</span>' : "";
+        // Deleting a version is a write, same as editing — instructors
+        // (read-only) don't get the control at all, not just a disabled one.
+        const deleteBtn = canEdit
+          ? '<button type="button" class="anketa-history-item__delete" data-history-delete="' + v.id + '" aria-label="Видалити цю версію" title="Видалити цю версію">✕</button>'
+          : "";
         return '<div class="anketa-history-item">' +
           '<label class="anketa-history-item__select">' +
             '<input type="checkbox" data-history-select="' + v.id + '"' + checked + '>' +
@@ -724,6 +729,7 @@
           '<button type="button" class="anketa-history-item__view" data-history-view="' + v.id + '">' +
             '<span class="anketa-history-item__date">' + new Date(v.created_at).toLocaleString("uk-UA") + '</span>' + badge +
           '</button>' +
+          deleteBtn +
         '</div>';
       }).join("");
     }
@@ -744,13 +750,51 @@
       document.getElementById("history-compare-btn").disabled = historySelection.length !== 2;
     });
 
-    document.getElementById("history-modal-list").addEventListener("click", (e) => {
+    document.getElementById("history-modal-list").addEventListener("click", async (e) => {
       const viewBtn = e.target.closest("[data-history-view]");
-      if (!viewBtn) return;
-      const row = allAnketas.find((r) => r.id === viewBtn.getAttribute("data-history-view"));
-      if (!row) return;
-      closeModal(document.getElementById("history-modal-overlay"));
-      renderAnketaDetail(row);
+      if (viewBtn) {
+        const row = allAnketas.find((r) => r.id === viewBtn.getAttribute("data-history-view"));
+        if (!row) return;
+        closeModal(document.getElementById("history-modal-overlay"));
+        renderAnketaDetail(row);
+        return;
+      }
+
+      const deleteBtn = e.target.closest("[data-history-delete]");
+      if (deleteBtn) {
+        const id = deleteBtn.getAttribute("data-history-delete");
+        const row = allAnketas.find((r) => r.id === id);
+        if (!row) return;
+        const label = new Date(row.created_at).toLocaleString("uk-UA");
+        if (!window.confirm("Видалити цю версію анкети (" + label + ")? Цю дію не можна скасувати.")) return;
+
+        const { error } = await window.sbClient.from("anketas").delete().eq("id", id);
+        if (error) {
+          window.alert("Помилка видалення: " + error.message);
+          return;
+        }
+
+        allAnketas = allAnketas.filter((r) => r.id !== id);
+        historySelection = historySelection.filter((existingId) => existingId !== id);
+        document.getElementById("history-compare-btn").disabled = historySelection.length !== 2;
+        renderRows();
+
+        const remaining = allAnketas
+          .filter((r) => normalizeChildName(r.child_full_name) === normalizeChildName(row.child_full_name))
+          .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+
+        if (!remaining.length) {
+          // That was the only version — nothing left to show underneath.
+          closeModal(document.getElementById("history-modal-overlay"));
+          closeModal(document.getElementById("view-modal-overlay"));
+          return;
+        }
+        // Snap the view underneath back to the latest surviving version
+        // (whether or not the deleted one was itself the latest), so
+        // closing "Історія" never reveals stale or removed content.
+        renderAnketaDetail(remaining[0]);
+        renderHistoryList(remaining, remaining[0].id);
+      }
     });
 
     document.getElementById("view-modal-history-btn").addEventListener("click", (e) => {
@@ -1171,11 +1215,28 @@
       });
     }
 
+    // The table lists one row per CHILD, not one per anketa version — a
+    // child with several versions (see "Історія") would otherwise show up
+    // once per version, which reads as duplicate children. Older versions
+    // are still fully reachable from "Історія" on whichever version is
+    // shown here; they're just not separate rows in this list.
+    function getLatestAnketaPerChild(list) {
+      const latestByKey = new Map();
+      list.forEach((r) => {
+        const key = normalizeChildName(r.child_full_name);
+        const existing = latestByKey.get(key);
+        if (!existing || r.created_at > existing.created_at) {
+          latestByKey.set(key, r);
+        }
+      });
+      return Array.from(latestByKey.values());
+    }
+
     function renderRows() {
       const tbody = document.getElementById("anketa-tbody");
       const q = searchQuery.trim().toLowerCase();
 
-      let rows = allAnketas.filter((r) => {
+      let rows = getLatestAnketaPerChild(allAnketas).filter((r) => {
         if (!q) return true;
         return (r.child_full_name || "").toLowerCase().includes(q) ||
                (r.parent_name || "").toLowerCase().includes(q);
