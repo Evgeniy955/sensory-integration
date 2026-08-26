@@ -179,15 +179,21 @@
       <h2 id="ai-modal-title">AI помічник</h2>
       <p class="anketa-modal__hint">
         Запитуйте про анкети природною мовою — наприклад, «у яких дітей є проблеми зі сном» або
-        «яка основна причина звернення в анкеті Іваненко Олега». Відповідь будується на основі збережених
-        анкет і надсилається у Gemini (Google) для обробки.
+        «яка основна причина звернення в анкеті Іваненко Олега» — або задавайте загальні наукові питання
+        про сенсорну інтеграцію, АВА-терапію чи логопедію. Відповідь надсилається у Gemini (Google) для обробки.
       </p>
 
-      <div id="ai-chat-log" class="ai-chat-log" aria-live="polite">
-        <p class="ai-chat-empty">Ще немає запитань — почніть розмову нижче.</p>
+      <div id="ai-mode-select" class="ai-mode-select">
+        <p class="ai-mode-select__hint">Оберіть, з чим потрібна допомога:</p>
+        <div class="anketa-submit-row">
+          <button type="button" class="anketa-submit" id="ai-mode-anketas">Аналіз анкет</button>
+          <button type="button" class="anketa-btn" id="ai-mode-general">Загальні питання</button>
+        </div>
       </div>
 
-      <form id="ai-chat-form" class="ai-chat-form">
+      <div id="ai-chat-log" class="ai-chat-log" aria-live="polite" hidden></div>
+
+      <form id="ai-chat-form" class="ai-chat-form" hidden>
         <textarea id="ai-chat-input" class="ai-chat-input" rows="2" placeholder="Наприклад: у яких дітей є проблеми зі сном?" required></textarea>
         <div class="anketa-submit-row" style="margin-top:.7rem;">
           <button type="submit" class="anketa-submit" id="ai-chat-send">
@@ -281,7 +287,9 @@
 
     document.getElementById("ai-assistant-btn").addEventListener("click", () => {
       openModal(document.getElementById("ai-modal-overlay"));
-      document.getElementById("ai-chat-input").focus();
+      if (aiChatMode) {
+        document.getElementById("ai-chat-input").focus();
+      }
     });
 
     // ---------- AI assistant (Gemini, via the ai-assistant Edge Function) ----------
@@ -291,29 +299,39 @@
     // transcripts anywhere.
     let aiChatHistory = []; // { role: "user" | "model", text }
     let aiChatBusy = false;
+    let aiChatMode = null; // "anketas" | "general" — chosen on the start screen below
 
-    // Static greeting that mirrors the system prompt's "Initial Activation
+    // Static greetings that mirror the system prompt's "Initial Activation
     // Message" (supabase/functions/ai-assistant/index.ts). Rendered locally
-    // so it's free and instant, and — since it never enters aiChatHistory —
-    // it's never sent to Gemini as part of the conversation.
-    const AI_GREETING_HTML =
-      "Вітаю! Я готовий працювати як ваш науковий асистент-консультант на основі методів доказової медицини." +
-      "<br><br>Будь ласка, оберіть вашу спеціалізацію для налаштування аналізу та рекомендацій:" +
-      "<br>• <strong>1. Сенсорна інтеграція</strong>" +
-      "<br>• <strong>2. АВА-терапія</strong>" +
-      "<br>• <strong>3. Логопедія</strong>" +
-      "<br>• <strong>4. Загальні рекомендації</strong> (комплексний огляд для всіх фахівців)" +
-      "<br><br>Вкажіть номер спеціалізації та ПІБ дитини (<strong>або ваше запитання</strong>), щоб ми розпочали роботу.";
-    const AI_GREETING_BUBBLE =
-      '<div class="ai-chat-msg ai-chat-msg--ai"><div class="ai-chat-msg__bubble">' + AI_GREETING_HTML + "</div></div>";
+    // so they're free and instant, and — since they never enter
+    // aiChatHistory — never sent to Gemini as part of the conversation.
+    // The full specialization menu only makes sense for anketa analysis;
+    // general questions skip straight to "ask away".
+    const AI_GREETING_HTML_BY_MODE = {
+      anketas:
+        "Вітаю! Я готовий працювати як ваш науковий асистент-консультант на основі методів доказової медицини." +
+        "<br><br>Будь ласка, оберіть вашу спеціалізацію для налаштування аналізу та рекомендацій:" +
+        "<br>• <strong>1. Сенсорна інтеграція</strong>" +
+        "<br>• <strong>2. АВА-терапія</strong>" +
+        "<br>• <strong>3. Логопедія</strong>" +
+        "<br>• <strong>4. Загальні рекомендації</strong> (комплексний огляд для всіх фахівців)" +
+        "<br><br>Вкажіть номер спеціалізації та ПІБ дитини (<strong>або ваше запитання</strong>), щоб ми розпочали роботу.",
+      general:
+        "Вітаю! Я готовий відповісти на загальні наукові питання з сенсорної інтеграції, АВА-терапії, " +
+        "логопедії та дитячої психології, спираючись на доказову медицину." +
+        "<br><br>Поставте своє питання нижче.",
+    };
 
     function renderAiChatLog() {
       const log = document.getElementById("ai-chat-log");
+      const greetingBubble =
+        '<div class="ai-chat-msg ai-chat-msg--ai"><div class="ai-chat-msg__bubble">' +
+        AI_GREETING_HTML_BY_MODE[aiChatMode] + "</div></div>";
       if (!aiChatHistory.length) {
-        log.innerHTML = AI_GREETING_BUBBLE;
+        log.innerHTML = greetingBubble;
         return;
       }
-      log.innerHTML = AI_GREETING_BUBBLE + aiChatHistory.map((turn) =>
+      log.innerHTML = greetingBubble + aiChatHistory.map((turn) =>
         '<div class="ai-chat-msg ai-chat-msg--' + (turn.role === "model" ? "ai" : "user") + '">' +
         '<div class="ai-chat-msg__bubble">' + (turn.pending ? '<span class="ai-chat-typing">Друкує…</span>' : escapeHtml(turn.text).replace(/\n/g, "<br>")) + "</div>" +
         "</div>"
@@ -321,9 +339,25 @@
       log.scrollTop = log.scrollHeight;
     }
 
+    function chooseAiChatMode(mode) {
+      aiChatMode = mode;
+      aiChatHistory = [];
+      document.getElementById("ai-mode-select").hidden = true;
+      document.getElementById("ai-chat-log").hidden = false;
+      document.getElementById("ai-chat-form").hidden = false;
+      renderAiChatLog();
+      document.getElementById("ai-chat-input").focus();
+    }
+
+    document.getElementById("ai-mode-anketas").addEventListener("click", () => chooseAiChatMode("anketas"));
+    document.getElementById("ai-mode-general").addEventListener("click", () => chooseAiChatMode("general"));
+
     function resetAiChat() {
       aiChatHistory = [];
-      renderAiChatLog();
+      aiChatMode = null;
+      document.getElementById("ai-chat-log").hidden = true;
+      document.getElementById("ai-chat-form").hidden = true;
+      document.getElementById("ai-mode-select").hidden = false;
       document.getElementById("ai-chat-input").value = "";
     }
 

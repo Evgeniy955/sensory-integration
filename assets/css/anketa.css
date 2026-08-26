@@ -713,6 +713,14 @@
   flex-direction: column;
 }
 
+.ai-mode-select { padding: .5rem 0 .25rem; }
+
+.ai-mode-select__hint {
+  margin: 0 0 .6rem;
+  color: var(--color-ink-soft);
+  font-size: .9rem;
+}
+
 .ai-chat-log {
   display: flex;
   flex-direction: column;
@@ -722,13 +730,10 @@
   padding: .25rem .25rem .5rem;
   margin-bottom: .25rem;
 }
-
-.ai-chat-empty {
-  margin: .5rem 0 1rem;
-  color: var(--color-ink-faint);
-  font-size: .87rem;
-  text-align: center;
-}
+/* Same [hidden] cascade trap as .anketa-btn above: the unconditional
+   display:flex outranks the UA [hidden]{display:none} default. Toggled
+   via hidden while the mode-select screen is showing. */
+.ai-chat-log[hidden] { display: none; }
 
 .ai-chat-msg { display: flex; }
 .ai-chat-msg--user { justify-content: flex-end; }
