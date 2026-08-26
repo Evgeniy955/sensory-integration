@@ -287,19 +287,60 @@
 
     document.getElementById("ai-assistant-btn").addEventListener("click", () => {
       openModal(document.getElementById("ai-modal-overlay"));
+      if (!aiChatMode) {
+        const saved = loadAiChatState();
+        if (saved) {
+          aiChatMode = saved.mode;
+          aiChatHistory = saved.history;
+          document.getElementById("ai-mode-select").hidden = true;
+          document.getElementById("ai-chat-log").hidden = false;
+          document.getElementById("ai-chat-form").hidden = false;
+          renderAiChatLog();
+        }
+      }
       if (aiChatMode) {
         document.getElementById("ai-chat-input").focus();
       }
     });
 
     // ---------- AI assistant (Gemini, via the ai-assistant Edge Function) ----------
-    // History is kept in memory only (per browser tab, while the modal's
-    // conversation is open) — never persisted — so a follow-up question
-    // like "а що щодо..." still has context, without storing chat
-    // transcripts anywhere.
+    // The conversation lives in sessionStorage, not localStorage — that
+    // isolates it per browser TAB automatically, so 2-3 specialists each
+    // working in their own tab (or window) never share or clobber one
+    // another's chat, without any extra per-tab session bookkeeping. It's
+    // also keyed by email (see currentUserEmail below) so a shared/kiosk
+    // computer that switches accounts in the same tab starts fresh instead
+    // of showing the previous specialist's questions and answers.
     let aiChatHistory = []; // { role: "user" | "model", text }
     let aiChatBusy = false;
     let aiChatMode = null; // "anketas" | "general" — chosen on the start screen below
+    let currentUserEmail = null; // set once auth resolves, near the bottom of this file
+
+    function aiChatStorageKey() {
+      return "aiChatSession:" + (currentUserEmail || "anonymous");
+    }
+
+    function saveAiChatState() {
+      try {
+        sessionStorage.setItem(aiChatStorageKey(), JSON.stringify({ mode: aiChatMode, history: aiChatHistory }));
+      } catch (e) { /* private browsing / storage full — chat still works, just isn't persisted */ }
+    }
+
+    function loadAiChatState() {
+      try {
+        const raw = sessionStorage.getItem(aiChatStorageKey());
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || (parsed.mode !== "anketas" && parsed.mode !== "general") || !Array.isArray(parsed.history)) return null;
+        return parsed;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function clearAiChatState() {
+      try { sessionStorage.removeItem(aiChatStorageKey()); } catch (e) { /* ignore */ }
+    }
 
     // Static greetings that mirror the system prompt's "Initial Activation
     // Message" (supabase/functions/ai-assistant/index.ts). Rendered locally
@@ -346,6 +387,7 @@
       document.getElementById("ai-chat-log").hidden = false;
       document.getElementById("ai-chat-form").hidden = false;
       renderAiChatLog();
+      saveAiChatState();
       document.getElementById("ai-chat-input").focus();
     }
 
@@ -355,6 +397,7 @@
     function resetAiChat() {
       aiChatHistory = [];
       aiChatMode = null;
+      clearAiChatState();
       document.getElementById("ai-chat-log").hidden = true;
       document.getElementById("ai-chat-form").hidden = true;
       document.getElementById("ai-mode-select").hidden = false;
@@ -386,7 +429,7 @@
 
       try {
         const { data, error } = await window.sbClient.functions.invoke("ai-assistant", {
-          body: { question: question, history: historyForRequest },
+          body: { question: question, history: historyForRequest, mode: aiChatMode },
         });
 
         const pendingTurn = aiChatHistory[aiChatHistory.length - 1];
@@ -412,6 +455,7 @@
       }
 
       renderAiChatLog();
+      saveAiChatState();
       aiChatBusy = false;
       sendBtn.disabled = false;
       input.focus();
@@ -954,6 +998,10 @@
       whoamiEl.textContent = (profile.full_name || profile.email) + " · " + (ROLE_LABELS[profile.role] || profile.role);
       whoamiEl.title = profile.email;
       currentProfileId = profile.id;
+      // Scopes the AI chat's sessionStorage key (below) to this specialist,
+      // so a shared computer switching accounts in the same tab never shows
+      // one specialist's conversation to another.
+      currentUserEmail = profile.email;
 
       // Instructors get read-only access — the RLS policies (schema.sql)
       // already block writes server-side; this just keeps the buttons
@@ -965,7 +1013,10 @@
         document.getElementById("view-modal-edit-link").hidden = true;
       }
 
-      document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
+      document.getElementById("logout-btn").addEventListener("click", () => {
+        clearAiChatState();
+        window.signOut();
+      });
 
       document.getElementById("anketa-list-content").hidden = false;
 

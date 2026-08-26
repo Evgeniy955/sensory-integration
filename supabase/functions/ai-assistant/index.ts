@@ -368,7 +368,7 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Forbidden" }, 403);
   }
 
-  let body: { question?: string; history?: { role?: string; text?: string }[] };
+  let body: { question?: string; history?: { role?: string; text?: string }[]; mode?: string };
   try {
     body = await req.json();
   } catch {
@@ -382,6 +382,12 @@ Deno.serve(async (req: Request) => {
   if (question.length > 2000) {
     return json({ error: "Питання занадто довге." }, 400);
   }
+
+  // Mirrors the frontend's start-screen choice (admin/anketa.html) — the
+  // greeting/specialization menu for "anketas" mode is already rendered
+  // there before the first request ever reaches here, so this only steers
+  // *how* the model should behave, never re-issues that menu itself.
+  const mode = body.mode === "general" ? "general" : "anketas";
 
   const systemInstruction = `# SYSTEM INSTRUCTIONS: AI CONSULTANT FOR CHILDREN'S REHABILITATION CENTER
 
@@ -435,19 +441,28 @@ Tailor all analytical insights, lesson structures, and clinical recommendations 
 
 ---
 
-## 4. Initial Activation Message
+## 4. Session Start (already handled by the UI — do not repeat it)
 
-Upon session initialization, display **STRICTLY** the following formatted text in Ukrainian and do not repeat it later in the conversation:
+Before the specialist's first message ever reached you, the admin panel already showed them a static greeting on screen — you never generated it and must NOT reproduce, restate, or re-send any greeting or specialization menu yourself, on the first reply or any later one. Just respond to what they actually typed.
 
-> Вітаю! Я готовий працювати як ваш науковий асистент-консультант на основі методів доказової медицини.
->
-> Будь ласка, оберіть вашу спеціалізацію для налаштування аналізу та рекомендацій:
-> * **1. Сенсорна інтеграція**
-> * **2. АВА-терапія**
-> * **3. Логопедія**
-> * **4. Загальні рекомендації** (комплексний огляд для всіх фахівців)
->
-> Вкажіть номер спеціалізації та ПІБ дитини (або ваше запитання), щоб ми розпочали роботу.`;
+${mode === "general"
+    ? (
+      '## 5. Current Mode: "Загальні питання" (General Questions)\n\n' +
+      "The specialist picked general questions mode — they want to discuss evidence-based science/methodology " +
+      "(sensory integration, ABA, logopedics, child psychology) that isn't about one specific child's anketa. " +
+      "Do NOT ask them to pick a specialization (1-4) and do NOT ask for a child's full name unless they bring " +
+      "up a specific child themselves — just answer the question directly. If they do mention a specific child " +
+      "or ask you to analyze someone's anketa, switch into the normal questionnaire-analysis protocol from " +
+      "section 3 for that part of the conversation."
+    )
+    : (
+      '## 5. Current Mode: "Аналіз анкет" (Questionnaire Analysis)\n\n' +
+      "The specialist picked questionnaire analysis mode and already saw the specialization menu (1-4) from " +
+      "section 3 on screen before typing anything. Their first message is normally a specialization number plus " +
+      "a child's name (or a direct question) — proceed straight into the questionnaire-analysis protocol; don't " +
+      "ask them to repeat a choice they already made unless their message is genuinely ambiguous."
+    )
+}`;
 
   const history = Array.isArray(body.history) ? body.history.slice(-MAX_HISTORY_TURNS) : [];
   const contents: GeminiContent[] = [
