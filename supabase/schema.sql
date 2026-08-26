@@ -210,7 +210,56 @@ create policy "Admins can update schedule"
   using (public.current_user_role() in ('admin', 'super_admin'))
   with check (public.current_user_role() in ('admin', 'super_admin'));
 
--- 8. Bootstrap: make yourself super_admin -------------------------------
+-- 8. AI assistant saved chats --------------------------------------------
+-- Each specialist's AI помічник conversations (admin/anketa.html), so they
+-- persist across devices/browsers instead of living only in one tab. This
+-- is personal working history, not shared team data like anketas/schedule
+-- above — RLS below scopes every row to its own owner via auth.uid(), the
+-- same "select own row" shape as the profiles policy in section 4.
+-- owner_email is denormalized (kept alongside owner_id) purely so a saved
+-- chat's owner is visible without a join; auth.uid() = owner_id is what
+-- actually enforces access, not the email column.
+create table if not exists public.ai_chats (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_email text not null,
+  mode text not null default 'anketas' check (mode in ('anketas', 'general')),
+  title text not null default '',
+  messages jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.ai_chats enable row level security;
+
+create index if not exists ai_chats_owner_id_updated_at_idx
+  on public.ai_chats (owner_id, updated_at desc);
+
+drop policy if exists "Users can view own ai chats" on public.ai_chats;
+create policy "Users can view own ai chats"
+  on public.ai_chats for select
+  using (auth.uid() = owner_id);
+
+drop policy if exists "Users can insert own ai chats" on public.ai_chats;
+create policy "Users can insert own ai chats"
+  on public.ai_chats for insert
+  with check (
+    auth.uid() = owner_id
+    and public.current_user_role() in ('admin', 'super_admin', 'instructor')
+  );
+
+drop policy if exists "Users can update own ai chats" on public.ai_chats;
+create policy "Users can update own ai chats"
+  on public.ai_chats for update
+  using (auth.uid() = owner_id)
+  with check (auth.uid() = owner_id);
+
+drop policy if exists "Users can delete own ai chats" on public.ai_chats;
+create policy "Users can delete own ai chats"
+  on public.ai_chats for delete
+  using (auth.uid() = owner_id);
+
+-- 9. Bootstrap: make yourself super_admin -------------------------------
 -- 1) Sign up once through admin/login.html (use "Forgot password" style
 --    flow isn't needed — just create your own account via Supabase Auth
 --    dashboard: Authentication → Users → Add user, or sign up on the page).

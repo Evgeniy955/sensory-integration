@@ -183,7 +183,14 @@
         про сенсорну інтеграцію, АВА-терапію чи логопедію. Відповідь надсилається у Gemini (Google) для обробки.
       </p>
 
-      <div id="ai-mode-select" class="ai-mode-select">
+      <div id="ai-chat-list" class="ai-chat-list" hidden>
+        <div class="anketa-submit-row" style="margin-bottom:.75rem;">
+          <button type="button" class="anketa-submit" id="ai-chat-list-new">+ Нова розмова</button>
+        </div>
+        <div id="ai-chat-list-items" class="ai-chat-list__items"></div>
+      </div>
+
+      <div id="ai-mode-select" class="ai-mode-select" hidden>
         <p class="ai-mode-select__hint">Оберіть, з чим потрібна допомога:</p>
         <div class="anketa-submit-row">
           <button type="button" class="anketa-submit" id="ai-mode-anketas">Аналіз анкет</button>
@@ -194,12 +201,13 @@
       <div id="ai-chat-log" class="ai-chat-log" aria-live="polite" hidden></div>
 
       <form id="ai-chat-form" class="ai-chat-form" hidden>
-        <textarea id="ai-chat-input" class="ai-chat-input" rows="2" placeholder="Наприклад: у яких дітей є проблеми зі сном?" required></textarea>
+        <textarea id="ai-chat-input" class="ai-chat-input" rows="2" placeholder="Наприклад: у яких дітей є проблеми зі сном? (Enter — надіслати, Shift+Enter — новий рядок)" required></textarea>
         <div class="anketa-submit-row" style="margin-top:.7rem;">
           <button type="submit" class="anketa-submit" id="ai-chat-send">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
             Запитати
           </button>
+          <button type="button" class="anketa-btn" id="ai-chat-history">Мої розмови</button>
           <button type="button" class="anketa-btn" id="ai-chat-reset">Нова розмова</button>
         </div>
       </form>
@@ -287,60 +295,168 @@
 
     document.getElementById("ai-assistant-btn").addEventListener("click", () => {
       openModal(document.getElementById("ai-modal-overlay"));
-      if (!aiChatMode) {
-        const saved = loadAiChatState();
-        if (saved) {
-          aiChatMode = saved.mode;
-          aiChatHistory = saved.history;
-          document.getElementById("ai-mode-select").hidden = true;
-          document.getElementById("ai-chat-log").hidden = false;
-          document.getElementById("ai-chat-form").hidden = false;
-          renderAiChatLog();
-        }
-      }
       if (aiChatMode) {
+        // Already mid-conversation in this tab (modal was just closed, not
+        // reset) — reopen straight into it instead of jumping to the list.
+        showAiScreen("chat");
         document.getElementById("ai-chat-input").focus();
+        return;
       }
+      openAiChatEntryScreen();
     });
 
     // ---------- AI assistant (Gemini, via the ai-assistant Edge Function) ----------
-    // The conversation lives in sessionStorage, not localStorage — that
-    // isolates it per browser TAB automatically, so 2-3 specialists each
-    // working in their own tab (or window) never share or clobber one
-    // another's chat, without any extra per-tab session bookkeeping. It's
-    // also keyed by email (see currentUserEmail below) so a shared/kiosk
-    // computer that switches accounts in the same tab starts fresh instead
-    // of showing the previous specialist's questions and answers.
+    // Conversations are saved server-side in public.ai_chats (schema.sql),
+    // one row per conversation, scoped to the signed-in specialist by RLS
+    // (auth.uid() = owner_id) — so "Мої розмови" works from any device
+    // under the same account, and different specialists' chats can never
+    // collide or leak into each other regardless of how many are working
+    // at once.
     let aiChatHistory = []; // { role: "user" | "model", text }
     let aiChatBusy = false;
     let aiChatMode = null; // "anketas" | "general" — chosen on the start screen below
+    let aiChatRowId = null; // public.ai_chats id once this conversation has been saved once
+    let aiChatListCache = []; // last-fetched "Мої розмови" list, for the click handler below
     let currentUserEmail = null; // set once auth resolves, near the bottom of this file
 
-    function aiChatStorageKey() {
-      return "aiChatSession:" + (currentUserEmail || "anonymous");
+    function showAiScreen(screen) {
+      document.getElementById("ai-chat-list").hidden = screen !== "list";
+      document.getElementById("ai-mode-select").hidden = screen !== "mode-select";
+      document.getElementById("ai-chat-log").hidden = screen !== "chat";
+      document.getElementById("ai-chat-form").hidden = screen !== "chat";
     }
 
-    function saveAiChatState() {
+    async function fetchSavedAiChats() {
       try {
-        sessionStorage.setItem(aiChatStorageKey(), JSON.stringify({ mode: aiChatMode, history: aiChatHistory }));
-      } catch (e) { /* private browsing / storage full — chat still works, just isn't persisted */ }
-    }
-
-    function loadAiChatState() {
-      try {
-        const raw = sessionStorage.getItem(aiChatStorageKey());
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (!parsed || (parsed.mode !== "anketas" && parsed.mode !== "general") || !Array.isArray(parsed.history)) return null;
-        return parsed;
+        const { data, error } = await window.sbClient
+          .from("ai_chats")
+          .select("id, mode, title, messages, updated_at")
+          .order("updated_at", { ascending: false })
+          .limit(50);
+        if (error) {
+          console.error("Не вдалося завантажити збережені розмови:", error.message);
+          return [];
+        }
+        return data || [];
       } catch (e) {
+        console.error("Не вдалося завантажити збережені розмови:", e);
+        return [];
+      }
+    }
+
+    async function createSavedAiChat(mode, history, title) {
+      try {
+        const { data, error } = await window.sbClient
+          .from("ai_chats")
+          .insert({ owner_id: currentProfileId, owner_email: currentUserEmail, mode: mode, title: title, messages: history })
+          .select("id")
+          .single();
+        if (error) {
+          console.error("Не вдалося зберегти розмову:", error.message);
+          return null;
+        }
+        return data.id;
+      } catch (e) {
+        console.error("Не вдалося зберегти розмову:", e);
         return null;
       }
     }
 
-    function clearAiChatState() {
-      try { sessionStorage.removeItem(aiChatStorageKey()); } catch (e) { /* ignore */ }
+    async function updateSavedAiChat(id, history) {
+      try {
+        const { error } = await window.sbClient
+          .from("ai_chats")
+          .update({ messages: history, updated_at: new Date().toISOString() })
+          .eq("id", id);
+        if (error) console.error("Не вдалося оновити розмову:", error.message);
+      } catch (e) {
+        console.error("Не вдалося оновити розмову:", e);
+      }
     }
+
+    async function deleteSavedAiChat(id) {
+      try {
+        const { error } = await window.sbClient.from("ai_chats").delete().eq("id", id);
+        if (error) console.error("Не вдалося видалити розмову:", error.message);
+      } catch (e) {
+        console.error("Не вдалося видалити розмову:", e);
+      }
+    }
+
+    async function openAiChatEntryScreen() {
+      showAiScreen("list");
+      document.getElementById("ai-chat-list-items").innerHTML = '<p class="ai-chat-list__empty">Завантаження…</p>';
+      aiChatListCache = await fetchSavedAiChats();
+      if (!aiChatListCache.length) {
+        showAiScreen("mode-select");
+        return;
+      }
+      renderAiChatList();
+    }
+
+    function renderAiChatList() {
+      const listEl = document.getElementById("ai-chat-list-items");
+      if (!aiChatListCache.length) {
+        listEl.innerHTML = '<p class="ai-chat-list__empty">Ще немає збережених розмов.</p>';
+        return;
+      }
+      listEl.innerHTML = aiChatListCache.map((chat) => {
+        const modeLabel = chat.mode === "general" ? "Загальні питання" : "Аналіз анкет";
+        const updated = new Date(chat.updated_at).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+        return '<div class="ai-chat-list__item">' +
+          '<button type="button" class="ai-chat-list__open" data-open-chat="' + chat.id + '">' +
+            '<span class="ai-chat-list__title">' + escapeHtml(chat.title || modeLabel) + '</span>' +
+            '<span class="ai-chat-list__meta">' + modeLabel + " · " + updated + '</span>' +
+          '</button>' +
+          '<button type="button" class="ai-chat-list__delete" data-delete-chat="' + chat.id + '" aria-label="Видалити розмову" title="Видалити розмову">✕</button>' +
+        '</div>';
+      }).join("");
+    }
+
+    document.getElementById("ai-chat-list-items").addEventListener("click", async (e) => {
+      const openBtn = e.target.closest("[data-open-chat]");
+      if (openBtn) {
+        const chat = aiChatListCache.find((c) => c.id === openBtn.getAttribute("data-open-chat"));
+        if (chat) openSavedAiChat(chat);
+        return;
+      }
+      const delBtn = e.target.closest("[data-delete-chat]");
+      if (delBtn) {
+        const id = delBtn.getAttribute("data-delete-chat");
+        const chat = aiChatListCache.find((c) => c.id === id);
+        if (!chat) return;
+        if (!window.confirm("Видалити розмову «" + (chat.title || "без назви") + "»? Цю дію не можна скасувати.")) return;
+        await deleteSavedAiChat(id);
+        aiChatListCache = aiChatListCache.filter((c) => c.id !== id);
+        if (aiChatRowId === id) {
+          aiChatRowId = null;
+          aiChatMode = null;
+          aiChatHistory = [];
+        }
+        if (!aiChatListCache.length) {
+          showAiScreen("mode-select");
+        } else {
+          renderAiChatList();
+        }
+      }
+    });
+
+    function openSavedAiChat(chat) {
+      aiChatMode = chat.mode;
+      aiChatHistory = Array.isArray(chat.messages) ? chat.messages : [];
+      aiChatRowId = chat.id;
+      showAiScreen("chat");
+      renderAiChatLog();
+      document.getElementById("ai-chat-input").focus();
+    }
+
+    document.getElementById("ai-chat-list-new").addEventListener("click", () => {
+      showAiScreen("mode-select");
+    });
+
+    document.getElementById("ai-chat-history").addEventListener("click", () => {
+      openAiChatEntryScreen();
+    });
 
     // Static greetings that mirror the system prompt's "Initial Activation
     // Message" (supabase/functions/ai-assistant/index.ts). Rendered locally
@@ -383,11 +499,9 @@
     function chooseAiChatMode(mode) {
       aiChatMode = mode;
       aiChatHistory = [];
-      document.getElementById("ai-mode-select").hidden = true;
-      document.getElementById("ai-chat-log").hidden = false;
-      document.getElementById("ai-chat-form").hidden = false;
+      aiChatRowId = null; // first message in this new conversation creates its row
+      showAiScreen("chat");
       renderAiChatLog();
-      saveAiChatState();
       document.getElementById("ai-chat-input").focus();
     }
 
@@ -397,14 +511,22 @@
     function resetAiChat() {
       aiChatHistory = [];
       aiChatMode = null;
-      clearAiChatState();
-      document.getElementById("ai-chat-log").hidden = true;
-      document.getElementById("ai-chat-form").hidden = true;
-      document.getElementById("ai-mode-select").hidden = false;
+      aiChatRowId = null;
+      showAiScreen("mode-select");
       document.getElementById("ai-chat-input").value = "";
     }
 
     document.getElementById("ai-chat-reset").addEventListener("click", resetAiChat);
+
+    // Enter sends the question (matching most chat UIs); Shift+Enter still
+    // inserts a newline for multi-line questions. The "Запитати" button
+    // stays as-is — this is just an additional way to submit the same form.
+    document.getElementById("ai-chat-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById("ai-chat-form").requestSubmit();
+      }
+    });
 
     document.getElementById("ai-chat-form").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -455,7 +577,18 @@
       }
 
       renderAiChatLog();
-      saveAiChatState();
+
+      // Persist to public.ai_chats so this conversation shows up in "Мої
+      // розмови" on any device signed in as this specialist — first
+      // message creates the row (titled from that message), later ones
+      // just update it in place.
+      if (aiChatRowId) {
+        await updateSavedAiChat(aiChatRowId, aiChatHistory);
+      } else {
+        const title = question.length > 60 ? question.slice(0, 60) + "…" : question;
+        aiChatRowId = await createSavedAiChat(aiChatMode, aiChatHistory, title);
+      }
+
       aiChatBusy = false;
       sendBtn.disabled = false;
       input.focus();
@@ -1013,10 +1146,7 @@
         document.getElementById("view-modal-edit-link").hidden = true;
       }
 
-      document.getElementById("logout-btn").addEventListener("click", () => {
-        clearAiChatState();
-        window.signOut();
-      });
+      document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
 
       document.getElementById("anketa-list-content").hidden = false;
 
