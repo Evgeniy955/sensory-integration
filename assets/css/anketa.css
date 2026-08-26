@@ -713,6 +713,24 @@
   flex-direction: column;
 }
 
+.ai-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: .3rem;
+  /* Clears the absolutely-positioned .anketa-modal__close (✕), which sits
+     closer to the modal's edge than this content box's own padding. */
+  padding-right: 1.75rem;
+}
+.ai-modal-header h2 { margin: 0; }
+
+.ai-chat-save-status {
+  font-size: .82rem;
+  color: var(--color-ink-faint);
+}
+
 .ai-chat-list { padding: .5rem 0 .25rem; }
 
 .ai-chat-list__items {

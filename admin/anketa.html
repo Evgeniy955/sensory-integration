@@ -176,11 +176,15 @@
       <button type="button" class="anketa-modal__close" id="ai-modal-close" aria-label="Закрити">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
       </button>
-      <h2 id="ai-modal-title">AI помічник</h2>
+      <div class="ai-modal-header">
+        <h2 id="ai-modal-title">AI помічник</h2>
+        <button type="button" class="anketa-btn" id="ai-chat-history-btn">Історія чатів</button>
+      </div>
       <p class="anketa-modal__hint">
         Запитуйте про анкети природною мовою — наприклад, «у яких дітей є проблеми зі сном» або
         «яка основна причина звернення в анкеті Іваненко Олега» — або задавайте загальні наукові питання
         про сенсорну інтеграцію, АВА-терапію чи логопедію. Відповідь надсилається у Gemini (Google) для обробки.
+        Розмова не зберігається сама — натисніть «Зберегти чат», якщо вона знадобиться пізніше.
       </p>
 
       <div id="ai-chat-list" class="ai-chat-list" hidden>
@@ -207,8 +211,9 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
             Запитати
           </button>
-          <button type="button" class="anketa-btn" id="ai-chat-history">Мої розмови</button>
+          <button type="button" class="anketa-btn" id="ai-chat-save">Зберегти чат</button>
           <button type="button" class="anketa-btn" id="ai-chat-reset">Нова розмова</button>
+          <span id="ai-chat-save-status" class="ai-chat-save-status" aria-live="polite"></span>
         </div>
       </form>
     </div>
@@ -297,26 +302,28 @@
       openModal(document.getElementById("ai-modal-overlay"));
       if (aiChatMode) {
         // Already mid-conversation in this tab (modal was just closed, not
-        // reset) — reopen straight into it instead of jumping to the list.
+        // reset) — reopen straight into it instead of jumping back to start.
         showAiScreen("chat");
         document.getElementById("ai-chat-input").focus();
         return;
       }
-      openAiChatEntryScreen();
+      showAiScreen("mode-select");
     });
 
     // ---------- AI assistant (Gemini, via the ai-assistant Edge Function) ----------
-    // Conversations are saved server-side in public.ai_chats (schema.sql),
-    // one row per conversation, scoped to the signed-in specialist by RLS
-    // (auth.uid() = owner_id) — so "Мої розмови" works from any device
-    // under the same account, and different specialists' chats can never
-    // collide or leak into each other regardless of how many are working
-    // at once.
+    // Nothing is saved automatically — a conversation only reaches
+    // public.ai_chats (schema.sql) when the specialist clicks "Зберегти
+    // чат" below, so the saved history stays to the ones actually worth
+    // keeping instead of filling up with every one-off question. Saved
+    // rows are scoped to the signed-in specialist by RLS (auth.uid() =
+    // owner_id), so "Історія чатів" works from any device under the same
+    // account, and different specialists' saved chats can never collide.
     let aiChatHistory = []; // { role: "user" | "model", text }
     let aiChatBusy = false;
     let aiChatMode = null; // "anketas" | "general" — chosen on the start screen below
-    let aiChatRowId = null; // public.ai_chats id once this conversation has been saved once
-    let aiChatListCache = []; // last-fetched "Мої розмови" list, for the click handler below
+    let aiChatRowId = null; // public.ai_chats id once "Зберегти чат" has been clicked at least once
+    let aiChatListCache = []; // last-fetched "Історія чатів" list, for the click handler below
+    let aiChatSaveStatusTimer = null;
     let currentUserEmail = null; // set once auth resolves, near the bottom of this file
 
     function showAiScreen(screen) {
@@ -387,10 +394,6 @@
       showAiScreen("list");
       document.getElementById("ai-chat-list-items").innerHTML = '<p class="ai-chat-list__empty">Завантаження…</p>';
       aiChatListCache = await fetchSavedAiChats();
-      if (!aiChatListCache.length) {
-        showAiScreen("mode-select");
-        return;
-      }
       renderAiChatList();
     }
 
@@ -433,11 +436,7 @@
           aiChatMode = null;
           aiChatHistory = [];
         }
-        if (!aiChatListCache.length) {
-          showAiScreen("mode-select");
-        } else {
-          renderAiChatList();
-        }
+        renderAiChatList();
       }
     });
 
@@ -445,6 +444,7 @@
       aiChatMode = chat.mode;
       aiChatHistory = Array.isArray(chat.messages) ? chat.messages : [];
       aiChatRowId = chat.id;
+      setAiChatSaveStatus("");
       showAiScreen("chat");
       renderAiChatLog();
       document.getElementById("ai-chat-input").focus();
@@ -454,7 +454,7 @@
       showAiScreen("mode-select");
     });
 
-    document.getElementById("ai-chat-history").addEventListener("click", () => {
+    document.getElementById("ai-chat-history-btn").addEventListener("click", () => {
       openAiChatEntryScreen();
     });
 
@@ -499,7 +499,8 @@
     function chooseAiChatMode(mode) {
       aiChatMode = mode;
       aiChatHistory = [];
-      aiChatRowId = null; // first message in this new conversation creates its row
+      aiChatRowId = null; // clicking "Зберегти чат" later creates this conversation's row
+      setAiChatSaveStatus("");
       showAiScreen("chat");
       renderAiChatLog();
       document.getElementById("ai-chat-input").focus();
@@ -512,11 +513,46 @@
       aiChatHistory = [];
       aiChatMode = null;
       aiChatRowId = null;
+      setAiChatSaveStatus("");
       showAiScreen("mode-select");
       document.getElementById("ai-chat-input").value = "";
     }
 
     document.getElementById("ai-chat-reset").addEventListener("click", resetAiChat);
+
+    // "Зберегти чат" is the only thing that writes to public.ai_chats —
+    // nothing is persisted just from asking a question. Re-clicking it
+    // later in the same conversation updates that same saved row (so the
+    // saved copy can go stale between clicks — that's the tradeoff for
+    // "only save what's marked", not an oversight).
+    function setAiChatSaveStatus(text) {
+      const el = document.getElementById("ai-chat-save-status");
+      if (aiChatSaveStatusTimer) { clearTimeout(aiChatSaveStatusTimer); aiChatSaveStatusTimer = null; }
+      el.textContent = text;
+      if (text) {
+        aiChatSaveStatusTimer = setTimeout(() => { el.textContent = ""; }, 2500);
+      }
+    }
+
+    document.getElementById("ai-chat-save").addEventListener("click", async () => {
+      if (!aiChatHistory.length) {
+        setAiChatSaveStatus("Немає що зберігати — задайте питання.");
+        return;
+      }
+      const saveBtn = document.getElementById("ai-chat-save");
+      saveBtn.disabled = true;
+      setAiChatSaveStatus("Зберігаємо…");
+      if (aiChatRowId) {
+        await updateSavedAiChat(aiChatRowId, aiChatHistory);
+      } else {
+        const firstUserTurn = aiChatHistory.find((t) => t.role === "user");
+        const titleSource = (firstUserTurn && firstUserTurn.text) || "Розмова";
+        const title = titleSource.length > 60 ? titleSource.slice(0, 60) + "…" : titleSource;
+        aiChatRowId = await createSavedAiChat(aiChatMode, aiChatHistory, title);
+      }
+      saveBtn.disabled = false;
+      setAiChatSaveStatus(aiChatRowId ? "Збережено ✓" : "Не вдалося зберегти");
+    });
 
     // Enter sends the question (matching most chat UIs); Shift+Enter still
     // inserts a newline for multi-line questions. The "Запитати" button
@@ -578,17 +614,9 @@
 
       renderAiChatLog();
 
-      // Persist to public.ai_chats so this conversation shows up in "Мої
-      // розмови" on any device signed in as this specialist — first
-      // message creates the row (titled from that message), later ones
-      // just update it in place.
-      if (aiChatRowId) {
-        await updateSavedAiChat(aiChatRowId, aiChatHistory);
-      } else {
-        const title = question.length > 60 ? question.slice(0, 60) + "…" : question;
-        aiChatRowId = await createSavedAiChat(aiChatMode, aiChatHistory, title);
-      }
-
+      // Deliberately not auto-saved — see "Зберегти чат" above. If this
+      // conversation was already saved once, its stored copy just won't
+      // include this new exchange until saved again.
       aiChatBusy = false;
       sendBtn.disabled = false;
       input.focus();
