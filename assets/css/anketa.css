@@ -700,21 +700,48 @@
 }
 .anketa-history-item__delete:hover { color: var(--color-destructive); }
 
-.anketa-diff-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: .5rem;
-  padding: .6rem 0;
-  border-bottom: 1px solid var(--color-border);
-  font-size: .87rem;
+/* Horizontally scrollable rather than stacking on narrow screens — with
+   2+ selected versions there's no fixed number of columns to collapse to. */
+.anketa-compare-table-wrap {
+  overflow-x: auto;
+  margin: 0 -.25rem;
 }
-.anketa-diff-row dt { color: var(--color-ink-soft); font-weight: 600; }
-.anketa-diff-row dd { margin: 0; word-break: break-word; }
-.anketa-diff-before { color: var(--color-destructive); text-decoration: line-through; text-decoration-color: var(--color-destructive); opacity: .75; }
-.anketa-diff-after { color: var(--color-sage-deep); font-weight: 600; }
 
-@media (max-width: 560px) {
-  .anketa-diff-row { grid-template-columns: 1fr; gap: .15rem; }
+.anketa-compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .85rem;
+}
+
+.anketa-compare-table th,
+.anketa-compare-table td {
+  padding: .55rem .7rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.anketa-compare-table th {
+  color: var(--color-ink-soft);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.anketa-compare-table__label {
+  color: var(--color-ink-soft);
+  font-weight: 600;
+  white-space: normal;
+  min-width: 160px;
+}
+
+/* Marks a value that differs from the version in the column right before
+   it — not just from the first/oldest one — so it's clear exactly where
+   along the timeline each change happened. */
+.anketa-compare-table__changed {
+  background: var(--color-apricot-tint);
+  font-weight: 600;
 }
 
 /* Attention-grabbing on purpose: this sits above the questionnaire so an

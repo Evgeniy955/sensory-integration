@@ -151,7 +151,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
       </button>
       <h2 id="history-modal-title">Історія анкет</h2>
-      <p class="anketa-modal__hint">Позначте дві версії прапорцями, щоб порівняти зміни між ними.</p>
+      <p class="anketa-modal__hint">Позначте прапорцями версії (дві або більше), щоб порівняти зміни між ними.</p>
       <div id="history-modal-list" class="anketa-history-list"></div>
       <div class="anketa-submit-row" style="margin-top:1rem;">
         <button type="button" class="anketa-submit" id="history-compare-btn" disabled>Порівняти обрані</button>
@@ -698,7 +698,7 @@
     // the old one). Grouped by normalized child name, same matching the
     // "existing anketa" heads-up on the add/edit form already uses — this
     // is a fuzzy "probably the same kid" grouping, not a hard foreign key.
-    let historySelection = []; // up to 2 anketa ids, for "Порівняти обрані"
+    let historySelection = []; // 2+ anketa ids, for "Порівняти обрані"
 
     function openHistoryModal(row) {
       const versions = allAnketas
@@ -783,15 +783,12 @@
       if (!checkbox) return;
       const id = checkbox.getAttribute("data-history-select");
       if (checkbox.checked) {
-        if (historySelection.length >= 2) {
-          checkbox.checked = false; // only two versions can be compared at once
-          return;
-        }
         historySelection.push(id);
       } else {
         historySelection = historySelection.filter((existingId) => existingId !== id);
       }
-      document.getElementById("history-compare-btn").disabled = historySelection.length !== 2;
+      // Any 2+ versions can be compared at once — see renderCompareModal.
+      document.getElementById("history-compare-btn").disabled = historySelection.length < 2;
     });
 
     document.getElementById("history-modal-list").addEventListener("click", async (e) => {
@@ -826,7 +823,7 @@
 
         allAnketas = allAnketas.filter((r) => r.id !== id);
         historySelection = historySelection.filter((existingId) => existingId !== id);
-        document.getElementById("history-compare-btn").disabled = historySelection.length !== 2;
+        document.getElementById("history-compare-btn").disabled = historySelection.length < 2;
 
         const remaining = allAnketas
           .filter((r) => normalizeChildName(r.child_full_name) === normalizeChildName(row.child_full_name))
@@ -862,47 +859,62 @@
     });
 
     document.getElementById("history-compare-btn").addEventListener("click", () => {
-      if (historySelection.length !== 2) return;
-      const rowA = allAnketas.find((r) => r.id === historySelection[0]);
-      const rowB = allAnketas.find((r) => r.id === historySelection[1]);
-      if (rowA && rowB) renderCompareModal(rowA, rowB);
+      if (historySelection.length < 2) return;
+      const rows = historySelection.map((id) => allAnketas.find((r) => r.id === id)).filter(Boolean);
+      if (rows.length >= 2) renderCompareModal(rows);
     });
 
-    // Only the fields that actually changed — the point of comparing is
-    // spotting what's different (improvement or regression), not
-    // re-reading fifty unchanged answers.
-    function buildAnketaDiff(dataBefore, dataAfter) {
+    // Only the fields that actually differ somewhere across the selected
+    // versions — the point of comparing is spotting what changed
+    // (improvement or regression), not re-reading fifty unchanged answers
+    // once per version.
+    function buildAnketaDiff(rowsSorted) {
       const diffRows = [];
       window.ANKETA_SECTIONS.forEach((section) => {
         section.fields.forEach((f) => {
-          const before = dataBefore[f.name];
-          const after = dataAfter[f.name];
-          const beforeDisplay = before === undefined || before === null || before === "" ? "—" : String(before);
-          const afterDisplay = after === undefined || after === null || after === "" ? "—" : String(after);
-          if (beforeDisplay === afterDisplay) return;
-          diffRows.push({ label: f.label, before: beforeDisplay, after: afterDisplay });
+          const values = rowsSorted.map((r) => {
+            const v = (r.data || {})[f.name];
+            return v === undefined || v === null || v === "" ? "—" : String(v);
+          });
+          if (values.every((v) => v === values[0])) return;
+          diffRows.push({ label: f.label, values });
         });
       });
       return diffRows;
     }
 
-    function renderCompareModal(rowA, rowB) {
-      const older = rowA.created_at <= rowB.created_at ? rowA : rowB;
-      const newer = older === rowA ? rowB : rowA;
+    // Compares any 2+ selected versions side by side, oldest to newest.
+    // Each cell is marked "changed" only relative to the PREVIOUS column
+    // (not the first/oldest one), so a wide comparison across many
+    // versions still shows exactly where each change happened along the
+    // timeline rather than just "different from the very first version".
+    function renderCompareModal(rows) {
+      const sorted = rows.slice().sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0));
       document.getElementById("compare-modal-meta").textContent =
-        new Date(older.created_at).toLocaleString("uk-UA") + " → " + new Date(newer.created_at).toLocaleString("uk-UA");
+        sorted.map((r) => new Date(r.created_at).toLocaleString("uk-UA")).join("  →  ");
 
-      const diffRows = buildAnketaDiff(older.data || {}, newer.data || {});
+      const diffRows = buildAnketaDiff(sorted);
       const body = document.getElementById("compare-modal-body");
-      body.innerHTML = diffRows.length
-        ? diffRows.map((d) =>
-            '<div class="anketa-diff-row">' +
-              '<dt>' + escapeHtml(d.label) + '</dt>' +
-              '<dd class="anketa-diff-before">' + escapeHtml(d.before) + '</dd>' +
-              '<dd class="anketa-diff-after">' + escapeHtml(d.after) + '</dd>' +
-            '</div>'
-          ).join("")
-        : '<p class="anketa-modal__hint">Відмінностей між цими версіями немає.</p>';
+      if (!diffRows.length) {
+        body.innerHTML = '<p class="anketa-modal__hint">Відмінностей між цими версіями немає.</p>';
+        openModal(document.getElementById("compare-modal-overlay"));
+        return;
+      }
+
+      const headerCells = sorted.map((r) => "<th>" + new Date(r.created_at).toLocaleDateString("uk-UA") + "</th>").join("");
+      const bodyRows = diffRows.map((d) => {
+        const cells = d.values.map((v, i) => {
+          const changed = i > 0 && v !== d.values[i - 1];
+          return '<td class="' + (changed ? "anketa-compare-table__changed" : "") + '">' + escapeHtml(v) + "</td>";
+        }).join("");
+        return "<tr><td class=\"anketa-compare-table__label\">" + escapeHtml(d.label) + "</td>" + cells + "</tr>";
+      }).join("");
+
+      body.innerHTML =
+        '<div class="anketa-compare-table-wrap"><table class="anketa-compare-table">' +
+          "<thead><tr><th></th>" + headerCells + "</tr></thead>" +
+          "<tbody>" + bodyRows + "</tbody>" +
+        "</table></div>";
 
       openModal(document.getElementById("compare-modal-overlay"));
     }
