@@ -625,16 +625,73 @@
 .anketa-import-summary { margin: 1rem 0 0; font-size: .9rem; color: var(--color-ink); }
 .anketa-import-summary strong { color: var(--color-sage-deep); }
 
-.anketa-view-siblings {
-  margin: -.3rem 0 1.1rem;
-  padding: .6rem .8rem;
-  background: var(--color-sky-tint);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  font-size: .85rem;
-  color: var(--color-ink-soft);
+/* ---------- Anketa version history + compare ---------- */
+.anketa-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  max-height: 50vh;
+  overflow-y: auto;
+  margin-bottom: .25rem;
 }
-.anketa-view-siblings .anketa-view-link { font-weight: 600; }
+
+.anketa-history-item {
+  display: flex;
+  align-items: stretch;
+  gap: .5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface-alt);
+}
+
+.anketa-history-item__select {
+  display: flex;
+  align-items: center;
+  padding: 0 .8rem;
+  cursor: pointer;
+}
+
+.anketa-history-item__view {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .65rem .8rem;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-ink);
+  font-family: var(--cx-font-body);
+  font-size: .87rem;
+  text-align: left;
+  cursor: pointer;
+}
+.anketa-history-item__view:hover { color: var(--color-sage-deep); }
+
+.anketa-history-item__badge {
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: var(--color-sage-deep);
+}
+
+.anketa-diff-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: .5rem;
+  padding: .6rem 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: .87rem;
+}
+.anketa-diff-row dt { color: var(--color-ink-soft); font-weight: 600; }
+.anketa-diff-row dd { margin: 0; word-break: break-word; }
+.anketa-diff-before { color: var(--color-destructive); text-decoration: line-through; text-decoration-color: var(--color-destructive); opacity: .75; }
+.anketa-diff-after { color: var(--color-sage-deep); font-weight: 600; }
+
+@media (max-width: 560px) {
+  .anketa-diff-row { grid-template-columns: 1fr; gap: .15rem; }
+}
 
 /* Attention-grabbing on purpose: this sits above the questionnaire so an
    admin sees "this child already exists" before filling out 50+ fields,

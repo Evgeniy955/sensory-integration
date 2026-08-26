@@ -207,8 +207,9 @@
         document.getElementById("anketa-intro-eyebrow-text").textContent = "Редагування анкети";
         document.getElementById("anketa-intro-title").textContent = "Редагувати анкету";
         document.getElementById("anketa-intro-text").textContent =
-          "Змініть потрібні поля та збережіть — попередні відповіді буде замінено новими.";
-        document.getElementById("anketa-submit-btn-text").textContent = "Зберегти зміни";
+          "Змініть потрібні поля та збережіть — ця анкета залишиться в історії дитини незмінною, " +
+          "а зміни збережуться як нова версія з поточною датою.";
+        document.getElementById("anketa-submit-btn-text").textContent = "Зберегти як нову версію";
 
         const deleteBtn = document.getElementById("anketa-delete-btn");
         deleteBtn.hidden = false;
@@ -326,29 +327,27 @@
           data: data,
         };
 
-        const { error } = editRow
-          ? await window.sbClient.from("anketas").update(payload).eq("id", editRow.id)
-          : await window.sbClient.from("anketas").insert(Object.assign({ created_by: profile.id }, payload));
+        // Editing never overwrites the anketa being edited — it always
+        // inserts a brand new row (fresh id, created_at = now()), so the
+        // version just edited stays intact in the child's history for
+        // "Історія" to list and compare against. editRow only affects the
+        // page's own copy/labels above, not which DB call happens here.
+        const { error } = await window.sbClient.from("anketas").insert(Object.assign({ created_by: profile.id }, payload));
 
         if (error) {
-          // A child can have several anketas over time (returning after a
-          // break, an update, etc.) — this only fires for an exact repeat
-          // submission (same child, same save moment), e.g. a double-click
-          // that slipped past the disabled button (or, when editing, if the
-          // edited name+timestamp combination happens to collide with a
-          // different existing anketa).
+          // Only fires for an exact repeat submission (same child, same
+          // save moment) — e.g. a double-click that slipped past the
+          // disabled button.
           const isDuplicate = error.code === "23505" || /duplicate key/i.test(error.message || "");
           statusEl.textContent = isDuplicate
-            ? (editRow
-                ? "Ця комбінація ПІБ дитини й часу створення вже зайнята іншою анкетою. Змініть ПІБ або зверніться до розробника."
-                : "Цю анкету вже щойно збережено — здається, форму надіслано двічі.")
+            ? "Цю анкету вже щойно збережено — здається, форму надіслано двічі."
             : "Помилка збереження: " + error.message;
           statusEl.className = "anketa-status anketa-status--err";
           submitBtn.disabled = false;
           return;
         }
 
-        statusEl.textContent = (editRow ? "Анкету оновлено" : "Анкету збережено") + ". Повертаємось до списку…";
+        statusEl.textContent = (editRow ? "Нову версію анкети збережено" : "Анкету збережено") + ". Повертаємось до списку…";
         statusEl.className = "anketa-status anketa-status--ok";
         setTimeout(function () { window.location.href = "anketa.html"; }, 900);
       });
