@@ -292,13 +292,28 @@
     let aiChatHistory = []; // { role: "user" | "model", text }
     let aiChatBusy = false;
 
+    // Static greeting that mirrors the system prompt's "Initial Activation
+    // Message" (supabase/functions/ai-assistant/index.ts). Rendered locally
+    // so it's free and instant, and — since it never enters aiChatHistory —
+    // it's never sent to Gemini as part of the conversation.
+    const AI_GREETING_HTML =
+      "Вітаю! Я готовий працювати як ваш науковий асистент-консультант на основі методів доказової медицини." +
+      "<br><br>Будь ласка, оберіть вашу спеціалізацію для налаштування аналізу та рекомендацій:" +
+      "<br>• <strong>1. Сенсорна інтеграція</strong>" +
+      "<br>• <strong>2. АВА-терапія</strong>" +
+      "<br>• <strong>3. Логопедія</strong>" +
+      "<br>• <strong>4. Загальні рекомендації</strong> (комплексний огляд для всіх фахівців)" +
+      "<br><br>Вкажіть номер спеціалізації та ПІБ дитини (<strong>або ваше запитання</strong>), щоб ми розпочали роботу.";
+    const AI_GREETING_BUBBLE =
+      '<div class="ai-chat-msg ai-chat-msg--ai"><div class="ai-chat-msg__bubble">' + AI_GREETING_HTML + "</div></div>";
+
     function renderAiChatLog() {
       const log = document.getElementById("ai-chat-log");
       if (!aiChatHistory.length) {
-        log.innerHTML = '<p class="ai-chat-empty">Ще немає запитань — почніть розмову нижче.</p>';
+        log.innerHTML = AI_GREETING_BUBBLE;
         return;
       }
-      log.innerHTML = aiChatHistory.map((turn) =>
+      log.innerHTML = AI_GREETING_BUBBLE + aiChatHistory.map((turn) =>
         '<div class="ai-chat-msg ai-chat-msg--' + (turn.role === "model" ? "ai" : "user") + '">' +
         '<div class="ai-chat-msg__bubble">' + (turn.pending ? '<span class="ai-chat-typing">Друкує…</span>' : escapeHtml(turn.text).replace(/\n/g, "<br>")) + "</div>" +
         "</div>"
