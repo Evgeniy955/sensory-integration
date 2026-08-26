@@ -271,42 +271,62 @@ async function runTool(client: SupabaseClient, name: string, args: Record<string
 type GeminiPart = { text?: string; functionCall?: { name: string; args?: Record<string, unknown> }; functionResponse?: { name: string; response: Record<string, unknown> } };
 type GeminiContent = { role: string; parts: GeminiPart[] };
 
+// Gemini returns 503 when the model is momentarily overloaded and 429 when
+// rate-limited — both are usually gone a second later, so it's worth a
+// couple of quick retries before surfacing the error to the admin.
+const RETRYABLE_STATUSES = new Set([429, 503]);
+const MAX_GEMINI_RETRIES = 2;
+const RETRY_BASE_DELAY_MS = 600;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function callGemini(systemInstruction: string, contents: GeminiContent[]): Promise<{ ok: true; candidate: { content?: GeminiContent; finishReason?: string } } | { ok: false; error: string }> {
-  let res: Response;
-  try {
-    res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemInstruction }] },
-          contents,
-          tools: TOOLS,
-          generationConfig: { temperature: 0.2, maxOutputTokens: 1536 },
-        }),
-      },
-    );
-  } catch (e) {
-    return { ok: false, error: "Не вдалося звʼязатися з Gemini API: " + String(e) };
-  }
-
-  if (!res.ok) {
-    let message = `Gemini API повернув помилку (${res.status})`;
+  for (let attempt = 0; attempt <= MAX_GEMINI_RETRIES; attempt++) {
+    let res: Response;
     try {
-      const errBody = await res.json();
-      if (errBody?.error?.message) message += ": " + errBody.error.message;
-    } catch { /* ignore unparsable error body */ }
-    return { ok: false, error: message };
-  }
+      res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents,
+            tools: TOOLS,
+            generationConfig: { temperature: 0.2, maxOutputTokens: 1536 },
+          }),
+        },
+      );
+    } catch (e) {
+      if (attempt < MAX_GEMINI_RETRIES) { await sleep(RETRY_BASE_DELAY_MS * (attempt + 1)); continue; }
+      return { ok: false, error: "Не вдалося звʼязатися з Gemini API: " + String(e) };
+    }
 
-  const resJson = await res.json();
-  const candidate = resJson?.candidates?.[0];
-  if (!candidate) {
-    const blockReason = resJson?.promptFeedback?.blockReason;
-    return { ok: false, error: "Gemini не повернув відповіді" + (blockReason ? ` (${blockReason})` : "") };
+    if (!res.ok) {
+      let message = `Gemini API повернув помилку (${res.status})`;
+      try {
+        const errBody = await res.json();
+        if (errBody?.error?.message) message += ": " + errBody.error.message;
+      } catch { /* ignore unparsable error body */ }
+      if (RETRYABLE_STATUSES.has(res.status) && attempt < MAX_GEMINI_RETRIES) {
+        await sleep(RETRY_BASE_DELAY_MS * (attempt + 1));
+        continue;
+      }
+      return { ok: false, error: message };
+    }
+
+    const resJson = await res.json();
+    const candidate = resJson?.candidates?.[0];
+    if (!candidate) {
+      const blockReason = resJson?.promptFeedback?.blockReason;
+      return { ok: false, error: "Gemini не повернув відповіді" + (blockReason ? ` (${blockReason})` : "") };
+    }
+    return { ok: true, candidate };
   }
-  return { ok: true, candidate };
+  // Unreachable: the loop always returns on its last iteration.
+  return { ok: false, error: "Gemini API недоступний." };
 }
 
 Deno.serve(async (req: Request) => {
