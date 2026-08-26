@@ -676,6 +676,19 @@
   color: var(--color-sage-deep);
 }
 
+.anketa-history-item__activate {
+  padding: 0 .8rem;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+  font-size: .78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.anketa-history-item__activate:hover { color: var(--color-sage-deep); }
+
 .anketa-history-item__delete {
   padding: 0 .9rem;
   border: none;

@@ -707,18 +707,24 @@
       document.getElementById("history-modal-title").textContent =
         "Історія анкет" + (row.child_full_name ? " — " + row.child_full_name : "");
       historySelection = [];
-      renderHistoryList(versions, row.id);
+      renderHistoryList(versions);
       document.getElementById("history-compare-btn").disabled = true;
       openModal(document.getElementById("history-modal-overlay"));
     }
 
-    function renderHistoryList(versions, currentRowId) {
+    function renderHistoryList(versions) {
       const listEl = document.getElementById("history-modal-list");
       listEl.innerHTML = versions.map((v) => {
         const checked = historySelection.includes(v.id) ? " checked" : "";
-        const badge = v.id === currentRowId ? ' <span class="anketa-history-item__badge">поточна</span>' : "";
-        // Deleting a version is a write, same as editing — instructors
-        // (read-only) don't get the control at all, not just a disabled one.
+        // "Активна" reflects is_active (what the main list/"Редагувати"
+        // actually show) — not just whichever version happens to be open
+        // underneath right now.
+        const badge = v.is_active ? ' <span class="anketa-history-item__badge">активна</span>' : "";
+        // Both are writes, same as editing — instructors (read-only) get
+        // neither control, not just a disabled one.
+        const activateBtn = canEdit && !v.is_active
+          ? '<button type="button" class="anketa-history-item__activate" data-history-activate="' + v.id + '">Зробити активною</button>'
+          : "";
         const deleteBtn = canEdit
           ? '<button type="button" class="anketa-history-item__delete" data-history-delete="' + v.id + '" aria-label="Видалити цю версію" title="Видалити цю версію">✕</button>'
           : "";
@@ -729,9 +735,47 @@
           '<button type="button" class="anketa-history-item__view" data-history-view="' + v.id + '">' +
             '<span class="anketa-history-item__date">' + new Date(v.created_at).toLocaleString("uk-UA") + '</span>' + badge +
           '</button>' +
+          activateBtn +
           deleteBtn +
         '</div>';
       }).join("");
+    }
+
+    // Marks one version active and every other version for the same
+    // child inactive — deliberately two calls (not a single atomic
+    // statement) to match the fuzzy, client-side-enforced grouping used
+    // for history/dedup everywhere else in this file, rather than adding
+    // a hard per-child uniqueness constraint in the DB.
+    async function activateAnketaVersion(id) {
+      const row = allAnketas.find((r) => r.id === id);
+      if (!row) return;
+      const siblingIds = allAnketas
+        .filter((r) => r.id !== id && normalizeChildName(r.child_full_name) === normalizeChildName(row.child_full_name))
+        .map((r) => r.id);
+
+      if (siblingIds.length) {
+        const { error: deactivateErr } = await window.sbClient.from("anketas").update({ is_active: false }).in("id", siblingIds);
+        if (deactivateErr) {
+          window.alert("Помилка: " + deactivateErr.message);
+          return;
+        }
+      }
+      const { error: activateErr } = await window.sbClient.from("anketas").update({ is_active: true }).eq("id", id);
+      if (activateErr) {
+        window.alert("Помилка: " + activateErr.message);
+        return;
+      }
+
+      allAnketas.forEach((r) => {
+        if (r.id === id) r.is_active = true;
+        else if (siblingIds.includes(r.id)) r.is_active = false;
+      });
+      renderRows();
+      renderAnketaDetail(row);
+      const versions = allAnketas
+        .filter((r) => normalizeChildName(r.child_full_name) === normalizeChildName(row.child_full_name))
+        .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+      renderHistoryList(versions);
     }
 
     document.getElementById("history-modal-list").addEventListener("change", (e) => {
@@ -760,6 +804,12 @@
         return;
       }
 
+      const activateBtn = e.target.closest("[data-history-activate]");
+      if (activateBtn) {
+        await activateAnketaVersion(activateBtn.getAttribute("data-history-activate"));
+        return;
+      }
+
       const deleteBtn = e.target.closest("[data-history-delete]");
       if (deleteBtn) {
         const id = deleteBtn.getAttribute("data-history-delete");
@@ -777,7 +827,6 @@
         allAnketas = allAnketas.filter((r) => r.id !== id);
         historySelection = historySelection.filter((existingId) => existingId !== id);
         document.getElementById("history-compare-btn").disabled = historySelection.length !== 2;
-        renderRows();
 
         const remaining = allAnketas
           .filter((r) => normalizeChildName(r.child_full_name) === normalizeChildName(row.child_full_name))
@@ -785,15 +834,25 @@
 
         if (!remaining.length) {
           // That was the only version — nothing left to show underneath.
+          renderRows();
           closeModal(document.getElementById("history-modal-overlay"));
           closeModal(document.getElementById("view-modal-overlay"));
           return;
         }
-        // Snap the view underneath back to the latest surviving version
-        // (whether or not the deleted one was itself the latest), so
-        // closing "Історія" never reveals stale or removed content.
-        renderAnketaDetail(remaining[0]);
-        renderHistoryList(remaining, remaining[0].id);
+
+        let activeRow = remaining.find((r) => r.is_active);
+        if (!activeRow) {
+          // The deleted version was the active one — promote the newest
+          // survivor so the group is never left without one.
+          activeRow = remaining[0];
+          activeRow.is_active = true;
+          await window.sbClient.from("anketas").update({ is_active: true }).eq("id", activeRow.id);
+        }
+        renderRows();
+        // Snap the view underneath back to the active version, so closing
+        // "Історія" never reveals stale or removed content.
+        renderAnketaDetail(activeRow);
+        renderHistoryList(remaining);
       }
     });
 
@@ -1219,24 +1278,34 @@
     // child with several versions (see "Історія") would otherwise show up
     // once per version, which reads as duplicate children. Older versions
     // are still fully reachable from "Історія" on whichever version is
-    // shown here; they're just not separate rows in this list.
-    function getLatestAnketaPerChild(list) {
-      const latestByKey = new Map();
+    // shown here; they're just not separate rows in this list. Which one
+    // represents the child here is is_active (settable from "Історія" —
+    // see "Зробити активною"), not just "whichever is newest" — falling
+    // back to newest only covers rows saved before is_active existed or
+    // the rare case of a group with no active row at all.
+    function getActiveAnketaPerChild(list) {
+      const byKey = new Map();
       list.forEach((r) => {
         const key = normalizeChildName(r.child_full_name);
-        const existing = latestByKey.get(key);
-        if (!existing || r.created_at > existing.created_at) {
-          latestByKey.set(key, r);
+        const existing = byKey.get(key);
+        if (!existing) {
+          byKey.set(key, r);
+          return;
+        }
+        if (r.is_active && !existing.is_active) {
+          byKey.set(key, r);
+        } else if (!(existing.is_active && !r.is_active) && r.created_at > existing.created_at) {
+          byKey.set(key, r);
         }
       });
-      return Array.from(latestByKey.values());
+      return Array.from(byKey.values());
     }
 
     function renderRows() {
       const tbody = document.getElementById("anketa-tbody");
       const q = searchQuery.trim().toLowerCase();
 
-      let rows = getLatestAnketaPerChild(allAnketas).filter((r) => {
+      let rows = getActiveAnketaPerChild(allAnketas).filter((r) => {
         if (!q) return true;
         return (r.child_full_name || "").toLowerCase().includes(q) ||
                (r.parent_name || "").toLowerCase().includes(q);
@@ -1283,7 +1352,7 @@
       const tbody = document.getElementById("anketa-tbody");
       const { data, error } = await window.sbClient
         .from("anketas")
-        .select("id, child_full_name, parent_name, data, created_at")
+        .select("id, child_full_name, parent_name, data, created_at, is_active")
         .order("created_at", { ascending: false });
 
       if (error) {

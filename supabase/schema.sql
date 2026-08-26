@@ -259,7 +259,35 @@ create policy "Users can delete own ai chats"
   on public.ai_chats for delete
   using (auth.uid() = owner_id);
 
--- 9. Bootstrap: make yourself super_admin -------------------------------
+-- 9. Anketa version activation -------------------------------------------
+-- Editing an anketa (admin/anketa-form.html) always inserts a new version
+-- rather than overwriting the one being edited (see "Історія" in
+-- admin/anketa.html) — is_active marks which version of a child's anketa
+-- is the one shown by default in the main list and picked up by
+-- "Редагувати" from there. Defaults to true so a fresh insert (a new
+-- version, or a brand new child) is active immediately; the app flips the
+-- previous active version to false in the same action (see
+-- admin/anketa.html and admin/anketa-form.html) — deliberately not a hard
+-- DB constraint, consistent with the fuzzy name-based grouping already
+-- used for history/duplicate-detection elsewhere in this file.
+alter table public.anketas add column if not exists is_active boolean not null default true;
+
+-- One-time backfill for rows that existed before this column: only the
+-- most recently created version per child (grouped the same fuzzy way the
+-- admin UI does) stays active. Safe to re-run — always converges to the
+-- same result, so it's harmless once every row already reflects it.
+with ranked as (
+  select id, row_number() over (
+    partition by lower(trim(child_full_name)) order by created_at desc, id
+  ) as rn
+  from public.anketas
+)
+update public.anketas a
+set is_active = (ranked.rn = 1)
+from ranked
+where a.id = ranked.id and a.is_active <> (ranked.rn = 1);
+
+-- 10. Bootstrap: make yourself super_admin -------------------------------
 -- 1) Sign up once through admin/login.html (use "Forgot password" style
 --    flow isn't needed — just create your own account via Supabase Auth
 --    dashboard: Authentication → Users → Add user, or sign up on the page).

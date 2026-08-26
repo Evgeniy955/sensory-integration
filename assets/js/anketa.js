@@ -197,6 +197,22 @@
     mountEl.innerHTML = html;
   };
 
+  // A native <input type="date"> silently ignores (resets to blank) any
+  // value that isn't exactly YYYY-MM-DD — so a date stored in another
+  // format (e.g. a CSV import from the old Google Form, "05.03.2020")
+  // would look fine in the read-only view (plain text there) but come up
+  // empty the moment that same anketa is opened for editing. Converts the
+  // common alternate day-first formats; anything else is left as-is
+  // (unparseable strings are rare and better surfaced than silently
+  // dropped by a "fix" that guesses wrong).
+  function toDateInputValue(raw) {
+    const s = String(raw || "").trim();
+    if (!s || /^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const m = /^(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})$/.exec(s);
+    if (!m) return s;
+    return m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0");
+  }
+
   // Fills a form already rendered by renderAnketaForm with existing
   // answers — the reverse of collectAnketaData, used by the "Редагувати"
   // flow to prefill a previously saved anketa. Missing/unknown fields are
@@ -213,7 +229,7 @@
           });
         } else {
           const el = formEl.querySelector(`[name="${f.name}"]`);
-          if (el) el.value = value;
+          if (el) el.value = f.type === "date" ? toDateInputValue(value) : value;
         }
       });
     });

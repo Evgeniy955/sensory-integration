@@ -203,6 +203,16 @@
 
       if (editRow) {
         window.fillAnketaForm(form, editRow.data || {});
+        // Unlike child_birth_date (a fixed fact that should carry over
+        // unchanged), this date means "when was THIS version filled out"
+        // — it should default to today rather than keep the previous
+        // version's date, so the specialist doesn't have to remember to
+        // update it by hand. Still just a prefilled value, not locked.
+        const fillDateEl = form.querySelector('[name="form_fill_date"]');
+        if (fillDateEl) {
+          const now = new Date();
+          fillDateEl.value = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+        }
         document.title = "Редагувати анкету — Центр сенсорної інтеграції";
         document.getElementById("anketa-intro-eyebrow-text").textContent = "Редагування анкети";
         document.getElementById("anketa-intro-title").textContent = "Редагувати анкету";
@@ -326,6 +336,27 @@
           parent_name: data.parent_name || null,
           data: data,
         };
+
+        if (editRow) {
+          // The version just saved becomes the active one (is_active
+          // defaults to true on insert below) — deactivate every other
+          // version of this child first, so the main list/"Редагувати"
+          // point at what was just saved, not an older version. Matched
+          // by the (possibly just-edited) name, same fuzzy grouping
+          // "Історія" itself uses — not a hard DB constraint.
+          const key = normalizeChildName(payload.child_full_name);
+          const { data: siblings, error: siblingsErr } = await window.sbClient
+            .from("anketas")
+            .select("id, child_full_name");
+          if (!siblingsErr && siblings) {
+            const siblingIds = siblings
+              .filter((r) => normalizeChildName(r.child_full_name) === key)
+              .map((r) => r.id);
+            if (siblingIds.length) {
+              await window.sbClient.from("anketas").update({ is_active: false }).in("id", siblingIds);
+            }
+          }
+        }
 
         // Editing never overwrites the anketa being edited — it always
         // inserts a brand new row (fresh id, created_at = now()), so the
