@@ -659,7 +659,6 @@
       document.getElementById("view-modal-title").textContent =
         row.child_full_name || "Анкета";
       document.getElementById("view-modal-edit-link").href = "anketa-form.html?id=" + encodeURIComponent(row.id);
-      document.getElementById("view-modal-attendance-btn").dataset.anketaId = row.id;
       document.getElementById("view-modal-attendance-btn").dataset.childName = row.child_full_name || "";
       document.getElementById("view-modal-history-btn").dataset.anketaId = row.id;
 
@@ -901,18 +900,25 @@
         return;
       }
 
-      const headerCells = sorted.map((r) => "<th>" + new Date(r.created_at).toLocaleDateString("uk-UA") + "</th>").join("");
+      // scroll-snap-align on each version column's header cell — combined
+      // with the wrap's scroll-snap-type below — lets a swipe on mobile
+      // settle neatly on one version at a time instead of stopping
+      // mid-column; the sticky label column keeps "which field is this"
+      // visible no matter which version column you've swiped to.
+      const headerCells = sorted.map((r) =>
+        '<th class="anketa-compare-table__col">' + new Date(r.created_at).toLocaleDateString("uk-UA") + "</th>"
+      ).join("");
       const bodyRows = diffRows.map((d) => {
         const cells = d.values.map((v, i) => {
           const changed = i > 0 && v !== d.values[i - 1];
-          return '<td class="' + (changed ? "anketa-compare-table__changed" : "") + '">' + escapeHtml(v) + "</td>";
+          return '<td class="anketa-compare-table__col' + (changed ? " anketa-compare-table__changed" : "") + '">' + escapeHtml(v) + "</td>";
         }).join("");
         return "<tr><td class=\"anketa-compare-table__label\">" + escapeHtml(d.label) + "</td>" + cells + "</tr>";
       }).join("");
 
       body.innerHTML =
         '<div class="anketa-compare-table-wrap"><table class="anketa-compare-table">' +
-          "<thead><tr><th></th>" + headerCells + "</tr></thead>" +
+          '<thead><tr><th class="anketa-compare-table__label"></th>' + headerCells + "</tr></thead>" +
           "<tbody>" + bodyRows + "</tbody>" +
         "</table></div>";
 
@@ -930,7 +936,7 @@
       return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     }
 
-    async function openAttendanceModal(anketaId, childName) {
+    async function openAttendanceModal(childName) {
       const overlay = document.getElementById("attendance-modal-overlay");
       const countEl = document.getElementById("attendance-modal-count");
       const bodyEl = document.getElementById("attendance-modal-body");
@@ -952,17 +958,24 @@
 
       const cells = (data && data.data && data.data.cells) || {};
       const today = todayIso();
+      // Matched by (normalized) child name, not anketaId — a schedule
+      // slot points at whichever anketa version was picked at booking
+      // time, but editing (admin/anketa-form.html) always creates a new
+      // version with a new id, so matching on anketaId would silently
+      // stop finding a child's attendance the moment their anketa is
+      // edited. Same fuzzy grouping "Історія" already uses elsewhere.
+      const key = normalizeChildName(childName);
       // Per date, not per slot: a date only counts as a no-show if every
       // slot that day was marked as one - if the child had two bookings
       // the same day and showed up for at least one, the day still
       // counts as a visit.
       const dateStatus = {}; // dateIso -> "attended" | "noshow"
-      Object.keys(cells).forEach((key) => {
-        const parts = key.split("|");
+      Object.keys(cells).forEach((cellKey) => {
+        const parts = cellKey.split("|");
         if (parts.length !== 3) return;
         const [, dateIso] = parts;
-        const entry = cells[key];
-        if (!entry || entry.anketaId !== anketaId || dateIso >= today) return;
+        const entry = cells[cellKey];
+        if (!entry || !key || normalizeChildName(entry.childName) !== key || dateIso >= today) return;
         if (entry.noShow) {
           if (dateStatus[dateIso] !== "attended") dateStatus[dateIso] = "noshow";
         } else {
@@ -988,7 +1001,7 @@
     }
 
     document.getElementById("view-modal-attendance-btn").addEventListener("click", (e) => {
-      openAttendanceModal(e.currentTarget.dataset.anketaId, e.currentTarget.dataset.childName);
+      openAttendanceModal(e.currentTarget.dataset.childName);
     });
 
     // ---------- CSV import ----------

@@ -17,13 +17,16 @@
 //     calendar picker.
 //
 // A slot's child is picked from the existing anketas (parent
-// questionnaires) table via search-as-you-type — never free text — so a
-// schedule entry always points at a real anketa row (anketaId), which is
-// what lets the anketa page compute "visited on these dates" later by
-// scanning this same board. `noShow` exists because a past slot counts
-// as an attended visit by default (nobody confirms attendance one by
-// one) — marking it lets that same anketa-page count exclude days the
-// child was booked but didn't actually come.
+// questionnaires) table via search-as-you-type — never free text.
+// `anketaId` records which specific anketa row was on file at booking
+// time, but attendance itself is looked up by (normalized) `childName`,
+// not `anketaId` — editing an anketa (admin/anketa-form.html) always
+// saves a new row with a new id, so matching on anketaId would silently
+// lose a child's attendance history the moment their anketa is edited.
+// `noShow` exists because a past slot counts as an attended visit by
+// default (nobody confirms attendance one by one) — marking it lets that
+// same anketa-page count exclude days the child was booked but didn't
+// actually come.
 
 (function () {
   const WEEKDAY_FULL = ["неділя", "понеділок", "вівторок", "середа", "четвер", "п'ятниця", "субота"];
@@ -88,6 +91,13 @@
     return String(str == null ? "" : str).replace(/[&<>"']/g, (c) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
     }[c]));
+  }
+
+  // Same normalization admin/anketa.html uses to group a child's anketa
+  // versions — used here so attendance matches by child, not by whichever
+  // specific anketa row happened to be selected when the slot was booked.
+  function normalizeChildName(s) {
+    return String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
   }
 
   // ---------- Date helpers (no library — just plain Date math) ----------
@@ -558,7 +568,11 @@
   }
 
   function openAttendanceModal(anketaId, childName) {
-    if (!anketaId) return;
+    // Matched by (normalized) child name, not anketaId — see
+    // normalizeChildName above. anketaId is still accepted/ignored so
+    // existing call sites don't need to change what they pass.
+    const key = normalizeChildName(childName);
+    if (!key) return;
     const overlay = document.getElementById("attendance-modal-overlay");
     const countEl = document.getElementById("attendance-modal-count");
     const bodyEl = document.getElementById("attendance-modal-body");
@@ -572,12 +586,12 @@
     // visit. Today and future dates don't count yet either way — a
     // schedule entry is a plan, not confirmed attendance.
     const dateStatus = {};
-    Object.keys(board.cells).forEach((key) => {
-      const parts = key.split("|");
+    Object.keys(board.cells).forEach((cellKey) => {
+      const parts = cellKey.split("|");
       if (parts.length !== 3) return;
       const dateIso = parts[1];
-      const entry = board.cells[key];
-      if (!entry || entry.anketaId !== anketaId || dateIso >= today) return;
+      const entry = board.cells[cellKey];
+      if (!entry || normalizeChildName(entry.childName) !== key || dateIso >= today) return;
       if (entry.noShow) {
         if (dateStatus[dateIso] !== "attended") dateStatus[dateIso] = "noshow";
       } else {

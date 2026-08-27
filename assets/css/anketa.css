@@ -701,10 +701,16 @@
 .anketa-history-item__delete:hover { color: var(--color-destructive); }
 
 /* Horizontally scrollable rather than stacking on narrow screens — with
-   2+ selected versions there's no fixed number of columns to collapse to. */
+   2+ selected versions there's no fixed number of columns to collapse to.
+   scroll-snap settles a swipe on one version column at a time instead of
+   leaving it stopped mid-column; -webkit-overflow-scrolling keeps the
+   drag itself smooth on iOS. "proximity" (not "mandatory") so a small
+   nudge can still just nudge, not always jump a whole column. */
 .anketa-compare-table-wrap {
   overflow-x: auto;
   margin: 0 -.25rem;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
 }
 
 .anketa-compare-table {
@@ -729,7 +735,23 @@
   white-space: nowrap;
 }
 
+/* One version's column — wide enough to read comfortably as its own
+   "page" while swiping, and a snap point to settle on. A fixed width
+   (not e.g. vw) so this stays reasonable regardless of the browser
+   window's width, which — unlike the modal itself — isn't capped. */
+.anketa-compare-table__col {
+  min-width: 180px;
+  scroll-snap-align: start;
+}
+
+/* Shared by the label column's <td>s and its blank corner <th> — stays
+   put (and opaque, over whatever's scrolled underneath) while swiping
+   through version columns, so it's always clear which field is which. */
 .anketa-compare-table__label {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-surface);
   color: var(--color-ink-soft);
   font-weight: 600;
   white-space: normal;
