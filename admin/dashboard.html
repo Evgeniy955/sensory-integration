@@ -34,12 +34,6 @@
         <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
         <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
       </button>
-      <a class="admin-btn admin-btn--ghost" id="anketa-link" href="anketa.html" style="width:auto;" hidden>Анкети</a>
-      <a class="admin-btn admin-btn--ghost" id="schedule-link" href="schedule.html" style="width:auto;" hidden>Розклад</a>
-      <a class="admin-btn admin-btn--ghost" id="ai-assistant-link" href="anketa.html?ai=1" style="width:auto;" hidden>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true" style="vertical-align:-3px;margin-right:.3rem;"><path d="M12 3v3M12 18v3M5 12H2M22 12h-3M6.3 6.3 4.2 4.2M19.8 19.8l-2.1-2.1M6.3 17.7l-2.1 2.1M19.8 4.2l-2.1 2.1"/><circle cx="12" cy="12" r="4.2"/></svg>
-        AI помічник
-      </a>
       <button class="admin-btn admin-btn--ghost" id="logout-btn" style="width:auto;">Вийти</button>
     </div>
   </header>
@@ -47,58 +41,59 @@
   <main class="admin-main">
     <div data-admin-status></div>
 
-    <!-- Super-admin only: create a new user and assign a role -->
-    <section class="admin-section" id="create-user-section" hidden>
-      <h2>Додати користувача</h2>
-      <p class="admin-hint">Новому користувачу надішлють запрошення на email для встановлення пароля.</p>
+    <div class="dashboard-intro">
+      <h1>Адмінпанель</h1>
+      <p class="admin-hint">Оберіть розділ, з яким хочете працювати.</p>
+    </div>
 
-      <form id="create-user-form">
-        <div class="admin-form-row">
-          <div class="admin-field" style="margin-bottom:0;">
-            <label for="new-name">Ім'я</label>
-            <input type="text" id="new-name" autocomplete="off">
-          </div>
-          <div class="admin-field" style="margin-bottom:0;">
-            <label for="new-email">Email</label>
-            <input type="email" id="new-email" required>
-          </div>
-          <div class="admin-field" style="margin-bottom:0;">
-            <label for="new-role">Роль</label>
-            <select id="new-role">
-              <option value="instructor">Інструктор</option>
-              <option value="admin">Адмін</option>
-              <option value="super_admin">Супер адмін</option>
-            </select>
-          </div>
-          <button type="submit" class="admin-btn" id="create-user-btn" style="width:auto;">Додати</button>
-        </div>
-      </form>
+    <div class="dashboard-grid">
+      <a class="dashboard-card dashboard-card--users" id="card-users" href="users.html" hidden>
+        <span class="dashboard-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="8.5" r="2.3"/><path d="M3.5 20c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5"/><path d="M14.8 14.9c2.4.3 4.2 2.2 4.2 5.1"/></svg>
+        </span>
+        <span class="dashboard-card__title font-display">Управління користувачами</span>
+        <span class="dashboard-card__desc">Додавання, ролі та видалення облікових записів адмінпанелі</span>
+        <span class="dashboard-card__arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </span>
+      </a>
 
-      <div data-create-status></div>
-    </section>
+      <a class="dashboard-card dashboard-card--anketa" id="card-anketa" href="anketa.html" hidden>
+        <span class="dashboard-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c2.8 1.8 4.5 5 4.5 8.7 0 1.7-.4 3.2-1 4.3l-3.5 3-3.5-3c-.6-1.1-1-2.6-1-4.3 0-3.7 1.7-6.9 4.5-8.7Z"/><circle cx="12" cy="10.5" r="1.6"/></svg>
+        </span>
+        <span class="dashboard-card__title font-display">Анкети</span>
+        <span class="dashboard-card__desc">Анкети батьків, історія версій, порівняння та експорт у PDF</span>
+        <span class="dashboard-card__arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </span>
+      </a>
 
-    <!-- Super-admin / admin: list of all users and their roles -->
-    <section class="admin-section" id="users-section" hidden>
-      <h2>Користувачі</h2>
-      <p class="admin-hint">Усі облікові записи адмінпанелі та їхні ролі.</p>
-      <table class="admin-table">
-        <thead>
-          <tr><th>Email</th><th>Ім'я</th><th>Роль</th><th>Створено</th><th>Дії</th></tr>
-        </thead>
-        <tbody id="users-tbody">
-          <tr><td colspan="5">Завантаження...</td></tr>
-        </tbody>
-      </table>
-      <div data-users-status></div>
-    </section>
+      <a class="dashboard-card dashboard-card--schedule" id="card-schedule" href="schedule.html" hidden>
+        <span class="dashboard-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>
+        </span>
+        <span class="dashboard-card__title font-display">Розклад</span>
+        <span class="dashboard-card__desc">Розклад занять по залах на кожен день</span>
+        <span class="dashboard-card__arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </span>
+      </a>
 
-    <!-- Instructor (and fallback) view -->
-    <section class="admin-section" id="placeholder-section" hidden>
-      <h2>Ласкаво просимо</h2>
-      <p class="admin-placeholder">
-        Цей розділ доступний лише для адміністраторів. Будь ласка, зверніться до адміністратора.
-      </p>
-    </section>
+      <a class="dashboard-card dashboard-card--ai" id="card-ai" href="anketa.html?ai=1" hidden>
+        <span class="dashboard-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M5 12H2M22 12h-3M6.3 6.3 4.2 4.2M19.8 19.8l-2.1-2.1M6.3 17.7l-2.1 2.1M19.8 4.2l-2.1 2.1"/><circle cx="12" cy="12" r="4.2"/></svg>
+        </span>
+        <span class="dashboard-card__title font-display">AI помічник</span>
+        <span class="dashboard-card__desc">Аналіз анкет і наукові консультації на основі Gemini</span>
+        <span class="dashboard-card__arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </span>
+      </a>
+    </div>
+
+    <!-- Instructor sees only Анкети/Розклад/AI помічник above — no card
+         grid entries need a distinct empty state, all three always apply. -->
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -132,8 +127,8 @@
 
     document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
 
-    // Mobile menu: collapses the topbar links (Анкети/Розклад/Вийти) into
-    // a toggleable panel below the brand row on narrow screens.
+    // Mobile menu: collapses the topbar (theme switch/Вийти) into a
+    // toggleable panel below the brand row on narrow screens.
     (function () {
       const toggle = document.getElementById("topbar-toggle");
       const menu = document.getElementById("topbar-menu");
@@ -159,187 +154,6 @@
       });
     })();
 
-    // Populated by loadUsers(), keyed by profile id — read back when an
-    // edit row is opened/saved so we don't need to re-fetch a single row.
-    let usersById = {};
-    let canEditUsers = false; // set once we know the caller's role
-    let currentUserId = null;
-    let currentUserRole = null;
-
-    function escapeHtml(str) {
-      return String(str).replace(/[&<>"']/g, (c) => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-      }[c]));
-    }
-
-    // Only a super_admin may edit a row that currently is (or could become)
-    // super_admin — mirrors the "Admins can update profiles" RLS policy,
-    // which would reject the request server-side anyway. Checking here too
-    // just avoids showing an edit control that's guaranteed to fail.
-    function canEditRow(u) {
-      if (!canEditUsers) return false;
-      if (currentUserRole === "super_admin") return true;
-      return u.role !== "super_admin";
-    }
-
-    // Only a super_admin may delete a user, and never their own account
-    // (mirrors the check the admin-delete-user Edge Function makes).
-    function canDeleteRow(u) {
-      return currentUserRole === "super_admin" && u.id !== currentUserId;
-    }
-
-    function userRowHtml(u) {
-      const date = new Date(u.created_at).toLocaleDateString("uk-UA");
-      const buttons = [];
-      if (canEditRow(u)) {
-        buttons.push('<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-edit-user="' + u.id + '" style="width:auto;">Редагувати</button>');
-      }
-      if (canDeleteRow(u)) {
-        buttons.push('<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--danger" data-delete-user="' + u.id + '" style="width:auto;">Видалити</button>');
-      }
-      const actions = buttons.length ? buttons.join(" ") : "—";
-      return "<tr data-user-row=\"" + u.id + "\">" +
-        "<td data-label=\"Email\">" + escapeHtml(u.email) + "</td>" +
-        "<td data-label=\"Ім'я\">" + escapeHtml(u.full_name || "—") + "</td>" +
-        '<td data-label="Роль"><span class="admin-badge admin-badge--' + u.role + '">' + (ROLE_LABELS[u.role] || u.role) + "</span></td>" +
-        "<td data-label=\"Створено\">" + date + "</td>" +
-        "<td data-label=\"Дії\" style=\"white-space:nowrap;\">" + actions + "</td>" +
-        "</tr>";
-    }
-
-    function userEditRowHtml(u) {
-      const isSelf = u.id === currentUserId;
-      // Only a super_admin can grant the super_admin role itself.
-      const assignableRoles = currentUserRole === "super_admin"
-        ? ["instructor", "admin", "super_admin"]
-        : ["instructor", "admin"];
-      const roleOptions = assignableRoles.map((r) =>
-        '<option value="' + r + '"' + (r === u.role ? " selected" : "") + ">" + ROLE_LABELS[r] + "</option>"
-      ).join("");
-      const roleField = isSelf
-        ? '<span class="admin-badge admin-badge--' + u.role + '">' + ROLE_LABELS[u.role] + "</span><div class=\"admin-hint\" style=\"margin:.25rem 0 0;\">Не можна змінити власну роль</div>"
-        : '<select data-edit-role style="width:auto;">' + roleOptions + "</select>";
-      return "<tr data-user-row=\"" + u.id + "\">" +
-        "<td data-label=\"Email\">" + escapeHtml(u.email) + "</td>" +
-        "<td data-label=\"Ім'я\"><input type=\"text\" data-edit-name value=\"" + escapeHtml(u.full_name || "") + "\" style=\"width:100%;\"></td>" +
-        "<td data-label=\"Роль\">" + roleField + "</td>" +
-        "<td data-label=\"Створено\">" + new Date(u.created_at).toLocaleDateString("uk-UA") + "</td>" +
-        "<td data-label=\"Дії\" style=\"white-space:nowrap;\">" +
-        '<button type="button" class="admin-btn admin-btn--sm" data-save-user="' + u.id + '" style="width:auto;">Зберегти</button> ' +
-        '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cancel-edit style="width:auto;">Скасувати</button>' +
-        "</td></tr>";
-    }
-
-    async function loadUsers() {
-      const tbody = document.getElementById("users-tbody");
-      const { data, error } = await window.sbClient
-        .from("profiles")
-        .select("id, email, full_name, role, created_at")
-        .order("created_at", { ascending: true });
-
-      if (error) {
-        tbody.innerHTML = '<tr><td colspan="5">Помилка завантаження: ' + error.message + "</td></tr>";
-        return;
-      }
-
-      usersById = {};
-      data.forEach((u) => { usersById[u.id] = u; });
-
-      tbody.innerHTML = data.map(userRowHtml).join("") || '<tr><td colspan="5">Немає користувачів.</td></tr>';
-    }
-
-    async function deleteUser(u, btn) {
-      const statusEl = document.querySelector("[data-users-status]");
-      const confirmed = window.confirm(
-        "Видалити користувача " + u.email + "? Цю дію не можна скасувати."
-      );
-      if (!confirmed) return;
-
-      btn.disabled = true;
-      btn.textContent = "Видаляємо...";
-      statusEl.innerHTML = "";
-
-      try {
-        const { data: { session } } = await window.sbClient.auth.getSession();
-        const functionsUrl = window.SUPABASE_CONFIG.url.replace(/\/$/, "") + "/functions/v1/admin-delete-user";
-
-        const res = await fetch(functionsUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + session.access_token,
-          },
-          body: JSON.stringify({ user_id: u.id }),
-        });
-
-        const result = await res.json();
-        if (!res.ok) {
-          throw new Error(result.error || "Невідома помилка");
-        }
-
-        statusEl.innerHTML = '<div class="admin-notice admin-notice--success">Користувача ' + u.email + " видалено.</div>";
-        loadUsers();
-      } catch (err) {
-        statusEl.innerHTML = '<div class="admin-notice admin-notice--error">Помилка: ' + err.message + "</div>";
-        btn.disabled = false;
-        btn.textContent = "Видалити";
-      }
-    }
-
-    document.getElementById("users-tbody").addEventListener("click", async (e) => {
-      const editBtn = e.target.closest("[data-edit-user]");
-      const cancelBtn = e.target.closest("[data-cancel-edit]");
-      const saveBtn = e.target.closest("[data-save-user]");
-      const deleteBtn = e.target.closest("[data-delete-user]");
-
-      if (deleteBtn) {
-        const u = usersById[deleteBtn.getAttribute("data-delete-user")];
-        if (u) await deleteUser(u, deleteBtn);
-        return;
-      }
-
-      if (editBtn) {
-        const u = usersById[editBtn.getAttribute("data-edit-user")];
-        if (!u) return;
-        document.querySelector('tr[data-user-row="' + u.id + '"]').outerHTML = userEditRowHtml(u);
-        return;
-      }
-
-      if (cancelBtn) {
-        const row = cancelBtn.closest("tr[data-user-row]");
-        const u = usersById[row.getAttribute("data-user-row")];
-        if (u) row.outerHTML = userRowHtml(u);
-        return;
-      }
-
-      if (saveBtn) {
-        const userId = saveBtn.getAttribute("data-save-user");
-        const row = saveBtn.closest("tr[data-user-row]");
-        const nameInput = row.querySelector("[data-edit-name]");
-        const roleSelect = row.querySelector("[data-edit-role]");
-        const statusEl = document.querySelector("[data-users-status]");
-
-        const update = { full_name: nameInput.value.trim() || null };
-        if (roleSelect) update.role = roleSelect.value;
-
-        saveBtn.disabled = true;
-        saveBtn.textContent = "Зберігаємо...";
-        statusEl.innerHTML = "";
-
-        const { error } = await window.sbClient.from("profiles").update(update).eq("id", userId);
-
-        if (error) {
-          statusEl.innerHTML = '<div class="admin-notice admin-notice--error">Помилка: ' + error.message + "</div>";
-          saveBtn.disabled = false;
-          saveBtn.textContent = "Зберегти";
-          return;
-        }
-
-        statusEl.innerHTML = '<div class="admin-notice admin-notice--success">Дані користувача оновлено.</div>';
-        loadUsers();
-      }
-    });
-
     (async function () {
       const profile = await window.requireAuth();
       if (!profile) return; // requireAuth already redirected to login.html
@@ -352,77 +166,14 @@
       whoamiEl.textContent = (profile.full_name || profile.email) + " · " + (ROLE_LABELS[profile.role] || profile.role);
       whoamiEl.title = profile.email;
 
-      currentUserId = profile.id;
-      currentUserRole = profile.role;
-      canEditUsers = profile.role === "admin" || profile.role === "super_admin";
-
-      if (profile.role === "super_admin") {
-        document.getElementById("create-user-section").hidden = false;
-        document.getElementById("users-section").hidden = false;
-        document.getElementById("anketa-link").hidden = false;
-        document.getElementById("schedule-link").hidden = false;
-        document.getElementById("ai-assistant-link").hidden = false;
-        loadUsers();
-      } else if (profile.role === "admin") {
-        document.getElementById("users-section").hidden = false;
-        document.getElementById("anketa-link").hidden = false;
-        document.getElementById("schedule-link").hidden = false;
-        document.getElementById("ai-assistant-link").hidden = false;
-        loadUsers();
-      } else {
-        // Instructor: read-only access to Анкети/Розклад (their own
-        // pages enforce that — no edit controls, and the RLS policies
-        // back it up), but no user management.
-        document.getElementById("anketa-link").hidden = false;
-        document.getElementById("schedule-link").hidden = false;
-        document.getElementById("ai-assistant-link").hidden = false;
-        document.getElementById("placeholder-section").hidden = false;
-      }
-
-      const form = document.getElementById("create-user-form");
-      if (form) {
-        form.addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const statusEl = document.querySelector("[data-create-status]");
-          const btn = document.getElementById("create-user-btn");
-          statusEl.innerHTML = "";
-          btn.disabled = true;
-          btn.textContent = "Додаємо...";
-
-          const fullName = document.getElementById("new-name").value.trim();
-          const email = document.getElementById("new-email").value.trim();
-          const role = document.getElementById("new-role").value;
-
-          try {
-            const { data: { session } } = await window.sbClient.auth.getSession();
-            const functionsUrl = window.SUPABASE_CONFIG.url.replace(/\/$/, "") + "/functions/v1/admin-create-user";
-
-            const res = await fetch(functionsUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + session.access_token,
-              },
-              body: JSON.stringify({ email, role, full_name: fullName || null }),
-            });
-
-            const result = await res.json();
-
-            if (!res.ok) {
-              throw new Error(result.error || "Невідома помилка");
-            }
-
-            statusEl.innerHTML = '<div class="admin-notice admin-notice--success">Користувача додано, запрошення надіслано на ' + email + ".</div>";
-            document.getElementById("new-name").value = "";
-            document.getElementById("new-email").value = "";
-            loadUsers();
-          } catch (err) {
-            statusEl.innerHTML = '<div class="admin-notice admin-notice--error">Помилка: ' + err.message + "</div>";
-          } finally {
-            btn.disabled = false;
-            btn.textContent = "Додати";
-          }
-        });
+      // Анкети/Розклад/AI помічник are read-only-safe for every signed-in
+      // role (each page enforces its own write permissions); only user
+      // management is admin/super_admin-only.
+      document.getElementById("card-anketa").hidden = false;
+      document.getElementById("card-schedule").hidden = false;
+      document.getElementById("card-ai").hidden = false;
+      if (profile.role === "admin" || profile.role === "super_admin") {
+        document.getElementById("card-users").hidden = false;
       }
     })();
   </script>
