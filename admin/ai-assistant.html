@@ -64,6 +64,16 @@
         </p>
       </div>
 
+      <button type="button" class="ai-mobile-cta" id="ai-mobile-cta">
+        <span class="ai-mobile-cta__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M5 12H2M22 12h-3M6.3 6.3 4.2 4.2M19.8 19.8l-2.1-2.1M6.3 17.7l-2.1 2.1M19.8 4.2l-2.1 2.1"/><circle cx="12" cy="12" r="4.2"/></svg>
+        </span>
+        <span class="ai-mobile-cta__label">Запитати AI</span>
+        <span class="ai-mobile-cta__arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </span>
+      </button>
+
       <section class="ai-panel" id="ai-panel">
         <div class="ai-panel-header">
           <div class="ai-model-select">
@@ -280,6 +290,12 @@
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && document.body.classList.contains("ai-focus-mode")) setFocusMode(false);
     });
+
+    // On mobile (see the max-width:720px rules in ai-assistant.css) .ai-panel
+    // is replaced by this compact card — tapping it opens the same panel
+    // fullscreen via focus mode instead of squeezing the whole chat
+    // interface below the topbar and intro text.
+    document.getElementById("ai-mobile-cta").addEventListener("click", () => setFocusMode(true));
 
     // ---------- AI assistant (Gemini, via the ai-assistant Edge Function) ----------
     // Nothing is saved automatically — a conversation only reaches
