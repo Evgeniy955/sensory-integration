@@ -71,7 +71,8 @@
   font-size: .85rem;
   cursor: pointer;
   text-decoration: none;
-  transition: background .15s ease, color .15s ease, transform .1s ease;
+  transition: background .15s ease, color .15s ease, transform .1s ease,
+    filter .15s ease, box-shadow .15s ease;
 }
 .anketa-btn:hover {
   background: var(--color-surface-alt);
@@ -435,7 +436,8 @@
 .anketa-btn--primary:hover {
   background: linear-gradient(135deg, var(--color-sage), var(--color-sky));
   color: #0B0C22;
-  filter: brightness(1.03);
+  filter: brightness(1.12);
+  box-shadow: var(--shadow-md);
 }
 
 .anketa-btn--danger {
