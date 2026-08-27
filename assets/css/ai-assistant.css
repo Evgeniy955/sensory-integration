@@ -1,0 +1,368 @@
+/* ---------- AI помічник — standalone page (admin/ai-assistant.html) ----------
+   Moved out of anketa.css when the AI chat stopped being a modal layered on
+   top of the anketa list page and became its own page. Depends on the same
+   design tokens as anketa.css (--color-*, --cx-radius, --cx-font-body,
+   --shadow-*) — that stylesheet must be loaded alongside this one. */
+
+.ai-panel {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--cx-radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1.9rem 2rem 2.1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: .3rem;
+}
+.ai-panel-header h2 { margin: 0; }
+
+.ai-model-select {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.ai-model-trigger {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--color-sky);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+.ai-model-trigger:hover,
+.ai-model-trigger[aria-expanded="true"] { color: var(--color-sky-deep); }
+
+.ai-model-current {
+  font-size: .76rem;
+  font-weight: 600;
+  color: var(--color-ink-faint);
+  background: var(--color-surface-alt);
+  border-radius: 999px;
+  padding: .15rem .6rem;
+  white-space: nowrap;
+}
+
+.ai-model-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: .5rem;
+  width: min(320px, 82vw);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+  padding: .4rem;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+}
+.ai-model-menu[hidden] { display: none; }
+
+.ai-model-option {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  padding: .55rem .65rem;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--cx-font-body);
+  color: var(--color-ink);
+}
+.ai-model-option:hover { background: var(--color-surface-alt); }
+.ai-model-option.is-active { background: var(--color-sky-tint); }
+
+.ai-model-option__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+.ai-model-option__label { font-weight: 600; font-size: .9rem; }
+.ai-model-option__check { color: var(--color-sky); flex-shrink: 0; }
+.ai-model-option__note {
+  font-size: .78rem;
+  color: var(--color-ink-soft);
+  line-height: 1.3;
+}
+
+.ai-focus-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+  flex: none;
+}
+.ai-focus-toggle:hover { background: var(--color-surface-alt); color: var(--color-ink); }
+.ai-focus-toggle svg { width: 17px; height: 17px; }
+.ai-focus-toggle .icon-collapse { display: none; }
+.ai-focus-toggle[aria-pressed="true"] .icon-expand { display: none; }
+.ai-focus-toggle[aria-pressed="true"] .icon-collapse { display: block; }
+
+.ai-chat-save-status {
+  font-size: .82rem;
+  color: var(--color-ink-faint);
+}
+
+.ai-chat-list { padding: .5rem 0 .25rem; }
+
+.ai-chat-list__items {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.ai-chat-list__empty {
+  margin: .5rem 0 1rem;
+  color: var(--color-ink-faint);
+  font-size: .87rem;
+  text-align: center;
+}
+
+.ai-chat-list__item {
+  display: flex;
+  align-items: stretch;
+  gap: .5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface-alt);
+}
+
+.ai-chat-list__open {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .2rem;
+  padding: .6rem .8rem;
+  border: none;
+  background: none;
+  color: var(--color-ink);
+  font-family: var(--cx-font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ai-chat-list__title {
+  font-size: .9rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.ai-chat-list__meta {
+  font-size: .78rem;
+  color: var(--color-ink-faint);
+}
+
+.ai-chat-list__delete {
+  padding: 0 .9rem;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-ink-faint);
+  cursor: pointer;
+  font-size: .95rem;
+}
+.ai-chat-list__delete:hover { color: var(--color-destructive); }
+
+.ai-mode-select { padding: .5rem 0 .25rem; }
+
+.ai-mode-select__hint {
+  margin: 0 0 .6rem;
+  color: var(--color-ink-soft);
+  font-size: .9rem;
+}
+
+.ai-chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+  max-height: 46vh;
+  overflow-y: auto;
+  padding: .25rem .25rem .5rem;
+  margin-bottom: .25rem;
+}
+/* Same [hidden] cascade trap as .anketa-btn in anketa.css: the unconditional
+   display:flex outranks the UA [hidden]{display:none} default. Toggled via
+   hidden while the mode-select/list screen is showing. */
+.ai-chat-log[hidden] { display: none; }
+
+.ai-chat-msg { display: flex; }
+.ai-chat-msg--user { justify-content: flex-end; }
+.ai-chat-msg--ai { justify-content: flex-start; }
+
+.ai-chat-msg__bubble {
+  max-width: 85%;
+  padding: .65rem .95rem;
+  border-radius: 16px;
+  font-size: .89rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ai-chat-msg--user .ai-chat-msg__bubble {
+  background: linear-gradient(135deg, var(--color-sage), var(--color-sky));
+  color: #0B0C22;
+  border-bottom-right-radius: 5px;
+}
+
+.ai-chat-msg--ai .ai-chat-msg__bubble {
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  color: var(--color-ink);
+  border-bottom-left-radius: 5px;
+}
+
+.ai-chat-msg__bubble h3,
+.ai-chat-msg__bubble h4,
+.ai-chat-msg__bubble h5,
+.ai-chat-msg__bubble h6 {
+  margin: .6rem 0 .3rem;
+  font-family: inherit;
+  font-size: 1em;
+  font-weight: 700;
+}
+.ai-chat-msg__bubble h3:first-child,
+.ai-chat-msg__bubble h4:first-child,
+.ai-chat-msg__bubble h5:first-child,
+.ai-chat-msg__bubble h6:first-child { margin-top: 0; }
+
+.ai-chat-msg__bubble ul { margin: .3rem 0; padding-left: 1.2rem; }
+.ai-chat-msg__bubble li { margin: .15rem 0; }
+
+.ai-chat-msg__bubble hr {
+  border: none;
+  border-top: 1px solid currentColor;
+  opacity: .25;
+  margin: .6rem 0;
+}
+
+.ai-chat-msg__bubble strong { font-weight: 700; }
+.ai-chat-msg__bubble em { font-style: italic; }
+
+.ai-chat-typing {
+  color: var(--color-ink-faint);
+  font-style: italic;
+}
+
+.ai-chat-form { border-top: 1px solid var(--color-border); padding-top: .9rem; }
+
+.ai-chat-input {
+  width: 100%;
+  padding: .65rem .8rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  color: var(--color-ink);
+  font-family: var(--cx-font-body);
+  font-size: .92rem;
+  resize: vertical;
+}
+.ai-chat-input::placeholder { color: var(--color-ink-faint); }
+.ai-chat-input:focus {
+  outline: none;
+  border-color: var(--color-sky);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-sky) 25%, transparent);
+}
+
+/* ---------- Focus mode: hide everything but the conversation + input ----------
+   Toggled via .ai-focus-toggle, which adds/removes .ai-focus-mode on <body>.
+   A pure CSS overlay rather than the Fullscreen API — requestFullscreen()
+   isn't available for arbitrary elements on iOS Safari, and its own
+   Esc/exit-banner would fight this page's in-app Escape handling. */
+body.ai-focus-mode .anketa-topbar,
+body.ai-focus-mode .anketa-intro,
+body.ai-focus-mode .ai-model-select,
+body.ai-focus-mode #ai-chat-history-btn {
+  display: none;
+}
+
+/* .ai-panel-header itself must stay visible (not hidden like its siblings
+   above) — .ai-focus-toggle lives inside it, and a display:none ancestor
+   can't be un-hidden by any rule on the child. Left as a slim bar holding
+   just the toggle button once its other children are hidden. */
+body.ai-focus-mode .ai-panel-header {
+  justify-content: flex-end;
+  margin-bottom: .5rem;
+}
+
+body.ai-focus-mode .anketa-main {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  max-width: none;
+  margin: 0;
+  padding: 1rem;
+  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* fallback for browsers without dvh support */
+  height: 100dvh; /* real visible viewport height on mobile — avoids the
+                      address-bar-resize jump/clipping 100vh causes */
+  overflow: hidden;
+}
+
+/* #ai-content (a plain block div wrapping .anketa-intro + .ai-panel) sits
+   between .anketa-main and .ai-panel — without making it a flex column too,
+   .ai-panel's flex:1 below has no flex context to size against, so it just
+   takes its natural content height instead of filling the fixed viewport.
+   That left .ai-chat-log unable to compute a bounded height to scroll
+   within, growing the whole page instead and pushing the input row (and
+   the rest of a long conversation) off-screen. */
+body.ai-focus-mode #ai-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+body.ai-focus-mode .ai-panel {
+  flex: 1;
+  min-height: 0; /* lets .ai-chat-log actually shrink/scroll inside a flex column */
+  max-width: none;
+  box-shadow: none;
+  border: none;
+  padding: 0;
+}
+
+body.ai-focus-mode .ai-chat-log {
+  flex: 1;
+  max-height: none;
+}
