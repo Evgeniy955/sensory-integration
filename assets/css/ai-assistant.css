@@ -261,6 +261,14 @@
   color: var(--color-ink);
   border-bottom-left-radius: 5px;
 }
+/* Cosmic only: --color-ink there is a near-white lavender, which for a
+   long AI answer (several paragraphs, not a short label) reads as glare
+   against the dark bubble fill and gets tiring to read. --color-ink-soft
+   is dimmer but still comfortably legible — headings/bold/etc. inside the
+   bubble inherit it automatically since they don't set their own color. */
+:root[data-theme="cosmic"] .ai-chat-msg--ai .ai-chat-msg__bubble {
+  color: var(--color-ink-soft);
+}
 
 .ai-chat-msg__bubble h3,
 .ai-chat-msg__bubble h4,
