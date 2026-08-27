@@ -128,6 +128,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
         Історія
       </button>
+      <button type="button" id="view-modal-export-btn" class="anketa-btn anketa-modal__edit-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><path d="M12 3v12M7 10.5l5 5 5-5"/><path d="M4.5 18.5v1.8a1.7 1.7 0 0 0 1.7 1.7h11.6a1.7 1.7 0 0 0 1.7-1.7v-1.8"/></svg>
+        <span id="view-modal-export-btn-text">Експорт у PDF</span>
+      </button>
       <div id="view-modal-body"></div>
     </div>
   </div>
@@ -251,6 +255,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="../assets/js/supabase-config.js"></script>
   <script src="../assets/js/admin-auth.js"></script>
   <script src="../assets/js/anketa.js"></script>
@@ -661,6 +667,7 @@
       document.getElementById("view-modal-edit-link").href = "anketa-form.html?id=" + encodeURIComponent(row.id);
       document.getElementById("view-modal-attendance-btn").dataset.childName = row.child_full_name || "";
       document.getElementById("view-modal-history-btn").dataset.anketaId = row.id;
+      document.getElementById("view-modal-export-btn").dataset.anketaId = row.id;
 
       const data = row.data || {};
       const metaBits = ["Додано: " + new Date(row.created_at).toLocaleString("uk-UA")];
@@ -855,6 +862,88 @@
     document.getElementById("view-modal-history-btn").addEventListener("click", (e) => {
       const row = allAnketas.find((r) => r.id === e.currentTarget.dataset.anketaId);
       if (row) openHistoryModal(row);
+    });
+
+    // ---------- Export anketa to PDF ----------
+    // Rendered off-screen as plain light-on-white HTML (not a clone of the
+    // themed modal, which can be dark/cosmic) and rasterized via
+    // html2canvas — this avoids embedding a Cyrillic-capable font in jsPDF,
+    // at the cost of the PDF text not being selectable.
+    async function exportAnketaPdf(row) {
+      if (!window.html2canvas || !window.jspdf) {
+        throw new Error("Бібліотека для експорту PDF не завантажилась. Перевірте інтернет-з'єднання і спробуйте ще раз.");
+      }
+      const data = row.data || {};
+      const metaBits = ["Додано: " + new Date(row.created_at).toLocaleString("uk-UA")];
+      if (data.respondent_email) metaBits.push("Відправник: " + data.respondent_email);
+
+      const container = document.createElement("div");
+      container.style.cssText =
+        "position:fixed;left:-10000px;top:0;width:760px;background:#ffffff;color:#1a1a1a;" +
+        "padding:32px;font-family:Arial,Helvetica,sans-serif;box-sizing:border-box;";
+      container.innerHTML =
+        "<h1 style=\"font-size:20px;margin:0 0 4px;\">" + escapeHtml(row.child_full_name || "Анкета") + "</h1>" +
+        "<p style=\"font-size:11px;color:#666;margin:0 0 20px;\">" + escapeHtml(metaBits.join(" · ")) + "</p>" +
+        window.ANKETA_SECTIONS.map((section) => {
+          const rows = section.fields.map((f) => {
+            const value = data[f.name];
+            const display = value === undefined || value === null || value === "" ? "—" : escapeHtml(value);
+            return "<tr><td style=\"padding:5px 10px 5px 0;font-size:11px;color:#666;width:42%;vertical-align:top;\">" +
+              escapeHtml(f.label) + "</td><td style=\"padding:5px 0;font-size:12.5px;vertical-align:top;white-space:pre-wrap;\">" +
+              display + "</td></tr>";
+          }).join("");
+          return "<h3 style=\"font-size:14px;margin:18px 0 6px;padding-bottom:4px;border-bottom:1px solid #ddd;\">" +
+            escapeHtml(section.title) + "</h3><table style=\"width:100%;border-collapse:collapse;\">" + rows + "</table>";
+        }).join("");
+
+      document.body.appendChild(container);
+      try {
+        const canvas = await window.html2canvas(container, { scale: 2, backgroundColor: "#ffffff" });
+        const pdf = new window.jspdf.jsPDF({ unit: "pt", format: "a4" });
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pageWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        // JPEG, not PNG: jsPDF re-encodes PNG image data uncompressed
+        // internally, which turned a ~1MB PNG into a 25MB+ PDF in testing.
+        // JPEG bytes are embedded as-is, so the file stays a few hundred KB.
+        const imgData = canvas.toDataURL("image/jpeg", 0.92);
+
+        let heightLeft = imgHeight;
+        let position = 0;
+        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+        while (heightLeft > 0) {
+          position -= pageHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+
+        const fileName = (row.child_full_name || "anketa").trim().replace(/\s+/g, "_") + ".pdf";
+        pdf.save(fileName);
+      } finally {
+        container.remove();
+      }
+    }
+
+    document.getElementById("view-modal-export-btn").addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      const row = allAnketas.find((r) => r.id === btn.dataset.anketaId);
+      if (!row) return;
+
+      const textEl = document.getElementById("view-modal-export-btn-text");
+      const originalText = textEl.textContent;
+      btn.disabled = true;
+      textEl.textContent = "Генеруємо…";
+      try {
+        await exportAnketaPdf(row);
+      } catch (err) {
+        window.alert("Не вдалося створити PDF: " + (err && err.message ? err.message : "невідома помилка"));
+      } finally {
+        btn.disabled = false;
+        textEl.textContent = originalText;
+      }
     });
 
     document.getElementById("history-compare-btn").addEventListener("click", () => {
