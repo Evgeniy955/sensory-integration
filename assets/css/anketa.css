@@ -856,6 +856,88 @@
 }
 .ai-modal-header h2 { margin: 0; }
 
+.ai-model-select {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.ai-model-trigger {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--color-sky);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+.ai-model-trigger:hover,
+.ai-model-trigger[aria-expanded="true"] { color: var(--color-sky-deep); }
+
+.ai-model-current {
+  font-size: .76rem;
+  font-weight: 600;
+  color: var(--color-ink-faint);
+  background: var(--color-surface-alt);
+  border-radius: 999px;
+  padding: .15rem .6rem;
+  white-space: nowrap;
+}
+
+.ai-model-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: .5rem;
+  width: min(320px, 82vw);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+  padding: .4rem;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+}
+.ai-model-menu[hidden] { display: none; }
+
+.ai-model-option {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  padding: .55rem .65rem;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--cx-font-body);
+  color: var(--color-ink);
+}
+.ai-model-option:hover { background: var(--color-surface-alt); }
+.ai-model-option.is-active { background: var(--color-sky-tint); }
+
+.ai-model-option__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+.ai-model-option__label { font-weight: 600; font-size: .9rem; }
+.ai-model-option__check { color: var(--color-sky); flex-shrink: 0; }
+.ai-model-option__note {
+  font-size: .78rem;
+  color: var(--color-ink-soft);
+  line-height: 1.3;
+}
+
 .ai-chat-save-status {
   font-size: .82rem;
   color: var(--color-ink-faint);
@@ -975,6 +1057,33 @@
   color: var(--color-ink);
   border-bottom-left-radius: 5px;
 }
+
+.ai-chat-msg__bubble h3,
+.ai-chat-msg__bubble h4,
+.ai-chat-msg__bubble h5,
+.ai-chat-msg__bubble h6 {
+  margin: .6rem 0 .3rem;
+  font-family: inherit;
+  font-size: 1em;
+  font-weight: 700;
+}
+.ai-chat-msg__bubble h3:first-child,
+.ai-chat-msg__bubble h4:first-child,
+.ai-chat-msg__bubble h5:first-child,
+.ai-chat-msg__bubble h6:first-child { margin-top: 0; }
+
+.ai-chat-msg__bubble ul { margin: .3rem 0; padding-left: 1.2rem; }
+.ai-chat-msg__bubble li { margin: .15rem 0; }
+
+.ai-chat-msg__bubble hr {
+  border: none;
+  border-top: 1px solid currentColor;
+  opacity: .25;
+  margin: .6rem 0;
+}
+
+.ai-chat-msg__bubble strong { font-weight: 700; }
+.ai-chat-msg__bubble em { font-style: italic; }
 
 .ai-chat-typing {
   color: var(--color-ink-faint);

@@ -92,6 +92,12 @@
   .admin-topbar__user .admin-btn {
     width: 100% !important;
   }
+
+  /* Opt out of the column flex container's align-items:stretch — without
+     this the round theme-toggle icon button stretches into a full-width bar. */
+  .admin-topbar__user .theme-toggle {
+    align-self: flex-start;
+  }
 }
 
 .admin-main {

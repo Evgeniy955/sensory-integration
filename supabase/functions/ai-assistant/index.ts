@@ -40,6 +40,13 @@ const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
 
+// The admin panel (admin/anketa.html) lets the specialist pick one of these
+// per request, to spend the free-tier token budget deliberately instead of
+// always burning it on the priciest model. Anything else in body.model is
+// ignored and GEMINI_MODEL is used instead — this is also what stops an
+// arbitrary client-supplied string from reaching the Gemini URL unchecked.
+const ALLOWED_MODELS = new Set(["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.1-pro"]);
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -282,12 +289,12 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function callGemini(systemInstruction: string, contents: GeminiContent[]): Promise<{ ok: true; candidate: { content?: GeminiContent; finishReason?: string } } | { ok: false; error: string }> {
+async function callGemini(systemInstruction: string, contents: GeminiContent[], model: string): Promise<{ ok: true; candidate: { content?: GeminiContent; finishReason?: string } } | { ok: false; error: string }> {
   for (let attempt = 0; attempt <= MAX_GEMINI_RETRIES; attempt++) {
     let res: Response;
     try {
       res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -295,7 +302,14 @@ async function callGemini(systemInstruction: string, contents: GeminiContent[]):
             systemInstruction: { parts: [{ text: systemInstruction }] },
             contents,
             tools: TOOLS,
-            generationConfig: { temperature: 0.2, maxOutputTokens: 1536 },
+            // 1536 used to cut a full questionnaire-analysis reply off
+            // mid-sentence (clinical interpretation + recommendations for a
+            // whole specialization routinely runs longer than that,
+            // especially in Ukrainian, which tokenizes less densely than
+            // English). Gemini still returns whatever it generated up to
+            // this cap with finishReason "MAX_TOKENS" rather than an error,
+            // so a low limit here fails silently instead of loudly.
+            generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
           }),
         },
       );
@@ -368,7 +382,7 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Forbidden" }, 403);
   }
 
-  let body: { question?: string; history?: { role?: string; text?: string }[]; mode?: string };
+  let body: { question?: string; history?: { role?: string; text?: string }[]; mode?: string; model?: string };
   try {
     body = await req.json();
   } catch {
@@ -388,6 +402,7 @@ Deno.serve(async (req: Request) => {
   // there before the first request ever reaches here, so this only steers
   // *how* the model should behave, never re-issues that menu itself.
   const mode = body.mode === "general" ? "general" : "anketas";
+  const model = typeof body.model === "string" && ALLOWED_MODELS.has(body.model) ? body.model : GEMINI_MODEL;
 
   const systemInstruction = `# SYSTEM INSTRUCTIONS: AI CONSULTANT FOR CHILDREN'S REHABILITATION CENTER
 
@@ -484,7 +499,7 @@ ${mode === "general"
   let finalAnswer: string | null = null;
 
   for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-    const result = await callGemini(systemInstruction, contents);
+    const result = await callGemini(systemInstruction, contents, model);
     if (!result.ok) return json({ error: result.error }, 502);
 
     const parts = result.candidate.content?.parts || [];
@@ -492,6 +507,12 @@ ${mode === "general"
 
     if (!functionCalls.length) {
       finalAnswer = parts.map((p) => p.text || "").join("");
+      // Gemini truncates mid-sentence at the maxOutputTokens cap instead of
+      // erroring — flag it explicitly so this reads as "hit a length limit,
+      // ask to continue" rather than a silently broken/incomplete answer.
+      if (result.candidate.finishReason === "MAX_TOKENS") {
+        finalAnswer += "\n\n⚠️ *Відповідь обрізана через ліміт довжини. Напишіть «продовжуй», щоб отримати решту.*";
+      }
       break;
     }
 

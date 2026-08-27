@@ -30,8 +30,16 @@
     </div>
     <div class="admin-topbar__user" id="topbar-menu">
       <span id="whoami">Завантаження...</span>
+      <button type="button" class="theme-toggle" id="themeToggle" aria-label="Перемкнути тему" aria-pressed="false">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
       <a class="admin-btn admin-btn--ghost" id="anketa-link" href="anketa.html" style="width:auto;" hidden>Анкети</a>
       <a class="admin-btn admin-btn--ghost" id="schedule-link" href="schedule.html" style="width:auto;" hidden>Розклад</a>
+      <a class="admin-btn admin-btn--ghost" id="ai-assistant-link" href="anketa.html?ai=1" style="width:auto;" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true" style="vertical-align:-3px;margin-right:.3rem;"><path d="M12 3v3M12 18v3M5 12H2M22 12h-3M6.3 6.3 4.2 4.2M19.8 19.8l-2.1-2.1M6.3 17.7l-2.1 2.1M19.8 4.2l-2.1 2.1"/><circle cx="12" cy="12" r="4.2"/></svg>
+        AI помічник
+      </a>
       <button class="admin-btn admin-btn--ghost" id="logout-btn" style="width:auto;">Вийти</button>
     </div>
   </header>
@@ -96,6 +104,25 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../assets/js/supabase-config.js"></script>
   <script src="../assets/js/admin-auth.js"></script>
+  <script>
+    // Theme toggle (light / cosmic) — same pattern as the main site's header button.
+    (function () {
+      var THEME_KEY = "siteTheme";
+      var themeToggle = document.getElementById("themeToggle");
+      if (!themeToggle) return;
+      var applyTheme = function (theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        themeToggle.setAttribute("aria-pressed", String(theme === "cosmic"));
+        try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* storage unavailable */ }
+      };
+      var current = document.documentElement.getAttribute("data-theme") === "cosmic" ? "cosmic" : "light";
+      themeToggle.setAttribute("aria-pressed", String(current === "cosmic"));
+      themeToggle.addEventListener("click", function () {
+        var active = document.documentElement.getAttribute("data-theme") === "cosmic" ? "cosmic" : "light";
+        applyTheme(active === "cosmic" ? "light" : "cosmic");
+      });
+    })();
+  </script>
   <script>
     const ROLE_LABELS = {
       super_admin: "Супер адмін",
@@ -334,11 +361,13 @@
         document.getElementById("users-section").hidden = false;
         document.getElementById("anketa-link").hidden = false;
         document.getElementById("schedule-link").hidden = false;
+        document.getElementById("ai-assistant-link").hidden = false;
         loadUsers();
       } else if (profile.role === "admin") {
         document.getElementById("users-section").hidden = false;
         document.getElementById("anketa-link").hidden = false;
         document.getElementById("schedule-link").hidden = false;
+        document.getElementById("ai-assistant-link").hidden = false;
         loadUsers();
       } else {
         // Instructor: read-only access to Анкети/Розклад (their own
@@ -346,6 +375,7 @@
         // back it up), but no user management.
         document.getElementById("anketa-link").hidden = false;
         document.getElementById("schedule-link").hidden = false;
+        document.getElementById("ai-assistant-link").hidden = false;
         document.getElementById("placeholder-section").hidden = false;
       }
 
