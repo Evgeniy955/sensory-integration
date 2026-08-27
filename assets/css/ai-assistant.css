@@ -339,6 +339,20 @@ body.ai-focus-mode .anketa-main {
   overflow: hidden;
 }
 
+/* #ai-content (a plain block div wrapping .anketa-intro + .ai-panel) sits
+   between .anketa-main and .ai-panel — without making it a flex column too,
+   .ai-panel's flex:1 below has no flex context to size against, so it just
+   takes its natural content height instead of filling the fixed viewport.
+   That left .ai-chat-log unable to compute a bounded height to scroll
+   within, growing the whole page instead and pushing the input row (and
+   the rest of a long conversation) off-screen. */
+body.ai-focus-mode #ai-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 body.ai-focus-mode .ai-panel {
   flex: 1;
   min-height: 0; /* lets .ai-chat-log actually shrink/scroll inside a flex column */
