@@ -601,12 +601,16 @@
   font-weight: 700;
 }
 .anketa-modal__edit-link svg { stroke: var(--color-apricot-deep); }
+/* Not --color-ink: in cosmic theme both --color-apricot (this hover fill)
+   and --color-ink (the site's default text color) are light, so the text
+   nearly disappeared on hover. --on-apricot is the theme-aware pair made
+   for exactly this — text sitting on a solid apricot fill. */
 .anketa-modal__edit-link:hover {
   background: var(--color-apricot);
   border-color: var(--color-apricot);
-  color: var(--color-ink);
+  color: var(--on-apricot);
 }
-.anketa-modal__edit-link:hover svg { stroke: var(--color-ink); }
+.anketa-modal__edit-link:hover svg { stroke: var(--on-apricot); }
 
 .anketa-import-drop {
   border: 1.5px dashed var(--color-border);
