@@ -302,7 +302,14 @@ async function callGemini(systemInstruction: string, contents: GeminiContent[], 
             systemInstruction: { parts: [{ text: systemInstruction }] },
             contents,
             tools: TOOLS,
-            generationConfig: { temperature: 0.2, maxOutputTokens: 1536 },
+            // 1536 used to cut a full questionnaire-analysis reply off
+            // mid-sentence (clinical interpretation + recommendations for a
+            // whole specialization routinely runs longer than that,
+            // especially in Ukrainian, which tokenizes less densely than
+            // English). Gemini still returns whatever it generated up to
+            // this cap with finishReason "MAX_TOKENS" rather than an error,
+            // so a low limit here fails silently instead of loudly.
+            generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
           }),
         },
       );
@@ -500,6 +507,12 @@ ${mode === "general"
 
     if (!functionCalls.length) {
       finalAnswer = parts.map((p) => p.text || "").join("");
+      // Gemini truncates mid-sentence at the maxOutputTokens cap instead of
+      // erroring — flag it explicitly so this reads as "hit a length limit,
+      // ask to continue" rather than a silently broken/incomplete answer.
+      if (result.candidate.finishReason === "MAX_TOKENS") {
+        finalAnswer += "\n\n⚠️ *Відповідь обрізана через ліміт довжини. Напишіть «продовжуй», щоб отримати решту.*";
+      }
       break;
     }
 

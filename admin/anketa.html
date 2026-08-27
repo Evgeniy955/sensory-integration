@@ -619,6 +619,58 @@
         "<br><br>Поставте своє питання нижче.",
     };
 
+    // Gemini's replies (per the system prompt in the ai-assistant Edge
+    // Function) routinely use **bold**, "### heading" lines, "* "/"- "
+    // bullet lists and "---" separators — rendered as plain text those show
+    // up as literal asterisks/hashes instead of formatting. This is a
+    // small, self-contained renderer rather than pulling in a markdown
+    // library: it escapes the *entire* text first and only ever emits a
+    // small fixed set of safe tags itself, so text an anketa's free-text
+    // field might contain (and that Gemini could echo back verbatim while
+    // summarizing it) can never inject markup through here.
+    function inlineMarkdown(escapedLine) {
+      return escapedLine
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g, "$1<em>$2</em>");
+    }
+
+    function renderAiMarkdown(text) {
+      const lines = escapeHtml(text).split("\n");
+      const htmlLines = [];
+      let listOpen = false;
+      const closeList = () => { if (listOpen) { htmlLines.push("</ul>"); listOpen = false; } };
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+
+        if (/^(---|\*\*\*|___)$/.test(line)) {
+          closeList();
+          htmlLines.push("<hr>");
+          continue;
+        }
+
+        const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+        if (heading) {
+          closeList();
+          const level = Math.min(heading[1].length + 2, 6); // keep headings modest inside a chat bubble
+          htmlLines.push("<h" + level + ">" + inlineMarkdown(heading[2]) + "</h" + level + ">");
+          continue;
+        }
+
+        const bullet = /^[*-]\s+(.*)$/.exec(line);
+        if (bullet) {
+          if (!listOpen) { htmlLines.push("<ul>"); listOpen = true; }
+          htmlLines.push("<li>" + inlineMarkdown(bullet[1]) + "</li>");
+          continue;
+        }
+
+        closeList();
+        htmlLines.push(line ? inlineMarkdown(line) + "<br>" : "<br>");
+      }
+      closeList();
+      return htmlLines.join("");
+    }
+
     function renderAiChatLog() {
       const log = document.getElementById("ai-chat-log");
       const greetingBubble =
@@ -630,7 +682,10 @@
       }
       log.innerHTML = greetingBubble + aiChatHistory.map((turn) =>
         '<div class="ai-chat-msg ai-chat-msg--' + (turn.role === "model" ? "ai" : "user") + '">' +
-        '<div class="ai-chat-msg__bubble">' + (turn.pending ? '<span class="ai-chat-typing">Друкує…</span>' : escapeHtml(turn.text).replace(/\n/g, "<br>")) + "</div>" +
+        '<div class="ai-chat-msg__bubble">' + (turn.pending
+          ? '<span class="ai-chat-typing">Друкує…</span>'
+          : turn.role === "model" ? renderAiMarkdown(turn.text) : escapeHtml(turn.text).replace(/\n/g, "<br>")
+        ) + "</div>" +
         "</div>"
       ).join("");
       log.scrollTop = log.scrollHeight;
