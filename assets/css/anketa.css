@@ -71,7 +71,8 @@
   font-size: .85rem;
   cursor: pointer;
   text-decoration: none;
-  transition: background .15s ease, color .15s ease, transform .1s ease;
+  transition: background .15s ease, color .15s ease, transform .1s ease,
+    filter .15s ease, box-shadow .15s ease;
 }
 .anketa-btn:hover {
   background: var(--color-surface-alt);
@@ -426,7 +427,18 @@
   font-weight: 700;
   border-color: transparent;
 }
-.anketa-btn--primary:hover { color: #0B0C22; filter: brightness(1.03); }
+/* Explicit background, not just color/filter: the generic .anketa-btn:hover
+   above sets a flat, dark background (var(--color-surface-alt)), and since
+   it comes first in the cascade with the same specificity as this rule,
+   it otherwise wins for that one property — replacing the gradient with a
+   dark fill while keeping this rule's near-black text, which made the
+   button unreadable on hover instead of just slightly brighter. */
+.anketa-btn--primary:hover {
+  background: linear-gradient(135deg, var(--color-sage), var(--color-sky));
+  color: #0B0C22;
+  filter: brightness(1.12);
+  box-shadow: var(--shadow-md);
+}
 
 .anketa-btn--danger {
   color: var(--color-destructive);
