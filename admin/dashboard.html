@@ -32,6 +32,10 @@
       <span id="whoami">Завантаження...</span>
       <a class="admin-btn admin-btn--ghost" id="anketa-link" href="anketa.html" style="width:auto;" hidden>Анкети</a>
       <a class="admin-btn admin-btn--ghost" id="schedule-link" href="schedule.html" style="width:auto;" hidden>Розклад</a>
+      <a class="admin-btn admin-btn--ghost" id="ai-assistant-link" href="anketa.html?ai=1" style="width:auto;" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true" style="vertical-align:-3px;margin-right:.3rem;"><path d="M12 3v3M12 18v3M5 12H2M22 12h-3M6.3 6.3 4.2 4.2M19.8 19.8l-2.1-2.1M6.3 17.7l-2.1 2.1M19.8 4.2l-2.1 2.1"/><circle cx="12" cy="12" r="4.2"/></svg>
+        AI помічник
+      </a>
       <button class="admin-btn admin-btn--ghost" id="logout-btn" style="width:auto;">Вийти</button>
     </div>
   </header>
@@ -334,11 +338,13 @@
         document.getElementById("users-section").hidden = false;
         document.getElementById("anketa-link").hidden = false;
         document.getElementById("schedule-link").hidden = false;
+        document.getElementById("ai-assistant-link").hidden = false;
         loadUsers();
       } else if (profile.role === "admin") {
         document.getElementById("users-section").hidden = false;
         document.getElementById("anketa-link").hidden = false;
         document.getElementById("schedule-link").hidden = false;
+        document.getElementById("ai-assistant-link").hidden = false;
         loadUsers();
       } else {
         // Instructor: read-only access to Анкети/Розклад (their own
@@ -346,6 +352,7 @@
         // back it up), but no user management.
         document.getElementById("anketa-link").hidden = false;
         document.getElementById("schedule-link").hidden = false;
+        document.getElementById("ai-assistant-link").hidden = false;
         document.getElementById("placeholder-section").hidden = false;
       }
 

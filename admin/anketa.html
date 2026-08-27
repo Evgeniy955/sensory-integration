@@ -211,7 +211,14 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
       </button>
       <div class="ai-modal-header">
-        <h2 id="ai-modal-title">AI помічник</h2>
+        <div class="ai-model-select">
+          <h2 id="ai-modal-title">
+            <button type="button" id="ai-model-trigger" class="ai-model-trigger" aria-haspopup="true" aria-expanded="false" title="Змінити модель AI">AI</button>
+            помічник
+          </h2>
+          <span class="ai-model-current" id="ai-model-current"></span>
+          <div class="ai-model-menu" id="ai-model-menu" role="menu" aria-label="Оберіть модель AI" hidden></div>
+        </div>
         <button type="button" class="anketa-btn" id="ai-chat-history-btn">Історія чатів</button>
       </div>
       <p class="anketa-modal__hint">
@@ -347,6 +354,101 @@
       }
       showAiScreen("mode-select");
     });
+
+    // ---------- AI model selector ----------
+    // Free-tier Gemini usage is metered per model, so letting the
+    // specialist pick a cheaper model for simple questions (instead of
+    // always paying for the priciest one) stretches the shared quota
+    // further. Clicking the "AI" word in the modal title (styled/underlined
+    // to read as clickable, rather than adding a whole extra button row)
+    // opens this menu; the pick is remembered per browser and sent with
+    // every question so the ai-assistant Edge Function knows which Gemini
+    // model to call.
+    const AI_MODEL_STORAGE_KEY = "aiAssistantModel";
+    const DEFAULT_AI_MODEL_ID = "gemini-3.6-flash";
+    const AI_MODELS = [
+      {
+        id: "gemini-3.5-flash-lite",
+        label: "3.5 Flash-lite",
+        note: "Найшвидша і найекономніша — для простих запитів або коли ліміт токенів на вичерпанні.",
+      },
+      {
+        id: "gemini-3.6-flash",
+        label: "3.6 Flash",
+        note: "Оптимальний баланс швидкості, якості й витрати токенів — використовується за замовчуванням.",
+      },
+      {
+        id: "gemini-3.1-pro",
+        label: "3.1 Pro",
+        note: "Найточніша модель для складного аналізу анкет — витрачає найбільше токенів.",
+      },
+    ];
+
+    function loadAiModel() {
+      try {
+        const saved = localStorage.getItem(AI_MODEL_STORAGE_KEY);
+        if (saved && AI_MODELS.some((m) => m.id === saved)) return saved;
+      } catch (e) { /* storage unavailable */ }
+      return DEFAULT_AI_MODEL_ID;
+    }
+
+    let aiSelectedModel = loadAiModel();
+
+    function aiModelLabel(id) {
+      const m = AI_MODELS.find((m) => m.id === id);
+      return m ? m.label : id;
+    }
+
+    function renderAiModelMenu() {
+      document.getElementById("ai-model-menu").innerHTML = AI_MODELS.map((m) => {
+        const active = m.id === aiSelectedModel;
+        return '<button type="button" class="ai-model-option' + (active ? " is-active" : "") + '" data-model="' + m.id + '" role="menuitemradio" aria-checked="' + active + '">' +
+          '<span class="ai-model-option__row">' +
+          '<span class="ai-model-option__label">' + escapeHtml(m.label) + "</span>" +
+          (active ? '<svg class="ai-model-option__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>' : "") +
+          "</span>" +
+          '<span class="ai-model-option__note">' + escapeHtml(m.note) + "</span>" +
+          "</button>";
+      }).join("");
+    }
+
+    function updateAiModelBadge() {
+      document.getElementById("ai-model-current").textContent = aiModelLabel(aiSelectedModel);
+    }
+
+    function setAiModel(id) {
+      aiSelectedModel = id;
+      try { localStorage.setItem(AI_MODEL_STORAGE_KEY, id); } catch (e) { /* storage unavailable */ }
+      updateAiModelBadge();
+      renderAiModelMenu();
+    }
+
+    function openAiModelMenu() {
+      renderAiModelMenu();
+      document.getElementById("ai-model-menu").hidden = false;
+      document.getElementById("ai-model-trigger").setAttribute("aria-expanded", "true");
+    }
+    function closeAiModelMenu() {
+      document.getElementById("ai-model-menu").hidden = true;
+      document.getElementById("ai-model-trigger").setAttribute("aria-expanded", "false");
+    }
+
+    document.getElementById("ai-model-trigger").addEventListener("click", (e) => {
+      e.stopPropagation();
+      document.getElementById("ai-model-menu").hidden ? openAiModelMenu() : closeAiModelMenu();
+    });
+    document.getElementById("ai-model-menu").addEventListener("click", (e) => {
+      const opt = e.target.closest("[data-model]");
+      if (opt) { setAiModel(opt.getAttribute("data-model")); closeAiModelMenu(); }
+    });
+    document.addEventListener("click", (e) => {
+      if (!document.getElementById("ai-model-menu").hidden && !e.target.closest(".ai-model-select")) closeAiModelMenu();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeAiModelMenu();
+    });
+
+    updateAiModelBadge();
 
     // ---------- AI assistant (Gemini, via the ai-assistant Edge Function) ----------
     // Nothing is saved automatically — a conversation only reaches
@@ -625,7 +727,7 @@
 
       try {
         const { data, error } = await window.sbClient.functions.invoke("ai-assistant", {
-          body: { question: question, history: historyForRequest, mode: aiChatMode },
+          body: { question: question, history: historyForRequest, mode: aiChatMode, model: aiSelectedModel },
         });
 
         const pendingTurn = aiChatHistory[aiChatHistory.length - 1];
@@ -1570,6 +1672,13 @@
 
       updateSortIndicators();
       loadAnketas();
+
+      // Supports the "AI помічник" link from the admin dashboard menu
+      // (dashboard.html -> anketa.html?ai=1), which opens straight into
+      // this modal instead of landing on the anketa list.
+      if (new URLSearchParams(window.location.search).get("ai")) {
+        document.getElementById("ai-assistant-btn").click();
+      }
     })();
   </script>
 </body>
