@@ -201,6 +201,25 @@
       const statusEl = document.getElementById("anketa-status");
       const submitBtn = document.getElementById("anketa-submit-btn");
 
+      // Idiot-proofing: this form is 50+ questions long, easy to lose to an
+      // accidental tab close, browser-back tap, or a stray click on a
+      // topbar link. "input"/"change" together cover every field type
+      // (text/textarea fire input while typing, select/radio fire change) —
+      // one delegated pair here beats wiring every rendered field by hand.
+      // Programmatic prefills (fillAnketaForm below, for edit mode) set
+      // .value directly and don't dispatch either event, so opening an
+      // existing anketa to edit doesn't start the page already "dirty".
+      let formDirty = false;
+      form.addEventListener("input", () => { formDirty = true; });
+      form.addEventListener("change", () => { formDirty = true; });
+      window.addEventListener("beforeunload", (e) => {
+        if (!formDirty) return;
+        // Browsers ignore any custom text here and show their own fixed
+        // wording — the point is only to trigger that native prompt.
+        e.preventDefault();
+        e.returnValue = "";
+      });
+
       if (editRow) {
         window.fillAnketaForm(form, editRow.data || {});
         // Unlike child_birth_date (a fixed fact that should carry over
@@ -244,6 +263,7 @@
 
           statusEl.textContent = "Анкету видалено. Повертаємось до списку…";
           statusEl.className = "anketa-status anketa-status--ok";
+          formDirty = false; // this navigation is intentional — don't warn on the way out
           setTimeout(function () { window.location.href = "anketa.html"; }, 900);
         });
       }
@@ -380,6 +400,7 @@
 
         statusEl.textContent = (editRow ? "Нову версію анкети збережено" : "Анкету збережено") + ". Повертаємось до списку…";
         statusEl.className = "anketa-status anketa-status--ok";
+        formDirty = false; // this navigation is intentional — don't warn on the way out
         setTimeout(function () { window.location.href = "anketa.html"; }, 900);
       });
     })();
