@@ -308,19 +308,30 @@
    isn't available for arbitrary elements on iOS Safari, and its own
    Esc/exit-banner would fight this page's in-app Escape handling. */
 body.ai-focus-mode .anketa-topbar,
-body.ai-focus-mode .anketa-intro,
-body.ai-focus-mode .ai-model-select,
-body.ai-focus-mode #ai-chat-history-btn {
+body.ai-focus-mode .anketa-intro {
   display: none;
 }
 
-/* .ai-panel-header itself must stay visible (not hidden like its siblings
-   above) — .ai-focus-toggle lives inside it, and a display:none ancestor
-   can't be un-hidden by any rule on the child. Left as a slim bar holding
-   just the toggle button once its other children are hidden. */
-body.ai-focus-mode .ai-panel-header {
-  justify-content: flex-end;
-  margin-bottom: .5rem;
+/* Desktop only: also strip the panel header down to just the toggle
+   button, for a fully distraction-free view. On mobile the header (model
+   switcher + "Історія чатів") is the only way in/out of a saved chat or a
+   different model once the compact "Запитати AI" card below has been
+   replaced by this fullscreen view, so it has to stay reachable there. */
+@media (min-width: 721px) {
+  body.ai-focus-mode .ai-model-select,
+  body.ai-focus-mode #ai-chat-history-btn {
+    display: none;
+  }
+
+  /* .ai-panel-header itself must stay visible (not hidden like its
+     siblings above) — .ai-focus-toggle lives inside it, and a
+     display:none ancestor can't be un-hidden by any rule on the child.
+     Left as a slim bar holding just the toggle button once its other
+     children are hidden. */
+  body.ai-focus-mode .ai-panel-header {
+    justify-content: flex-end;
+    margin-bottom: .5rem;
+  }
 }
 
 body.ai-focus-mode .anketa-main {
@@ -354,6 +365,11 @@ body.ai-focus-mode #ai-content {
 }
 
 body.ai-focus-mode .ai-panel {
+  /* Explicit, not inherited — on mobile .ai-panel is display:none by
+     default (see .ai-mobile-cta below), and this needs to win that over
+     regardless of the two rules' source order, which display:flex here
+     (part of a higher-specificity selector) guarantees. */
+  display: flex;
   flex: 1;
   min-height: 0; /* lets .ai-chat-log actually shrink/scroll inside a flex column */
   max-width: none;
@@ -365,4 +381,61 @@ body.ai-focus-mode .ai-panel {
 body.ai-focus-mode .ai-chat-log {
   flex: 1;
   max-height: none;
+}
+
+/* ---------- Mobile: compact entry card instead of the inline panel ----------
+   The full chat interface (header with model switcher + history, the
+   mode-select buttons, the log, the input row) is cramped squeezed below
+   the topbar and intro text on a phone screen. Below 721px it's replaced
+   with this single-tap "Запитати AI" card; tapping it turns on focus mode
+   (above) to show the same .ai-panel fullscreen instead. */
+.ai-mobile-cta {
+  display: none; /* shown only inside the max-width:720px block below */
+  width: 100%;
+  align-items: center;
+  gap: .9rem;
+  padding: 1.1rem 1.3rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--cx-radius);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--color-ink);
+}
+.ai-mobile-cta:hover,
+.ai-mobile-cta:focus-visible {
+  border-color: var(--color-sage);
+  box-shadow: var(--shadow-md);
+}
+
+.ai-mobile-cta__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--color-sage), var(--color-sky));
+  color: #fff;
+  flex: none;
+}
+.ai-mobile-cta__icon svg { width: 22px; height: 22px; }
+
+.ai-mobile-cta__label { flex: 1; font-weight: 700; font-size: 1rem; }
+
+.ai-mobile-cta__arrow { display: flex; color: var(--color-ink-faint); flex: none; }
+.ai-mobile-cta__arrow svg { width: 18px; height: 18px; }
+
+@media (max-width: 720px) {
+  .ai-panel { display: none; }
+  .ai-mobile-cta { display: flex; }
+}
+
+/* Swap back once focus mode opens .ai-panel fullscreen — higher
+   specificity than the max-width rule above, so this wins on mobile
+   regardless of source order. */
+body.ai-focus-mode .ai-mobile-cta {
+  display: none;
 }
