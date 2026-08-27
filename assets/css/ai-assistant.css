@@ -162,10 +162,18 @@
 }
 
 .ai-chat-list__open {
+  /* min-width:0 overrides the flex default of min-width:auto, which
+     otherwise refuses to shrink this flex:1 item below its title span's
+     full unwrapped width — without it, on a narrow mobile screen the row
+     overflowed instead of the title ever actually engaging its ellipsis. */
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  /* Not flex-start: that sizes each child span to its own content width
+     (shrink-wrap) instead of the full column width, which left nothing
+     for .ai-chat-list__title's max-width:100% to actually clip against. */
+  align-items: stretch;
   gap: .2rem;
   padding: .6rem .8rem;
   border: none;
@@ -188,6 +196,10 @@
 .ai-chat-list__meta {
   font-size: .78rem;
   color: var(--color-ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .ai-chat-list__delete {
