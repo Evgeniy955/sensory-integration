@@ -257,7 +257,12 @@
   border-radius: 10px;
   border: none;
   background: var(--color-sage);
-  color: #FFFFFF;
+  /* Not a hardcoded white — cosmic theme's --color-sage is a pale mint
+     fill, so white text on it was nearly unreadable. --on-accent-fill
+     (styles.css) is the theme-aware pair for this exact case: it stays
+     white in light theme (dark sage fill) and flips to a dark ink in
+     cosmic theme (pale sage fill). */
+  color: var(--on-accent-fill);
   font-weight: 600;
   cursor: pointer;
   transition: background .15s ease, transform .1s ease;

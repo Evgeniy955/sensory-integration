@@ -268,6 +268,12 @@ h1,h2,h3,.font-display{
   transition:color .2s ease;
 }
 .nav a:hover{ color:var(--color-sage-deep); }
+/* .nav a above (class+element) outranks .btn-primary's color (a single
+   class) by specificity for the mobile CTA link, which carries both —
+   without this it rendered as low-contrast ink-soft text on the gold
+   button background instead of the intended dark text, worst in cosmic
+   theme where ink-soft is a pale lavender. */
+.nav a.btn-primary{ color:var(--on-apricot); }
 .header-actions{ display:flex; align-items:center; gap:14px; }
 .header-phone{ font-size:14px; font-weight:700; color:var(--color-ink); text-decoration:none; white-space:nowrap; }
 
