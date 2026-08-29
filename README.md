@@ -3,7 +3,7 @@ sensory integration
 
 ## Адмінпанель
 
-Подробная инструкция для сотрудников: [admin/ADMIN-GUIDE.md](admin/ADMIN-GUIDE.md).
+Подробная инструкция для сотрудников: [admin/guide.html](admin/guide.html).
 
 Керування ролями та користувачами (`super_admin`, `admin`, `instructor`) працює через Supabase.
 
