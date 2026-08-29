@@ -43,6 +43,24 @@ sensory integration
 
 Розмови НЕ зберігаються автоматично — лише коли фахівець сам натисне «Зберегти чат», вона потрапляє в таблицю `public.ai_chats` (створюється тим самим `schema.sql`), прив'язана до нього (`owner_id`/`owner_email`). RLS дозволяє кожному бачити й редагувати лише власні збережені чати («Історія чатів» біля заголовка), тож вони доступні з будь-якого пристрою під тим самим акаунтом і не плутаються між різними спеціалістами.
 
+**Заявки на консультацію (форма на головній сторінці):**
+
+Форма «Готові зробити перший крок?» на `index.html` зберігає заявку в таблицю `public.consultation_requests` і надсилає email-сповіщення через Resend. У всіх сторінках адмінки є яскравий дзвіночок з лічильником нових заявок (топбар) і окрема сторінка `admin/consultation-requests.html`.
+
+1. Отримати API-ключ на https://resend.com/api-keys (домен не потрібен — лист іде з дефолтного `onboarding@resend.dev`, поки свій домен не підключено й не верифіковано в Resend).
+2. Задеплоїти Edge Function: `supabase functions deploy submit-consultation-request`.
+3. Задати секрет:
+   ```
+   supabase secrets set RESEND_API_KEY=<твій ключ>
+   ```
+   За потреби — інша адреса для сповіщень (за замовчуванням `vladelis2026@gmail.com`):
+   ```
+   supabase secrets set NOTIFY_EMAIL=твій@email
+   ```
+4. Готово — заявка зберігається в базі навіть якщо лист із будь-якої причини не надійшов (RESEND_API_KEY не задано, Resend недоступний тощо), так що жодна заявка не губиться.
+
+Побачити заявки й позначити їх опрацьованими можуть ролі `admin`, `super_admin`, `instructor` (перегляд); позначати опрацьованими — лише `admin`/`super_admin`.
+
 **Вхід через Google (опційно):**
 1. Google Cloud Console → створити OAuth-клієнт (тип "Web application").
    Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`

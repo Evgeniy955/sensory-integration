@@ -23,6 +23,10 @@
   <header class="admin-topbar">
     <div class="admin-topbar__row">
       <a class="admin-topbar__brand" href="../index.html">Центр сенсорної інтеграції</a>
+      <a class="topbar-notify" href="consultation-requests.html" id="notify-badge" hidden aria-label="Нові заявки на консультацію">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="topbar-notify__count" id="notify-badge-count">0</span>
+      </a>
       <button type="button" class="admin-topbar__toggle" id="topbar-toggle" aria-label="Меню" aria-expanded="false" aria-controls="topbar-menu">
         <svg class="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
         <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -90,6 +94,17 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </span>
       </a>
+
+      <a class="dashboard-card dashboard-card--requests" id="card-requests" href="consultation-requests.html" hidden>
+        <span class="dashboard-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </span>
+        <span class="dashboard-card__title font-display">Заявки на консультацію</span>
+        <span class="dashboard-card__desc">Заявки з форми на сайті — ім'я, телефон, вік дитини</span>
+        <span class="dashboard-card__arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </span>
+      </a>
     </div>
 
     <!-- Instructor sees only Анкети/Розклад/AI помічник above — no card
@@ -124,6 +139,28 @@
       admin: "Адмін",
       instructor: "Інструктор",
     };
+
+    // Notification bell in the topbar — count of consultation_requests
+    // still marked "new". Same shared snippet copy-pasted on every admin
+    // page's topbar. Fails quiet (just hides the badge) rather than
+    // showing a broken 0/error — this is a "nice to notice" indicator,
+    // not critical path.
+    async function loadNotifyBadge() {
+      const badge = document.getElementById("notify-badge");
+      const countEl = document.getElementById("notify-badge-count");
+      if (!badge || !countEl) return;
+      try {
+        const { count, error } = await window.sbClient
+          .from("consultation_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "new");
+        if (error || !count) { badge.hidden = true; return; }
+        countEl.textContent = count > 99 ? "99+" : String(count);
+        badge.hidden = false;
+      } catch (e) {
+        badge.hidden = true;
+      }
+    }
 
     document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
 
@@ -172,9 +209,12 @@
       document.getElementById("card-anketa").hidden = false;
       document.getElementById("card-schedule").hidden = false;
       document.getElementById("card-ai").hidden = false;
+      document.getElementById("card-requests").hidden = false;
       if (profile.role === "admin" || profile.role === "super_admin") {
         document.getElementById("card-users").hidden = false;
       }
+
+      loadNotifyBadge();
     })();
   </script>
 </body>
