@@ -105,6 +105,28 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </span>
       </a>
+
+      <a class="dashboard-card dashboard-card--guide" id="card-guide" href="ADMIN-GUIDE.md" target="_blank" rel="noopener">
+        <span class="dashboard-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v19H7.5A2.5 2.5 0 0 0 5 23V4.5Z"/><path d="M5 4.5V23M9 6h6M9 10h6M9 14h4"/></svg>
+        </span>
+        <span class="dashboard-card__title font-display">Інструкція</span>
+        <span class="dashboard-card__desc">Покрокове керівництво по розділах адмінпанелі та ролях</span>
+        <span class="dashboard-card__arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </span>
+      </a>
+
+      <a class="dashboard-card dashboard-card--faq" id="card-faq" href="faq.html">
+        <span class="dashboard-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.5 2.5 0 1 1 4.1 1.9c-1.1.8-1.8 1.2-1.8 2.6M12 17h.01"/></svg>
+        </span>
+        <span class="dashboard-card__title font-display">FAQ</span>
+        <span class="dashboard-card__desc">Быстрые ответы по входу, доступам, заявкам и сохранению данных</span>
+        <span class="dashboard-card__arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </span>
+      </a>
     </div>
 
     <!-- Instructor sees only Анкети/Розклад/AI помічник above — no card
@@ -210,6 +232,8 @@
       document.getElementById("card-schedule").hidden = false;
       document.getElementById("card-ai").hidden = false;
       document.getElementById("card-requests").hidden = false;
+      document.getElementById("card-guide").hidden = false;
+      document.getElementById("card-faq").hidden = false;
       if (profile.role === "admin" || profile.role === "super_admin") {
         document.getElementById("card-users").hidden = false;
       }

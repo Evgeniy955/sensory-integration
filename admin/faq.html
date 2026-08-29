@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>FAQ — Центр сенсорної інтеграції</title>
+<script>
+(function(){
+  try{
+    var saved = localStorage.getItem('siteTheme');
+    var theme = saved === 'light' || saved === 'cosmic' ? saved : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+  }catch(e){ document.documentElement.setAttribute('data-theme','light'); }
+})();
+</script>
+<link rel="stylesheet" href="../assets/css/styles.css">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body class="admin-shell">
+  <header class="admin-topbar">
+    <div class="admin-topbar__row">
+      <a class="admin-topbar__brand" href="dashboard.html">Центр сенсорної інтеграції</a>
+    </div>
+    <div class="admin-topbar__user">
+      <a class="admin-btn admin-btn--ghost" href="dashboard.html">← Назад</a>
+    </div>
+  </header>
+
+  <main class="admin-main admin-faq">
+    <div class="dashboard-intro">
+      <h1>FAQ</h1>
+      <p class="admin-hint">Короткі відповіді на найчастіші питання під час роботи з адмінпанеллю.</p>
+    </div>
+
+    <section class="admin-section">
+      <details open>
+        <summary>Чому я не бачу окремий розділ?</summary>
+        <p>Розділи залежать від ролі. Інструктор бачить анкети, розклад, AI-помічника, заявки та довідкові матеріали. Управління користувачами доступне лише адміну або супер-адміну.</p>
+      </details>
+      <details>
+        <summary>Що робити, якщо після входу написано «Доступ обмежено»?</summary>
+        <p>Зверніться до супер-адміна. Для вашого email має існувати профіль у системі та призначена роль.</p>
+      </details>
+      <details>
+        <summary>Заявка є в адмінпанелі, але листа немає. Вона втрачена?</summary>
+        <p>Ні. Заявка спочатку зберігається в базі, а email надсилається окремо. Відкрийте «Заявки на консультацію», перевірте статус і зв'яжіться з батьками телефоном.</p>
+      </details>
+      <details>
+        <summary>Чому дитина не знаходиться у розкладі?</summary>
+        <p>У розклад можна додавати лише дітей, для яких уже є анкета. Спочатку створіть анкету, потім повторіть пошук у клітинці розкладу.</p>
+      </details>
+      <details>
+        <summary>Чи зберігається чат з AI автоматично?</summary>
+        <p>Ні. Натисніть «Зберегти чат», якщо відповідь потрібна пізніше. Для клінічних рішень завжди перевіряйте висновки AI самостійно.</p>
+      </details>
+      <details>
+        <summary>Як безпечно завершити роботу?</summary>
+        <p>Натисніть «Вийти» у верхній панелі та закрийте вкладку браузера, особливо якщо це спільний комп'ютер.</p>
+      </details>
+    </section>
+
+    <p class="admin-hint"><a href="ADMIN-GUIDE.md">Відкрити повну інструкцію →</a></p>
+  </main>
+</body>
+</html>

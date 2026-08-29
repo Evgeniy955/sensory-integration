@@ -108,7 +108,7 @@
   padding: 2rem 1.5rem 3rem;
 }
 
-/* ---------- Dashboard hub: 4 big navigation cards ---------- */
+/* ---------- Dashboard hub: navigation cards ---------- */
 .dashboard-intro { margin-bottom: 1.75rem; }
 .dashboard-intro h1 { font-size: 1.6rem; margin-bottom: .35rem; }
 .dashboard-intro .admin-hint { margin: 0; color: var(--color-ink-soft); font-size: .92rem; }
@@ -169,6 +169,8 @@
    new consultation requests are a "go look at this" signal, not just
    another calm section like Анкети/Розклад. */
 .dashboard-card--requests .dashboard-card__icon { background: var(--color-destructive); }
+.dashboard-card--guide .dashboard-card__icon { background: var(--color-apricot-deep); }
+.dashboard-card--faq .dashboard-card__icon { background: var(--color-sage-deep); }
 
 .dashboard-card__title { font-size: 1.1rem; }
 
