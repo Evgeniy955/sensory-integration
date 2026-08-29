@@ -32,10 +32,7 @@
 .guide-shot-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .guide-shot-arrows path { fill: none; stroke: #d35f55; stroke-width: 5; stroke-linecap: round; marker-end: url(#guide-arrow); }
 .guide-shot-label { position: absolute; z-index: 1; display: grid; place-items: center; width: clamp(22px, 3vw, 32px); height: clamp(22px, 3vw, 32px); border: 2px solid #fff; border-radius: 50%; background: #d35f55; box-shadow: 0 2px 7px rgb(108 79 72 / 25%); color: #fff; font-size: clamp(.65rem, 1.4vw, .85rem); font-weight: 700; }
-.guide-shot-label--email { left: 35%; top: 38%; }
-.guide-shot-label--password { left: 64%; top: 50%; }
-.guide-shot-label--submit { left: 35%; top: 67%; }
-.guide-shot-label--google { left: 64%; top: 82%; }
+.guide-shot-label--google { left: 64%; top: 66%; }
 .guide-table-wrap { overflow-x: auto; margin-top: 1.1rem; }
 .guide-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
 .guide-table th, .guide-table td { padding: .75rem .65rem; border-bottom: 1px solid var(--color-border); text-align: left; }
