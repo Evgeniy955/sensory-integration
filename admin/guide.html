@@ -21,7 +21,7 @@
   <main class="admin-main guide-layout">
     <nav class="guide-sidebar" aria-label="Навігація інструкції">
       <p class="guide-sidebar__label">У цій інструкції</p>
-      <a href="#start">Швидкий старт</a>
+      <a href="#start">Після входу</a>
       <a href="#roles">Ролі та доступи</a>
       <a href="#sections">Розділи системи</a>
       <a href="#security">Безпека</a>
@@ -32,26 +32,18 @@
       <section class="guide-hero">
         <div class="guide-eyebrow"><span></span> Довідковий центр</div>
         <h1>Як працювати з адмінпанеллю</h1>
-        <p>Коротке візуальне керівництво для команди: від входу в систему до роботи з анкетами, розкладом і заявками.</p>
+        <p>Коротке візуальне керівництво для команди, яка вже працює в адмінпанелі: навігація, ролі, анкети, розклад і заявки.</p>
       </section>
 
       <section class="guide-section" id="start">
-        <h2>Почніть за хвилину</h2>
-        <p class="guide-section__lead">Для щоденної роботи достатньо виконати три прості кроки.</p>
+        <h2>Ви вже в адмінпанелі</h2>
+        <p class="guide-section__lead">Інструкція відкривається після входу, тому далі — про орієнтацію в системі та щоденні дії.</p>
         <ol class="guide-steps">
-          <li>Відкрийте сторінку входу адмінпанелі та натисніть «Увійти через Google».</li>
-          <li>На головній сторінці оберіть потрібну картку: «Анкети», «Розклад», «Заявки» або «AI помічник».</li>
+          <li>На головній сторінці оберіть картку потрібного розділу: «Анкети», «Розклад», «Заявки» або «AI помічник».</li>
+          <li>Для адміністративних дій використовуйте «Управління користувачами» — ця картка залежить від ролі.</li>
           <li>Після завершення роботи натисніть «Вийти» у верхній панелі.</li>
         </ol>
-        <div class="guide-shot-wrap">
-          <img class="guide-shot" src="../output/playwright/admin-guide/login.png" alt="Реальний екран входу в адмінпанель">
-          <svg class="guide-shot-arrows" viewBox="0 0 1280 720" preserveAspectRatio="none" aria-hidden="true">
-            <defs><marker id="guide-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#d35f55"/></marker></defs>
-            <path d="M980 430 C900 445 850 455 805 465"/>
-          </svg>
-          <span class="guide-shot-label guide-shot-label--google">1</span>
-        </div>
-        <div class="guide-callout"><span>💡</span><div><strong>Підказка</strong>Якщо ви бачите «Доступ обмежено», зверніться до супер-адміна: для email має бути створений профіль і призначена роль.</div></div>
+        <div class="guide-callout"><span>💡</span><div><strong>Підказка</strong>Якщо потрібної картки немає, це зазвичай обмеження ролі. Перевірте таблицю доступів нижче або зверніться до супер-адміна.</div></div>
       </section>
 
       <section class="guide-section" id="roles">
