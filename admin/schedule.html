@@ -24,6 +24,10 @@
   <header class="anketa-topbar anketa-topbar--collapsible">
     <a class="anketa-btn anketa-btn--primary" href="../index.html">На головну сторінку</a>
     <div class="anketa-topbar__user" id="topbar-menu">
+      <a class="topbar-notify" href="consultation-requests.html" id="notify-badge" hidden aria-label="Нові заявки на консультацію">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="topbar-notify__count" id="notify-badge-count">0</span>
+      </a>
       <span id="whoami">перевіряємо доступ...</span>
       <button type="button" class="theme-toggle" id="themeToggle" aria-label="Перемкнути тему" aria-pressed="false">
         <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
@@ -228,6 +232,28 @@
   </script>
   <script src="../assets/js/schedule.js"></script>
   <script>
+    // Notification bell in the topbar — count of consultation_requests
+    // still marked "new". Same shared snippet copy-pasted on every admin
+    // page's topbar. Fails quiet (just hides the badge) rather than
+    // showing a broken 0/error — this is a "nice to notice" indicator,
+    // not critical path.
+    async function loadNotifyBadge() {
+      const badge = document.getElementById("notify-badge");
+      const countEl = document.getElementById("notify-badge-count");
+      if (!badge || !countEl) return;
+      try {
+        const { count, error } = await window.sbClient
+          .from("consultation_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "new");
+        if (error || !count) { badge.hidden = true; return; }
+        countEl.textContent = count > 99 ? "99+" : String(count);
+        badge.hidden = false;
+      } catch (e) {
+        badge.hidden = true;
+      }
+    }
+
     (async function () {
       const AUTH_TIMEOUT_MS = 8000;
       let profile;
@@ -267,6 +293,7 @@
       // showing up in the first place.
       const canEdit = profile.role === "admin" || profile.role === "super_admin";
       window.ScheduleBoard.init(profile.id, canEdit);
+      loadNotifyBadge();
     })();
   </script>
 </body>

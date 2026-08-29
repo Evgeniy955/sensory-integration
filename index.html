@@ -493,7 +493,7 @@
           <p data-i18n="cta.p">Залиште телефон — передзвонимо протягом дня, розповімо про центр і підберемо зручний час для першої зустрічі.</p>
           <a class="btn btn-primary" href="tel:+380973606810" data-i18n="cta.call">Зателефонувати зараз</a>
         </div>
-        <form class="contact-form" onsubmit="return false;">
+        <form class="contact-form" id="consultation-form">
           <div>
             <label for="f-name" data-i18n="form.name_label">Ваше ім'я</label>
             <input id="f-name" name="name" type="text" data-i18n-placeholder="form.name_ph" placeholder="Ім'я" required>
@@ -506,7 +506,17 @@
             <label for="f-age" data-i18n="form.age_label">Вік дитини</label>
             <input id="f-age" name="age" type="text" data-i18n-placeholder="form.age_ph" placeholder="Наприклад, 4 роки">
           </div>
+          <!-- Honeypot: invisible to real visitors (off-screen + aria-hidden),
+               never shown or labeled — only a bot filling every input blindly
+               would populate it. submit-consultation-request silently drops
+               anything with this filled in. Deliberately not display:none
+               (some bots skip those), and not "type=hidden" (same reason). -->
+          <div class="hp-field" aria-hidden="true">
+            <label for="f-website">Залиште це поле порожнім</label>
+            <input id="f-website" name="website" type="text" tabindex="-1" autocomplete="off">
+          </div>
           <button class="btn btn-primary" type="submit" data-i18n="form.submit">Записатися на консультацію</button>
+          <p class="form-status" id="consultation-form-status" role="status" aria-live="polite"></p>
           <p class="form-note" data-i18n="form.note">Надсилаючи форму, ви погоджуєтеся з політикою обробки персональних даних.</p>
         </form>
       </div>
@@ -560,5 +570,7 @@
 
 <script src="assets/js/i18n.js"></script>
 <script src="assets/js/main.js"></script>
+<script src="assets/js/supabase-config.js"></script>
+<script src="assets/js/consultation-form.js"></script>
 </body>
 </html>

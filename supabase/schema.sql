@@ -272,6 +272,45 @@ create policy "Users can delete own ai chats"
 -- used for history/duplicate-detection elsewhere in this file.
 alter table public.anketas add column if not exists is_active boolean not null default true;
 
+-- 10. Consultation requests (public "Записатися на консультацію" form) ---
+-- Submitted anonymously from index.html by site visitors — there is no
+-- signed-in user at that point, so unlike every other table above this one
+-- has NO insert policy for anon at all. The only way a row gets created is
+-- through the submit-consultation-request Edge Function, which validates
+-- the input itself and inserts with the service_role key (bypassing RLS).
+-- This is deliberate: an open anon-insert policy would let anyone hit the
+-- table directly (skipping the function's validation/honeypot) with
+-- arbitrary junk, so the table is only ever reachable through the function.
+create table if not exists public.consultation_requests (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  phone text not null,
+  child_age text,
+  status text not null default 'new' check (status in ('new', 'contacted')),
+  created_at timestamptz not null default now()
+);
+
+alter table public.consultation_requests enable row level security;
+
+create index if not exists consultation_requests_created_at_idx
+  on public.consultation_requests (created_at desc);
+
+-- Same three roles that can see Анкети — this is lead/intake data, not
+-- clinical data, but keeping the same visibility model avoids a fourth
+-- distinct permission shape to reason about.
+drop policy if exists "Admins can view consultation requests" on public.consultation_requests;
+create policy "Admins can view consultation requests"
+  on public.consultation_requests for select
+  using (public.current_user_role() in ('admin', 'super_admin', 'instructor'));
+
+-- Marking a request "contacted" is the only write from the admin panel;
+-- instructors stay read-only, same as anketas/schedule.
+drop policy if exists "Admins can update consultation requests" on public.consultation_requests;
+create policy "Admins can update consultation requests"
+  on public.consultation_requests for update
+  using (public.current_user_role() in ('admin', 'super_admin'))
+  with check (public.current_user_role() in ('admin', 'super_admin'));
+
 -- One-time backfill for rows that existed before this column: only the
 -- most recently created version per child (grouped the same fuzzy way the
 -- admin UI does) stays active. Safe to re-run — always converges to the
