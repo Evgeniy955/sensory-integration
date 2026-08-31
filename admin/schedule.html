@@ -60,7 +60,7 @@
           Розклад
         </span>
         <h1>Розклад залів</h1>
-        <p>Таблиця показує один робочий день (08:00–19:00) одразу — перемикайтеся стрілками, кнопкою «Сьогодні» або відкрийте календар, щоб перейти на конкретну дату. Усі зали видно одночасно як стовпці; натисніть на клітинку, щоб призначити спеціаліста і дитину на цю годину в цьому залі. Дитину можна обрати лише зі списку вже доданих анкет — почніть вводити ПІБ, і з'являться варіанти. Зміни зберігаються автоматично.</p>
+        <p>Таблиця показує один робочий день (08:00–19:00) одразу — перемикайтеся стрілками, кнопкою «Сьогодні» або відкрийте календар, щоб перейти на конкретну дату. Усі зали видно одночасно як стовпці; натисніть на клітинку, щоб призначити звичайне або групове заняття. У звичайному занятті обирається одна дитина й один спеціаліст, у груповому — кілька дітей і спеціалістів. Дітей можна обрати лише зі списку вже доданих анкет — почніть вводити ПІБ, і з'являться варіанти. Зміни зберігаються автоматично.</p>
       </div>
 
       <div class="anketa-toolbar schedule-toolbar">
@@ -137,7 +137,7 @@
     </div>
   </main>
 
-  <!-- Slot editor: pick a specialist + child (from existing anketas) for one room/hour -->
+  <!-- Slot editor: a regular booking has one child; group bookings can have several children and specialists. -->
   <div class="anketa-modal-overlay" id="cell-modal-overlay" hidden>
     <div class="anketa-modal schedule-cell-modal" role="dialog" aria-modal="true" aria-labelledby="cell-modal-title">
       <button type="button" class="anketa-modal__close" id="cell-modal-close" aria-label="Закрити">
@@ -146,16 +146,34 @@
       <h2 id="cell-modal-title">Запис на заняття</h2>
       <p class="anketa-modal__hint" id="cell-modal-meta"></p>
 
-      <div class="anketa-field" data-type="select">
+      <label class="schedule-group-toggle">
+        <input type="checkbox" id="cell-group-toggle">
+        <span class="schedule-group-toggle__track" aria-hidden="true"><span></span></span>
+        <span><strong>Групове заняття</strong><small>Додати кількох дітей і спеціалістів</small></span>
+      </label>
+
+      <div class="anketa-field" id="cell-regular-specialist-field" data-type="select">
         <label class="anketa-field__label" for="cell-specialist-select">Спеціаліст</label>
         <select id="cell-specialist-select"></select>
       </div>
 
-      <div class="anketa-field schedule-child-field" data-type="text">
+      <div class="anketa-field schedule-child-field" id="cell-regular-child-field" data-type="text">
         <label class="anketa-field__label" for="cell-child-input">Дитина</label>
         <div class="schedule-child-autocomplete">
           <input type="text" id="cell-child-input" autocomplete="off" placeholder="Почніть вводити ПІБ дитини…">
           <div id="cell-child-results" class="schedule-child-results" hidden></div>
+        </div>
+      </div>
+
+      <div id="cell-group-fields" class="schedule-group-fields" hidden>
+        <div class="anketa-field" data-type="select">
+          <span class="anketa-field__label">Спеціалісти</span>
+          <div id="cell-group-specialists" class="schedule-group-options"></div>
+        </div>
+        <div class="anketa-field schedule-child-field" data-type="text">
+          <span class="anketa-field__label">Діти</span>
+          <div id="cell-group-children" class="schedule-group-children"></div>
+          <button type="button" class="anketa-btn schedule-add-child-btn" id="cell-add-child-btn">+ Додати дитину</button>
         </div>
       </div>
 

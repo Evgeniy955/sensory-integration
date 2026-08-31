@@ -11,7 +11,9 @@
 //   - board.specialists — the saved roster (managed from "Керування
 //     спеціалістом"), offered as a dropdown when filling a slot.
 //   - board.cells — keyed "roomId|YYYY-MM-DD|HH" (a specific room, date
-//     *and* hour), value { specialistId, anketaId, childName, noShow }.
+//     *and* hour), value { specialistId, anketaId, childName, noShow } for
+//     regular bookings, or the same legacy fields plus specialistIds,
+//     children and isGroup for group bookings.
 //     Only one day is shown at a time; `currentDate` (module state, not
 //     saved) tracks which one, moved by the ◀ / ▶ buttons or the
 //     calendar picker.
@@ -77,6 +79,8 @@
   let editingHour = null;
   let selectedAnketaId = null;
   let selectedChildName = "";
+  let editingGroup = false;
+  let groupChildren = [];
   let editingNoShow = false;
   let childSearchTimer = null;
   let childSearchToken = 0; // discards stale async results if a newer search started
@@ -180,8 +184,11 @@
         if (!roomIds.has(roomId) || !/^\d{4}-\d{2}-\d{2}$/.test(dateIso) || !/^\d{2}$/.test(hour)) return;
         cells[key] = {
           specialistId: value.specialistId ? String(value.specialistId) : null,
+          specialistIds: Array.isArray(value.specialistIds) ? value.specialistIds.filter(Boolean).map(String) : (value.specialistId ? [String(value.specialistId)] : []),
           anketaId: value.anketaId ? String(value.anketaId) : null,
           childName: value.childName ? String(value.childName) : "",
+          children: Array.isArray(value.children) ? value.children.filter((c) => c && c.anketaId).map((c) => ({ anketaId: String(c.anketaId), childName: String(c.childName || "") })) : (value.anketaId ? [{ anketaId: String(value.anketaId), childName: String(value.childName || "") }] : []),
+          isGroup: !!value.isGroup,
           noShow: !!value.noShow,
         };
       });
@@ -255,6 +262,16 @@
     return spec ? (spec.name || "Без імені") : "спеціаліст видалений";
   }
 
+  function entrySpecialistIds(entry) {
+    return entry && Array.isArray(entry.specialistIds) && entry.specialistIds.length
+      ? entry.specialistIds : (entry && entry.specialistId ? [entry.specialistId] : []);
+  }
+
+  function entryChildren(entry) {
+    return entry && Array.isArray(entry.children) && entry.children.length
+      ? entry.children : (entry && entry.anketaId ? [{ anketaId: entry.anketaId, childName: entry.childName || "" }] : []);
+  }
+
   // Slot backgrounds are tinted by *specialist*, not room — the room is
   // already identified by which column a cell sits in (headers carry the
   // room color), so using the cell's own background to carry the
@@ -289,13 +306,15 @@
     // still gets paid for a no-show, so their name stays normal.
     const noShowClass = entry && entry.noShow ? " schedule-slot-text--noshow" : "";
     const specChipClass = "schedule-slot-specialist--" + (specColor || "none");
+    const specialists = entry ? entrySpecialistIds(entry) : [];
+    const children = entry ? entryChildren(entry) : [];
     const inner = entry
-      ? '<span class="schedule-slot-specialist ' + specChipClass + '">' + escapeHtml(specialistName(entry.specialistId)) + "</span>" +
-        '<span class="schedule-slot-child' + noShowClass + '">' + escapeHtml(entry.childName || "") + "</span>" +
+      ? '<span class="schedule-slot-specialist ' + specChipClass + '">' + escapeHtml(specialists.map(specialistName).join(", ")) + "</span>" +
+        '<span class="schedule-slot-child' + noShowClass + '">' + escapeHtml(children.map((c) => c.childName).join(", ")) + "</span>" +
         (entry.noShow ? '<span class="schedule-slot-noshow-badge">не прийшов</span>' : "")
       : '<span class="schedule-slot-add" aria-hidden="true">+</span>';
     const ariaLabel = room.name + ", " + label +
-      (entry ? ": " + specialistName(entry.specialistId) + ", " + (entry.childName || "") + (entry.noShow ? ", дитина не прийшла" : "") : ": вільно");
+      (entry ? ": " + specialists.map(specialistName).join(", ") + ", " + children.map((c) => c.childName).join(", ") + (entry.noShow ? ", дитина не прийшла" : "") : ": вільно");
     return '<td class="schedule-slot-cell ' + colorClass + '">' +
       '<button type="button" class="schedule-slot-btn" data-cell="' + key + '" data-room="' + room.id +
       '" data-hour="' + hour + '" aria-label="' + escapeHtml(ariaLabel) + '">' + inner + "</button></td>";
@@ -421,7 +440,10 @@
     );
     if (!confirmed) return;
     board.specialists = board.specialists.filter((s) => s.id !== id);
-    Object.values(board.cells).forEach((entry) => { if (entry.specialistId === id) entry.specialistId = null; });
+    Object.values(board.cells).forEach((entry) => {
+      if (entry.specialistId === id) entry.specialistId = null;
+      if (Array.isArray(entry.specialistIds)) entry.specialistIds = entry.specialistIds.filter((specialistId) => specialistId !== id);
+    });
     syncSpecialistControls();
     flushSave();
   }
@@ -493,6 +515,23 @@
     ).join("");
   }
 
+  function renderGroupSpecialists(selectedIds) {
+    const el = document.getElementById("cell-group-specialists");
+    el.innerHTML = board.specialists.map((s) => '<label class="schedule-option"><input type="checkbox" value="' + escapeHtml(s.id) + '"' + (selectedIds.includes(s.id) ? " checked" : "") + "><span>" + escapeHtml(s.name || "Без імені") + "</span></label>").join("") || '<span class="schedule-empty-option">Спочатку додайте спеціалістів у «Керування».</span>';
+  }
+
+  function renderGroupChildren() {
+    const el = document.getElementById("cell-group-children");
+    el.innerHTML = groupChildren.map((child, index) => '<div class="schedule-group-child-row"><div class="schedule-child-autocomplete"><input type="text" data-group-child-index="' + index + '" value="' + escapeHtml(child.childName || "") + '" autocomplete="off" placeholder="Почніть вводити ПІБ дитини…"><div class="schedule-child-results" data-group-results-index="' + index + '" hidden></div></div>' + (groupChildren.length > 1 ? '<button type="button" class="schedule-remove-child" data-remove-child-index="' + index + '" aria-label="Видалити дитину">×</button>' : "") + '</div>').join("");
+  }
+
+  function syncGroupFields() {
+    document.getElementById("cell-regular-specialist-field").hidden = editingGroup;
+    document.getElementById("cell-regular-child-field").hidden = editingGroup;
+    document.getElementById("cell-group-fields").hidden = !editingGroup;
+    document.getElementById("cell-group-toggle").checked = editingGroup;
+  }
+
   function updateNoShowToggleUI() {
     const btn = document.getElementById("cell-noshow-toggle");
     btn.setAttribute("aria-pressed", String(editingNoShow));
@@ -507,13 +546,19 @@
     editingHour = hour;
 
     const entry = board.cells[editingKey] || null;
+    editingGroup = !!(entry && entry.isGroup);
     selectedAnketaId = entry ? entry.anketaId : null;
     selectedChildName = entry ? (entry.childName || "") : "";
     editingNoShow = entry ? !!entry.noShow : false;
+    groupChildren = entryChildren(entry).map((c) => ({ anketaId: c.anketaId, childName: c.childName }));
+    if (!groupChildren.length) groupChildren = [{ anketaId: null, childName: "" }, { anketaId: null, childName: "" }];
 
     document.getElementById("cell-modal-title").textContent = room.name + " · " + hourLabel(hour);
     document.getElementById("cell-modal-meta").textContent = formatDayLabel(currentDate);
     populateCellSpecialistSelect(entry ? entry.specialistId : null);
+    renderGroupSpecialists(entrySpecialistIds(entry));
+    renderGroupChildren();
+    syncGroupFields();
     document.getElementById("cell-child-input").value = selectedChildName;
     hideChildResults();
     document.getElementById("cell-clear-btn").hidden = !entry;
@@ -536,17 +581,27 @@
     selectedAnketaId = null;
     selectedChildName = "";
     editingNoShow = false;
+    editingGroup = false;
+    groupChildren = [];
     hideChildResults();
   }
 
   function saveCellFromModal() {
     if (!editingKey) return;
     const specialistId = document.getElementById("cell-specialist-select").value || null;
-    if (!specialistId || !selectedAnketaId) {
+    if (editingGroup) {
+      const specialistIds = Array.from(document.querySelectorAll("#cell-group-specialists input:checked")).map((input) => input.value);
+      if (specialistIds.length < 1 || groupChildren.length < 2 || groupChildren.some((c) => !c.anketaId)) {
+        window.alert("Для групового заняття оберіть щонайменше одного спеціаліста та двох дітей зі списку.");
+        return;
+      }
+      board.cells[editingKey] = { isGroup: true, specialistId: specialistIds[0], specialistIds, anketaId: groupChildren[0].anketaId, childName: groupChildren[0].childName, children: groupChildren, noShow: editingNoShow };
+    } else if (!specialistId || !selectedAnketaId) {
       window.alert("Оберіть спеціаліста і дитину зі списку (дитину — саме зі списку підказок, не просто текстом).");
       return;
+    } else {
+      board.cells[editingKey] = { specialistId, specialistIds: [specialistId], anketaId: selectedAnketaId, childName: selectedChildName, children: [{ anketaId: selectedAnketaId, childName: selectedChildName }], isGroup: false, noShow: editingNoShow };
     }
-    board.cells[editingKey] = { specialistId, anketaId: selectedAnketaId, childName: selectedChildName, noShow: editingNoShow };
     render();
     flushSave();
     closeCellModal();
@@ -621,7 +676,7 @@
     const sourceEntries = Object.keys(board.cells).filter((key) => {
       const parts = key.split("|");
       const entry = board.cells[key];
-      return parts.length === 3 && parts[1] === sourceDate && entry && (!specialistId || entry.specialistId === specialistId);
+      return parts.length === 3 && parts[1] === sourceDate && entry && (!specialistId || entrySpecialistIds(entry).includes(specialistId));
     });
     if (!sourceEntries.length) {
       window.alert("За обраний день немає записів для копіювання.");
@@ -641,9 +696,12 @@
       const targetKey = cellKey(parts[0], targetDate, Number(parts[2]));
       const entry = board.cells[key];
       board.cells[targetKey] = {
-        specialistId: entry.specialistId || null,
+        specialistId: entry.specialistId || (entrySpecialistIds(entry)[0] || null),
+        specialistIds: entrySpecialistIds(entry),
         anketaId: entry.anketaId || null,
         childName: entry.childName || "",
+        children: entryChildren(entry),
+        isGroup: !!entry.isGroup,
         noShow: false,
       };
     });
@@ -683,7 +741,9 @@
       if (parts.length !== 3) return;
       const dateIso = parts[1];
       const entry = board.cells[cellKey];
-      if (!entry || normalizeChildName(entry.childName) !== key || dateIso >= today) return;
+      if (!entry || dateIso >= today) return;
+      const hasChild = entryChildren(entry).some((child) => normalizeChildName(child.childName) === key);
+      if (!hasChild) return;
       if (entry.noShow) {
         if (dateStatus[dateIso] !== "attended") dateStatus[dateIso] = "noshow";
       } else {
@@ -807,6 +867,33 @@
     document.getElementById("cell-clear-btn").addEventListener("click", clearCellFromModal);
     document.getElementById("cell-child-input").addEventListener("input", onChildInput);
     document.getElementById("cell-child-results").addEventListener("click", onChildResultsClick);
+    document.getElementById("cell-group-toggle").addEventListener("change", (e) => { editingGroup = e.target.checked; syncGroupFields(); });
+    document.getElementById("cell-add-child-btn").addEventListener("click", () => { groupChildren.push({ anketaId: null, childName: "" }); renderGroupChildren(); document.querySelector('[data-group-child-index="' + (groupChildren.length - 1) + '"]').focus(); });
+    document.getElementById("cell-group-children").addEventListener("input", (e) => {
+      const index = Number(e.target.getAttribute("data-group-child-index"));
+      if (!Number.isInteger(index)) return;
+      groupChildren[index] = { anketaId: null, childName: "" };
+      const query = e.target.value.trim();
+      if (query.length < CHILD_SEARCH_MIN_LEN) { e.target.nextElementSibling.hidden = true; return; }
+      const token = ++childSearchToken;
+      clearTimeout(childSearchTimer);
+      childSearchTimer = setTimeout(async () => {
+        const results = await searchAnketas(query);
+        if (token !== childSearchToken) return;
+        const resultsEl = e.target.nextElementSibling;
+        resultsEl.innerHTML = results.length ? results.map((r) => '<button type="button" class="schedule-child-results__item" data-group-result-index="' + index + '" data-anketa-id="' + r.id + '" data-child-name="' + escapeHtml(r.child_full_name || "") + '">' + escapeHtml(r.child_full_name || "(без імені)") + '</button>').join("") : '<div class="schedule-child-results__empty">Нікого не знайдено.</div>';
+        resultsEl.hidden = false;
+      }, CHILD_SEARCH_DEBOUNCE_MS);
+    });
+    document.getElementById("cell-group-children").addEventListener("click", (e) => {
+      const remove = e.target.closest("[data-remove-child-index]");
+      if (remove) { groupChildren.splice(Number(remove.dataset.removeChildIndex), 1); renderGroupChildren(); return; }
+      const result = e.target.closest("[data-group-result-index]");
+      if (!result) return;
+      const index = Number(result.dataset.groupResultIndex);
+      groupChildren[index] = { anketaId: result.dataset.anketaId, childName: result.dataset.childName || "" };
+      renderGroupChildren();
+    });
     document.getElementById("cell-noshow-toggle").addEventListener("click", () => {
       editingNoShow = !editingNoShow;
       updateNoShowToggleUI();
