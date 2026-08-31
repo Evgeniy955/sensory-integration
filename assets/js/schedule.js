@@ -560,6 +560,98 @@
     closeCellModal();
   }
 
+  // ---------- Copy a completed day ----------
+  function yesterdayISO() {
+    const yesterday = new Date();
+    yesterday.setHours(0, 0, 0, 0);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return toISODate(yesterday);
+  }
+
+  function populateCopySpecialistSelect() {
+    const select = document.getElementById("copy-schedule-specialist");
+    select.innerHTML = '<option value="">Усі спеціалісти</option>' + board.specialists.map((s) =>
+      '<option value="' + escapeHtml(s.id) + '">' + escapeHtml(s.name || "Без імені") + "</option>"
+    ).join("");
+  }
+
+  function countCopyableEntries(sourceDate, specialistId) {
+    return Object.keys(board.cells).filter((key) => {
+      const parts = key.split("|");
+      if (parts.length !== 3 || parts[1] !== sourceDate || !board.cells[key]) return false;
+      return !specialistId || board.cells[key].specialistId === specialistId;
+    }).length;
+  }
+
+  function updateCopyScheduleSummary() {
+    const sourceDate = document.getElementById("copy-schedule-source-date").value;
+    const specialistId = document.getElementById("copy-schedule-specialist").value;
+    const count = sourceDate ? countCopyableEntries(sourceDate, specialistId) : 0;
+    document.getElementById("copy-schedule-summary").textContent = sourceDate
+      ? (count ? "Буде скопійовано записів: " + count + "." : "За цей день немає записів для копіювання.")
+      : "Оберіть день і спеціаліста.";
+  }
+
+  function openCopyScheduleModal() {
+    const sourceInput = document.getElementById("copy-schedule-source-date");
+    const yesterday = yesterdayISO();
+    sourceInput.max = yesterday;
+    const suggested = toISODate(currentDate) === yesterday ? toISODate(addDays(parseISODate(yesterday), -1)) : yesterday;
+    sourceInput.value = suggested;
+    document.getElementById("copy-schedule-target-label").textContent = formatDayLabel(currentDate);
+    populateCopySpecialistSelect();
+    updateCopyScheduleSummary();
+    document.getElementById("copy-schedule-modal-overlay").hidden = false;
+    sourceInput.focus();
+  }
+
+  function closeCopyScheduleModal() {
+    document.getElementById("copy-schedule-modal-overlay").hidden = true;
+  }
+
+  function copyScheduleFromPastDay() {
+    const sourceDate = document.getElementById("copy-schedule-source-date").value;
+    const specialistId = document.getElementById("copy-schedule-specialist").value;
+    const targetDate = toISODate(currentDate);
+    if (!sourceDate || sourceDate >= toISODate(new Date()) || sourceDate === targetDate) {
+      window.alert("Оберіть інший день у минулому.");
+      return;
+    }
+
+    const sourceEntries = Object.keys(board.cells).filter((key) => {
+      const parts = key.split("|");
+      const entry = board.cells[key];
+      return parts.length === 3 && parts[1] === sourceDate && entry && (!specialistId || entry.specialistId === specialistId);
+    });
+    if (!sourceEntries.length) {
+      window.alert("За обраний день немає записів для копіювання.");
+      return;
+    }
+
+    const scopeLabel = specialistId ? specialistName(specialistId) : "усіх спеціалістів";
+    const overwritten = sourceEntries.filter((key) => {
+      const parts = key.split("|");
+      return !!board.cells[cellKey(parts[0], targetDate, Number(parts[2]))];
+    }).length;
+    const overwriteNote = overwritten ? " Існуючих записів буде замінено: " + overwritten + "." : "";
+    if (!window.confirm("Скопіювати розклад " + scopeLabel + " з " + formatDayLabel(parseISODate(sourceDate)) + " на " + formatDayLabel(currentDate) + "?" + overwriteNote)) return;
+
+    sourceEntries.forEach((key) => {
+      const parts = key.split("|");
+      const targetKey = cellKey(parts[0], targetDate, Number(parts[2]));
+      const entry = board.cells[key];
+      board.cells[targetKey] = {
+        specialistId: entry.specialistId || null,
+        anketaId: entry.anketaId || null,
+        childName: entry.childName || "",
+        noShow: false,
+      };
+    });
+    render();
+    closeCopyScheduleModal();
+    flushSave();
+  }
+
   // ---------- Attendance (same computation as admin/anketa.html's, just
   // reading board.cells straight from memory instead of re-fetching —
   // this page already has the whole board loaded). ----------
@@ -644,6 +736,15 @@
       goToDay(parseISODate(e.target.value));
     });
 
+    const copyOverlay = document.getElementById("copy-schedule-modal-overlay");
+    document.getElementById("copy-schedule-btn").addEventListener("click", openCopyScheduleModal);
+    document.getElementById("copy-schedule-modal-close").addEventListener("click", closeCopyScheduleModal);
+    document.getElementById("copy-schedule-cancel-btn").addEventListener("click", closeCopyScheduleModal);
+    document.getElementById("copy-schedule-confirm-btn").addEventListener("click", copyScheduleFromPastDay);
+    document.getElementById("copy-schedule-source-date").addEventListener("change", updateCopyScheduleSummary);
+    document.getElementById("copy-schedule-specialist").addEventListener("change", updateCopyScheduleSummary);
+    copyOverlay.addEventListener("click", (e) => { if (e.target === copyOverlay) closeCopyScheduleModal(); });
+
     table.addEventListener("click", (e) => {
       if (!canEdit) return; // instructors: view the grid, nothing opens on click
       const btn = e.target.closest("[data-cell]");
@@ -724,6 +825,7 @@
     // actually on top first instead of both reacting to the same keypress.
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
+      if (!copyOverlay.hidden) { closeCopyScheduleModal(); return; }
       if (!attendanceOverlay.hidden) { closeAttendanceModal(); return; }
       if (!cellOverlay.hidden) closeCellModal();
     });
@@ -737,7 +839,10 @@
       // Instructors never see the management panel at all — there's
       // nothing in it they're allowed to touch, so the toggle button
       // itself would just be dead weight.
-      if (!canEdit) document.getElementById("toggle-management-btn").hidden = true;
+      if (!canEdit) {
+        document.getElementById("toggle-management-btn").hidden = true;
+        document.getElementById("copy-schedule-btn").hidden = true;
+      }
       wireEvents();
       updateDayControls();
       board = await loadBoard();

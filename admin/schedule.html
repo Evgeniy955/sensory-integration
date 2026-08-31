@@ -120,6 +120,10 @@
           </button>
           <input type="date" id="calendar-date-input" class="schedule-calendar-input" aria-label="Обрати дату для переходу" tabindex="-1">
         </div>
+        <button type="button" class="anketa-btn" id="copy-schedule-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+          Копіювати розклад
+        </button>
       </div>
 
       <div class="anketa-table-wrap schedule-table-wrap">
@@ -168,6 +172,33 @@
       <div class="schedule-cell-modal__actions">
         <button type="button" class="anketa-btn anketa-btn--danger" id="cell-clear-btn" hidden>Очистити</button>
         <button type="button" class="anketa-submit" id="cell-save-btn">Зберегти</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Copy bookings from a completed day into the currently displayed day. -->
+  <div class="anketa-modal-overlay" id="copy-schedule-modal-overlay" hidden>
+    <div class="anketa-modal schedule-copy-modal" role="dialog" aria-modal="true" aria-labelledby="copy-schedule-modal-title">
+      <button type="button" class="anketa-modal__close" id="copy-schedule-modal-close" aria-label="Закрити">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <h2 id="copy-schedule-modal-title">Копіювати розклад</h2>
+      <p class="anketa-modal__hint">Скопіювати записи з минулого дня в поточний: <strong id="copy-schedule-target-label">—</strong></p>
+
+      <div class="anketa-field" data-type="date">
+        <label class="anketa-field__label" for="copy-schedule-source-date">День, з якого копіювати</label>
+        <input type="date" id="copy-schedule-source-date" class="anketa-input">
+      </div>
+
+      <div class="anketa-field" data-type="select">
+        <label class="anketa-field__label" for="copy-schedule-specialist">Кого копіювати</label>
+        <select id="copy-schedule-specialist" class="anketa-input"></select>
+      </div>
+
+      <p class="anketa-modal__hint schedule-copy-hint" id="copy-schedule-summary">Оберіть день і спеціаліста.</p>
+      <div class="schedule-cell-modal__actions">
+        <button type="button" class="anketa-btn" id="copy-schedule-cancel-btn">Скасувати</button>
+        <button type="button" class="anketa-submit" id="copy-schedule-confirm-btn">Копіювати</button>
       </div>
     </div>
   </div>
