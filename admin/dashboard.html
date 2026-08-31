@@ -46,7 +46,13 @@
     <div data-admin-status></div>
 
     <div class="dashboard-intro">
-      <h1>Адмінпанель</h1>
+      <div class="dashboard-heading-row">
+        <h1>Адмінпанель</h1>
+        <a class="dashboard-accounting-link" id="accounting-link" href="accounting.html" hidden aria-label="Бухгалтерія" title="Бухгалтерія">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M14.8 8.7c-.6-.6-1.5-.9-2.6-.9-1.4 0-2.4.7-2.4 1.7 0 2.7 5.3 1.1 5.3 3.8 0 1-.9 1.8-2.5 1.8-1.2 0-2.2-.4-2.9-1.1M12.6 6.4v11.2"/></svg>
+          <span>Бухгалтерія</span>
+        </a>
+      </div>
       <p class="admin-hint">Оберіть розділ, з яким хочете працювати.</p>
     </div>
 
@@ -236,6 +242,9 @@
       document.getElementById("card-faq").hidden = false;
       if (profile.role === "admin" || profile.role === "super_admin") {
         document.getElementById("card-users").hidden = false;
+      }
+      if (profile.role === "super_admin") {
+        document.getElementById("accounting-link").hidden = false;
       }
 
       loadNotifyBadge();

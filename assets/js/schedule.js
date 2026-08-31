@@ -82,6 +82,8 @@
   let editingGroup = false;
   let groupChildren = [];
   let editingNoShow = false;
+  let editingTransferred = false;
+  let cellSubscriptions = [];
   let childSearchTimer = null;
   let childSearchToken = 0; // discards stale async results if a newer search started
 
@@ -187,8 +189,10 @@
           specialistIds: Array.isArray(value.specialistIds) ? value.specialistIds.filter(Boolean).map(String) : (value.specialistId ? [String(value.specialistId)] : []),
           anketaId: value.anketaId ? String(value.anketaId) : null,
           childName: value.childName ? String(value.childName) : "",
-          children: Array.isArray(value.children) ? value.children.filter((c) => c && c.anketaId).map((c) => ({ anketaId: String(c.anketaId), childName: String(c.childName || "") })) : (value.anketaId ? [{ anketaId: String(value.anketaId), childName: String(value.childName || "") }] : []),
+          children: Array.isArray(value.children) ? value.children.filter((c) => c && c.anketaId).map((c) => ({ anketaId: String(c.anketaId), childName: String(c.childName || ""), status: c.status === "transferred" ? "transferred" : (c.status === "no_show" ? "no_show" : "attended") })) : (value.anketaId ? [{ anketaId: String(value.anketaId), childName: String(value.childName || ""), status: value.noShow ? "no_show" : "attended" }] : []),
           isGroup: !!value.isGroup,
+          subscriptionId: value.subscriptionId ? String(value.subscriptionId) : null,
+          attendanceStatus: value.attendanceStatus === "transferred" ? "transferred" : (value.noShow ? "no_show" : "attended"),
           noShow: !!value.noShow,
         };
       });
@@ -311,7 +315,7 @@
     const inner = entry
       ? '<span class="schedule-slot-specialist ' + specChipClass + '">' + escapeHtml(specialists.map(specialistName).join(", ")) + "</span>" +
         '<span class="schedule-slot-child' + noShowClass + '">' + escapeHtml(children.map((c) => c.childName).join(", ")) + "</span>" +
-        (entry.noShow ? '<span class="schedule-slot-noshow-badge">не прийшов</span>' : "")
+        (entry.attendanceStatus === "transferred" ? '<span class="schedule-slot-noshow-badge schedule-slot-transfer-badge">перенос</span>' : (entry.noShow ? '<span class="schedule-slot-noshow-badge">не прийшов</span>' : ""))
       : '<span class="schedule-slot-add" aria-hidden="true">+</span>';
     const ariaLabel = room.name + ", " + label +
       (entry ? ": " + specialists.map(specialistName).join(", ") + ", " + children.map((c) => c.childName).join(", ") + (entry.noShow ? ", дитина не прийшла" : "") : ": вільно");
@@ -505,6 +509,7 @@
     selectedChildName = btn.getAttribute("data-child-name") || "";
     document.getElementById("cell-child-input").value = selectedChildName;
     hideChildResults();
+    loadCellSubscriptions();
   }
 
   // ---------- Cell (slot) modal ----------
@@ -522,7 +527,10 @@
 
   function renderGroupChildren() {
     const el = document.getElementById("cell-group-children");
-    el.innerHTML = groupChildren.map((child, index) => '<div class="schedule-group-child-row"><div class="schedule-child-autocomplete"><input type="text" data-group-child-index="' + index + '" value="' + escapeHtml(child.childName || "") + '" autocomplete="off" placeholder="Почніть вводити ПІБ дитини…"><div class="schedule-child-results" data-group-results-index="' + index + '" hidden></div></div>' + (groupChildren.length > 1 ? '<button type="button" class="schedule-remove-child" data-remove-child-index="' + index + '" aria-label="Видалити дитину">×</button>' : "") + '</div>').join("");
+    el.innerHTML = groupChildren.map((child, index) => {
+      const status = child.status || "attended";
+      return '<div class="schedule-group-child-row"><div class="schedule-child-autocomplete"><input type="text" data-group-child-index="' + index + '" value="' + escapeHtml(child.childName || "") + '" autocomplete="off" placeholder="Почніть вводити ПІБ дитини…"><div class="schedule-child-results" data-group-results-index="' + index + '" hidden></div></div><div class="schedule-child-status-actions"><button type="button" class="schedule-child-status-btn' + (status === "no_show" ? " is-active" : "") + '" data-group-status="no_show" data-group-status-index="' + index + '">Не прийшов</button><button type="button" class="schedule-child-status-btn' + (status === "transferred" ? " is-active" : "") + '" data-group-status="transferred" data-group-status-index="' + index + '">Перенос</button></div>' + (groupChildren.length > 1 ? '<button type="button" class="schedule-remove-child" data-remove-child-index="' + index + '" aria-label="Видалити дитину">×</button>' : "") + '</div>';
+    }).join("");
   }
 
   function syncGroupFields() {
@@ -532,6 +540,49 @@
     document.getElementById("cell-group-toggle").checked = editingGroup;
   }
 
+  async function loadCellSubscriptions() {
+    const select = document.getElementById("cell-subscription-select");
+    const hint = document.getElementById("cell-subscription-hint");
+    const childNames = (editingGroup ? groupChildren : [{ childName: selectedChildName }]).map((child) => normalizeChildName(child.childName)).filter(Boolean);
+    if (!childNames.length) { select.innerHTML = '<option value="">Без прив\'язки</option>'; hint.textContent = "Оберіть дитину, щоб побачити доступні абонементи."; return; }
+    const result = await window.sbClient.from("subscriptions").select("id, direction, starts_on, ends_on, sessions_used, sessions_total, is_group, is_frozen, subscription_children(child_name), subscription_specialists(specialist_id)").lte("starts_on", toISODate(currentDate)).gte("ends_on", toISODate(currentDate));
+    if (result.error) return;
+    cellSubscriptions = (result.data || []).filter((subscription) => {
+      const names = (subscription.subscription_children || []).map((child) => normalizeChildName(child.child_name));
+      return childNames.some((name) => names.includes(name));
+    });
+    select.innerHTML = '<option value="">Без прив\'язки</option>' + cellSubscriptions.map((subscription) => '<option value="' + subscription.id + '"' + (subscription.id === (board.cells[editingKey] && board.cells[editingKey].subscriptionId) ? " selected" : "") + '>' + escapeHtml(subscription.direction) + " · " + subscription.sessions_used + "/" + subscription.sessions_total + " · до " + escapeHtml(subscription.ends_on) + (subscription.is_frozen ? " · заморожений" : "") + "</option>").join("");
+    hint.textContent = cellSubscriptions.length ? "Абонемент діє на обрану дату." : "Активного абонемента для цієї дитини на цю дату не знайдено.";
+    updateFreezeButtonUI();
+  }
+
+  function updateFreezeButtonUI() {
+    const button = document.getElementById("cell-freeze-btn");
+    const subscription = cellSubscriptions.find((item) => item.id === document.getElementById("cell-subscription-select").value);
+    if (!subscription) { button.hidden = true; return; }
+    button.hidden = false;
+    button.textContent = subscription.is_frozen ? "Розморозити абонемент" : "Заморозити абонемент";
+    button.classList.toggle("schedule-freeze-btn--active", !!subscription.is_frozen);
+  }
+
+  async function toggleSubscriptionFreeze() {
+    const id = document.getElementById("cell-subscription-select").value;
+    const subscription = cellSubscriptions.find((item) => item.id === id);
+    if (!subscription) return;
+    if (subscription.is_frozen) {
+      const result = await window.sbClient.from("subscriptions").update({ is_frozen: false, frozen_until: null }).eq("id", id);
+      if (result.error) window.alert(result.error.message); else { subscription.is_frozen = false; updateFreezeButtonUI(); }
+      return;
+    }
+    const answer = window.prompt("На скільки днів заморозити? Від 7 до 21.", "14");
+    if (answer === null) return;
+    const days = Math.min(21, Math.max(7, Number(answer) || 14));
+    const end = new Date(subscription.ends_on + "T00:00:00"); end.setDate(end.getDate() + days);
+    const frozenUntil = new Date(); frozenUntil.setDate(frozenUntil.getDate() + days);
+    const result = await window.sbClient.from("subscriptions").update({ is_frozen: true, frozen_until: toISODate(frozenUntil), ends_on: toISODate(end) }).eq("id", id);
+    if (result.error) window.alert(result.error.message); else { subscription.is_frozen = true; subscription.ends_on = toISODate(end); updateFreezeButtonUI(); }
+  }
+
   function updateNoShowToggleUI() {
     const btn = document.getElementById("cell-noshow-toggle");
     btn.setAttribute("aria-pressed", String(editingNoShow));
@@ -539,7 +590,7 @@
     btn.textContent = editingNoShow ? "✕ Дитина не прийшла" : "Позначити «Не прийшов»";
   }
 
-  function openCellModal(room, hour) {
+  async function openCellModal(room, hour) {
     const dateIso = toISODate(currentDate);
     editingKey = cellKey(room.id, dateIso, hour);
     editingRoomId = room.id;
@@ -550,7 +601,8 @@
     selectedAnketaId = entry ? entry.anketaId : null;
     selectedChildName = entry ? (entry.childName || "") : "";
     editingNoShow = entry ? !!entry.noShow : false;
-    groupChildren = entryChildren(entry).map((c) => ({ anketaId: c.anketaId, childName: c.childName }));
+    editingTransferred = entry ? entry.attendanceStatus === "transferred" : false;
+    groupChildren = entryChildren(entry).map((c) => ({ anketaId: c.anketaId, childName: c.childName, status: c.status || (entry.noShow ? "no_show" : "attended") }));
     if (!groupChildren.length) groupChildren = [{ anketaId: null, childName: "" }, { anketaId: null, childName: "" }];
 
     document.getElementById("cell-modal-title").textContent = room.name + " · " + hourLabel(hour);
@@ -567,7 +619,11 @@
     // nobody to not show up, and no history to look up yet either.
     document.getElementById("cell-noshow-toggle").hidden = !entry;
     document.getElementById("cell-attendance-btn").hidden = !entry;
+    document.getElementById("cell-transfer-btn").hidden = !entry;
     updateNoShowToggleUI();
+    document.getElementById("cell-transfer-btn").classList.toggle("schedule-transfer-btn--active", editingTransferred);
+    document.getElementById("cell-transfer-btn").setAttribute("aria-pressed", String(editingTransferred));
+    await loadCellSubscriptions();
 
     document.getElementById("cell-modal-overlay").hidden = false;
     document.getElementById("cell-child-input").focus();
@@ -581,9 +637,34 @@
     selectedAnketaId = null;
     selectedChildName = "";
     editingNoShow = false;
+    editingTransferred = false;
+    cellSubscriptions = [];
     editingGroup = false;
     groupChildren = [];
     hideChildResults();
+  }
+
+  async function saveSubscriptionAttendance(entry) {
+    if (!entry || !entry.subscriptionId) return;
+    const status = entry.attendanceStatus || (entry.noShow ? "no_show" : "attended");
+    const dateIso = toISODate(currentDate);
+    const rows = entryChildren(entry).filter((child) => child.childName).map((child) => ({
+      subscription_id: entry.subscriptionId,
+      child_name: child.childName,
+      schedule_cell_key: editingKey,
+      session_date: dateIso,
+      status: entry.isGroup ? (child.status || "attended") : status,
+      created_by: currentProfileId,
+      updated_at: new Date().toISOString(),
+    }));
+    if (!rows.length) return;
+    const result = await window.sbClient.from("subscription_attendance").upsert(rows, { onConflict: "subscription_id,child_name,schedule_cell_key" });
+    if (result.error) { setStatus("Статус не збережено: " + result.error.message, true); return; }
+    const usage = await window.sbClient.from("subscription_attendance").select("schedule_cell_key, status").eq("subscription_id", entry.subscriptionId);
+    if (!usage.error) {
+      const used = new Set((usage.data || []).filter((item) => item.status !== "transferred").map((item) => item.schedule_cell_key)).size;
+      await window.sbClient.from("subscriptions").update({ sessions_used: used }).eq("id", entry.subscriptionId);
+    }
   }
 
   function saveCellFromModal() {
@@ -595,15 +676,18 @@
         window.alert("Для групового заняття оберіть щонайменше одного спеціаліста та двох дітей зі списку.");
         return;
       }
-      board.cells[editingKey] = { isGroup: true, specialistId: specialistIds[0], specialistIds, anketaId: groupChildren[0].anketaId, childName: groupChildren[0].childName, children: groupChildren, noShow: editingNoShow };
+      const savedChildren = groupChildren.map((child) => ({ ...child, status: editingTransferred ? "transferred" : (editingNoShow ? "no_show" : (child.status || "attended")) }));
+      board.cells[editingKey] = { isGroup: true, specialistId: specialistIds[0], specialistIds, anketaId: savedChildren[0].anketaId, childName: savedChildren[0].childName, children: savedChildren, subscriptionId: document.getElementById("cell-subscription-select").value || null, attendanceStatus: editingTransferred ? "transferred" : (editingNoShow ? "no_show" : "attended"), noShow: editingNoShow };
     } else if (!specialistId || !selectedAnketaId) {
       window.alert("Оберіть спеціаліста і дитину зі списку (дитину — саме зі списку підказок, не просто текстом).");
       return;
     } else {
-      board.cells[editingKey] = { specialistId, specialistIds: [specialistId], anketaId: selectedAnketaId, childName: selectedChildName, children: [{ anketaId: selectedAnketaId, childName: selectedChildName }], isGroup: false, noShow: editingNoShow };
+      board.cells[editingKey] = { specialistId, specialistIds: [specialistId], anketaId: selectedAnketaId, childName: selectedChildName, children: [{ anketaId: selectedAnketaId, childName: selectedChildName }], isGroup: false, subscriptionId: document.getElementById("cell-subscription-select").value || null, attendanceStatus: editingTransferred ? "transferred" : (editingNoShow ? "no_show" : "attended"), noShow: editingNoShow };
     }
+    const savedEntry = board.cells[editingKey];
     render();
     flushSave();
+    saveSubscriptionAttendance(savedEntry);
     closeCellModal();
   }
 
@@ -702,6 +786,8 @@
         childName: entry.childName || "",
         children: entryChildren(entry),
         isGroup: !!entry.isGroup,
+        subscriptionId: entry.subscriptionId || null,
+        attendanceStatus: "attended",
         noShow: false,
       };
     });
@@ -891,13 +977,31 @@
       const result = e.target.closest("[data-group-result-index]");
       if (!result) return;
       const index = Number(result.dataset.groupResultIndex);
-      groupChildren[index] = { anketaId: result.dataset.anketaId, childName: result.dataset.childName || "" };
+      groupChildren[index] = { anketaId: result.dataset.anketaId, childName: result.dataset.childName || "", status: "attended" };
+      renderGroupChildren();
+      loadCellSubscriptions();
+    });
+    document.getElementById("cell-group-children").addEventListener("click", (e) => {
+      const statusButton = e.target.closest("[data-group-status-index]");
+      if (!statusButton) return;
+      const index = Number(statusButton.dataset.groupStatusIndex);
+      if (!Number.isInteger(index) || !groupChildren[index]) return;
+      groupChildren[index].status = statusButton.dataset.groupStatus;
       renderGroupChildren();
     });
     document.getElementById("cell-noshow-toggle").addEventListener("click", () => {
       editingNoShow = !editingNoShow;
+      if (editingNoShow) { editingTransferred = false; document.getElementById("cell-transfer-btn").classList.remove("schedule-transfer-btn--active"); document.getElementById("cell-transfer-btn").setAttribute("aria-pressed", "false"); }
       updateNoShowToggleUI();
     });
+    document.getElementById("cell-transfer-btn").addEventListener("click", () => {
+      editingTransferred = !editingTransferred;
+      if (editingTransferred) { editingNoShow = false; updateNoShowToggleUI(); }
+      document.getElementById("cell-transfer-btn").classList.toggle("schedule-transfer-btn--active", editingTransferred);
+      document.getElementById("cell-transfer-btn").setAttribute("aria-pressed", String(editingTransferred));
+    });
+    document.getElementById("cell-subscription-select").addEventListener("change", updateFreezeButtonUI);
+    document.getElementById("cell-freeze-btn").addEventListener("click", toggleSubscriptionFreeze);
 
     // ---------- Attendance modal (opened from inside the cell modal) ----------
     const attendanceOverlay = document.getElementById("attendance-modal-overlay");

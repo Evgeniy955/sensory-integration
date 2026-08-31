@@ -110,7 +110,11 @@
 
 /* ---------- Dashboard hub: navigation cards ---------- */
 .dashboard-intro { margin-bottom: 1.75rem; }
+.dashboard-heading-row { display: flex; align-items: center; gap: .7rem; }
 .dashboard-intro h1 { font-size: 1.6rem; margin-bottom: .35rem; }
+.dashboard-accounting-link { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .55rem; border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-ink-soft); font-size: .76rem; text-decoration: none; }
+.dashboard-accounting-link:hover, .dashboard-accounting-link:focus-visible { color: var(--color-ink); border-color: var(--color-sage); background: var(--color-surface-alt); }
+.dashboard-accounting-link svg { width: 17px; height: 17px; color: var(--color-sage-deep); }
 .dashboard-intro .admin-hint { margin: 0; color: var(--color-ink-soft); font-size: .92rem; }
 
 .dashboard-grid {

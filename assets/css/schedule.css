@@ -328,6 +328,7 @@ th.schedule-col-time {
   letter-spacing: .04em;
   color: var(--color-destructive);
 }
+.schedule-slot-transfer-badge { color: var(--color-sky-deep); }
 
 .anketa-table-empty {
   padding: 2rem 1rem;
@@ -374,6 +375,10 @@ th.schedule-col-time {
 .schedule-group-child-row { display: flex; align-items: center; gap: .45rem; }
 .schedule-group-child-row .schedule-child-autocomplete { flex: 1; }
 .schedule-group-child-row input { width: 100%; }
+.schedule-child-status-actions { display: flex; gap: .25rem; flex: none; }
+.schedule-child-status-btn { border: 1px solid var(--color-border); border-radius: 7px; padding: .28rem .38rem; background: transparent; color: var(--color-ink-soft); font: inherit; font-size: .68rem; cursor: pointer; }
+.schedule-child-status-btn.is-active[data-group-status="no_show"] { border-color: var(--color-destructive); background: var(--color-destructive); color: #fff; }
+.schedule-child-status-btn.is-active[data-group-status="transferred"] { border-color: var(--color-sky); background: var(--color-sky); color: #fff; }
 .schedule-remove-child { border: 0; background: transparent; color: var(--color-destructive); font-size: 1.35rem; cursor: pointer; }
 .schedule-add-child-btn { margin-top: .55rem; }
 
@@ -420,6 +425,12 @@ th.schedule-col-time {
   margin: .5rem 0 0 !important;
   font-size: .78rem !important;
 }
+.schedule-transfer-btn, .schedule-freeze-btn { width: 100%; justify-content: center; margin-top: .55rem; }
+.schedule-transfer-btn { border-color: var(--color-sky); color: var(--color-sky-deep); }
+.schedule-transfer-btn--active { background: var(--color-sky); color: #fff; }
+.schedule-freeze-btn { border-color: var(--color-apricot-deep); color: var(--color-apricot-deep); }
+.schedule-freeze-btn--active { background: var(--color-destructive); border-color: var(--color-destructive); color: #fff; }
+.schedule-subscription-hint { display: block; margin-top: .3rem; color: var(--color-ink-faint); font-size: .76rem; }
 
 .schedule-cell-modal__actions {
   display: flex;
