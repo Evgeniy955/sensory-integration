@@ -2,13 +2,11 @@
 .accounting-card { margin: 1.25rem 0; padding: 1.25rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; box-shadow: var(--shadow-sm); }
 .accounting-card h2 { margin: 0 0 1rem; font-size: 1.05rem; }
 .accounting-form__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
-.accounting-form__grid[hidden] { display: none; }
 .accounting-form select, .accounting-form input { width: 100%; }
-.accounting-form select[multiple] { min-height: 130px; border-radius: 10px; }
-.accounting-help { display: block; margin-top: .3rem; color: var(--color-ink-faint); font-size: .76rem; }
-.accounting-switch { display: grid; grid-template-columns: auto 1fr; column-gap: .55rem; margin: 1rem 0; padding: .7rem .8rem; border: 1px solid var(--color-border); border-radius: 10px; cursor: pointer; }
-.accounting-switch input { grid-row: span 2; width: auto; margin-top: .18rem; accent-color: var(--color-sage-deep); }
-.accounting-switch span { font-weight: 700; }.accounting-switch small { color: var(--color-ink-soft); }
+.accounting-child-search { position: relative; }
+.accounting-child-results { position: absolute; top: calc(100% - .15rem); left: 0; right: 0; z-index: 4; max-height: 220px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); box-shadow: var(--shadow-md); }
+.accounting-child-results__item { display: block; width: 100%; padding: .55rem .7rem; border: 0; border-bottom: 1px solid var(--color-border); background: transparent; color: var(--color-ink); text-align: left; font: inherit; cursor: pointer; }
+.accounting-child-results__item:hover, .accounting-child-results__item:focus-visible { background: var(--color-surface-alt); outline: 0; }
 .accounting-actions, .accounting-section-heading { display: flex; align-items: center; justify-content: space-between; gap: .8rem; }.accounting-actions { margin-top: 1rem; justify-content: flex-start; }
 .accounting-status { font-size: .85rem; color: var(--color-ink-soft); }.accounting-status.is-error { color: var(--color-destructive); }
 .accounting-table { min-width: 760px; }.accounting-table td, .accounting-table th { vertical-align: top; }.accounting-table__muted { color: var(--color-ink-soft); font-size: .8rem; }

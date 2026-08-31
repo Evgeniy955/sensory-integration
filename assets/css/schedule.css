@@ -379,6 +379,11 @@ th.schedule-col-time {
 .schedule-child-status-btn { border: 1px solid var(--color-border); border-radius: 7px; padding: .28rem .38rem; background: transparent; color: var(--color-ink-soft); font: inherit; font-size: .68rem; cursor: pointer; }
 .schedule-child-status-btn.is-active[data-group-status="no_show"] { border-color: var(--color-destructive); background: var(--color-destructive); color: #fff; }
 .schedule-child-status-btn.is-active[data-group-status="transferred"] { border-color: var(--color-sky); background: var(--color-sky); color: #fff; }
+.schedule-child-subscription { width: 100%; margin-top: .35rem; font-size: .76rem; }
+.schedule-group-child-transfer { display: grid; grid-template-columns: 1fr 94px; gap: .35rem; margin-top: .35rem; }
+.schedule-group-child-transfer input, .schedule-group-child-transfer select { width: 100%; font-size: .76rem; }
+.schedule-group-child-freeze { margin-top: .35rem; font-size: .7rem; color: var(--color-apricot-deep); }
+.schedule-group-child-freeze.is-frozen { color: var(--color-destructive); font-weight: 700; }
 .schedule-remove-child { border: 0; background: transparent; color: var(--color-destructive); font-size: 1.35rem; cursor: pointer; }
 .schedule-add-child-btn { margin-top: .55rem; }
 
@@ -428,6 +433,10 @@ th.schedule-col-time {
 .schedule-transfer-btn, .schedule-freeze-btn { width: 100%; justify-content: center; margin-top: .55rem; }
 .schedule-transfer-btn { border-color: var(--color-sky); color: var(--color-sky-deep); }
 .schedule-transfer-btn--active { background: var(--color-sky); color: #fff; }
+.schedule-transfer-fields { display: grid; grid-template-columns: 1fr 110px; gap: .5rem; margin-top: .55rem; padding: .65rem; border: 1px solid var(--color-sky); border-radius: 10px; background: var(--color-sky-tint); }
+.schedule-transfer-fields[hidden] { display: none; }
+.schedule-transfer-fields label { display: grid; gap: .25rem; color: var(--color-ink-soft); font-size: .74rem; font-weight: 700; }
+.schedule-transfer-fields input, .schedule-transfer-fields select { width: 100%; }
 .schedule-freeze-btn { border-color: var(--color-apricot-deep); color: var(--color-apricot-deep); }
 .schedule-freeze-btn--active { background: var(--color-destructive); border-color: var(--color-destructive); color: #fff; }
 .schedule-subscription-hint { display: block; margin-top: .3rem; color: var(--color-ink-faint); font-size: .76rem; }

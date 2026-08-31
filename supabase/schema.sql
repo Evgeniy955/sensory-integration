@@ -383,10 +383,14 @@ create table if not exists public.subscription_attendance (
   schedule_cell_key text not null,
   session_date date not null,
   status text not null default 'attended' check (status in ('attended', 'no_show', 'transferred')),
+  transferred_to_date date,
+  transferred_to_hour smallint check (transferred_to_hour between 8 and 18),
   created_by uuid references auth.users(id) on delete set null,
   updated_at timestamptz not null default now(),
   unique (subscription_id, child_name, schedule_cell_key)
 );
+alter table public.subscription_attendance add column if not exists transferred_to_date date;
+alter table public.subscription_attendance add column if not exists transferred_to_hour smallint check (transferred_to_hour between 8 and 18);
 
 create index if not exists subscriptions_dates_idx on public.subscriptions (starts_on, ends_on);
 create index if not exists subscription_children_name_idx on public.subscription_children (child_name);

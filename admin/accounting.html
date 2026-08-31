@@ -20,24 +20,19 @@
     <div data-admin-status></div>
     <div id="accounting-denied" hidden class="anketa-denied"><h2>Доступ обмежено</h2><p>Бухгалтерія доступна лише супер-адміністратору.</p></div>
     <div id="accounting-content" hidden>
-      <div class="anketa-intro"><span class="anketa-intro__eyebrow">Бухгалтерія</span><h1>Абонементи</h1><p>Кожен абонемент належить окремому напрямку та спеціалісту. Для групового абонемента можна додати кількох дітей і спеціалістів.</p></div>
+      <div class="anketa-intro"><span class="anketa-intro__eyebrow">Бухгалтерія</span><h1>Абонементи</h1><p>Кожен абонемент оформлюється на одну дитину. Для напрямку «Групове» спеціаліст не обирається.</p></div>
       <section class="accounting-card">
         <h2>Новий абонемент</h2>
         <form id="subscription-form" class="accounting-form">
           <div class="accounting-form__grid">
             <label class="anketa-field"><span class="anketa-field__label">Кількість занять</span><select id="sessions-total" required><option value="1">1 заняття</option><option value="4">4 заняття</option><option value="8">8 занять</option><option value="12">12 занять</option></select></label>
-            <label class="anketa-field"><span class="anketa-field__label">Напрям</span><select id="direction" required><option value="Сенсорна інтеграція">Сенсорна інтеграція</option><option value="ABA">ABA</option><option value="Логопедія">Логопедія</option></select></label>
+            <label class="anketa-field"><span class="anketa-field__label">Напрям</span><select id="direction" required><option value="Сенсорна інтеграція">Сенсорна інтеграція</option><option value="ABA">ABA</option><option value="Логопедія">Логопедія</option><option value="Групове">Групове</option></select></label>
             <label class="anketa-field"><span class="anketa-field__label">Початок</span><input type="date" id="starts-on" required></label>
             <label class="anketa-field"><span class="anketa-field__label">Закінчення</span><input type="date" id="ends-on" required></label>
           </div>
-          <label class="accounting-switch"><input type="checkbox" id="is-group"><span>Груповий абонемент</span><small>Для кількох дітей і спеціалістів</small></label>
-          <div id="regular-fields" class="accounting-form__grid">
-            <label class="anketa-field"><span class="anketa-field__label">Дитина</span><select id="regular-child" required></select></label>
-            <label class="anketa-field"><span class="anketa-field__label">Спеціаліст</span><select id="regular-specialist" required></select></label>
-          </div>
-          <div id="group-fields" class="accounting-form__grid" hidden>
-            <label class="anketa-field"><span class="anketa-field__label">Діти</span><select id="group-children" multiple size="5"></select><small class="accounting-help">Утримуйте Ctrl/Cmd, щоб обрати кількох дітей.</small></label>
-            <label class="anketa-field"><span class="anketa-field__label">Спеціалісти</span><select id="group-specialists" multiple size="5"></select><small class="accounting-help">Утримуйте Ctrl/Cmd, щоб обрати кількох спеціалістів.</small></label>
+          <div class="accounting-form__grid">
+            <label class="anketa-field accounting-child-search"><span class="anketa-field__label">Дитина</span><input type="text" id="subscription-child-search" autocomplete="off" placeholder="Почніть вводити ПІБ дитини…" required><input type="hidden" id="subscription-child-id"><div id="subscription-child-results" class="accounting-child-results" hidden></div></label>
+            <label class="anketa-field" id="specialist-field"><span class="anketa-field__label">Спеціаліст</span><select id="regular-specialist" required></select></label>
           </div>
           <div class="accounting-actions"><button class="anketa-submit" type="submit">Створити абонемент</button><span id="form-status" class="accounting-status"></span></div>
         </form>
