@@ -67,7 +67,15 @@
     setStatus("Абонемент створено."); event.target.reset(); toggleGroupFields(); setDefaultDates(); await refresh();
   }
 
-  function setDefaultDates() { const start = new Date(); const end = new Date(start); end.setDate(end.getDate() + 45); $("starts-on").value = isoDate(start); $("ends-on").value = isoDate(end); }
+  const SUBSCRIPTION_DURATION_DAYS = 45;
+  function setEndDateFromStart() {
+    const startValue = $("starts-on").value;
+    if (!startValue) return;
+    const end = new Date(startValue + "T00:00:00");
+    end.setDate(end.getDate() + SUBSCRIPTION_DURATION_DAYS);
+    $("ends-on").value = isoDate(end);
+  }
+  function setDefaultDates() { $("starts-on").value = isoDate(new Date()); setEndDateFromStart(); }
   function toggleGroupFields() { const group = $("is-group").checked; $("regular-fields").hidden = group; $("group-fields").hidden = !group; $("regular-child").required = !group; $("regular-specialist").required = !group; }
 
   async function changeFreeze(id, frozen) {
@@ -80,6 +88,6 @@
   async function deleteSubscription(id) { if (!window.confirm("Видалити абонемент і його статуси відвідування?")) return; const result = await window.sbClient.from("subscriptions").delete().eq("id", id); if (result.error) window.alert(result.error.message); else await refresh(); }
   async function refresh() { try { await Promise.all([loadSubscriptions(), loadAttendance()]); } catch (error) { setStatus(error.message, true); } }
 
-  $("is-group").addEventListener("change", toggleGroupFields); $("subscription-form").addEventListener("submit", createSubscription); $("refresh-btn").addEventListener("click", refresh); $("subscriptions-body").addEventListener("click", (event) => { const freeze = event.target.closest("[data-freeze]"), unfreeze = event.target.closest("[data-unfreeze]"), remove = event.target.closest("[data-delete]"); if (freeze) changeFreeze(freeze.dataset.freeze, true); if (unfreeze) changeFreeze(unfreeze.dataset.unfreeze, false); if (remove) deleteSubscription(remove.dataset.delete); });
+  $("is-group").addEventListener("change", toggleGroupFields); $("starts-on").addEventListener("change", setEndDateFromStart); $("subscription-form").addEventListener("submit", createSubscription); $("refresh-btn").addEventListener("click", refresh); $("subscriptions-body").addEventListener("click", (event) => { const freeze = event.target.closest("[data-freeze]"), unfreeze = event.target.closest("[data-unfreeze]"), remove = event.target.closest("[data-delete]"); if (freeze) changeFreeze(freeze.dataset.freeze, true); if (unfreeze) changeFreeze(unfreeze.dataset.unfreeze, false); if (remove) deleteSubscription(remove.dataset.delete); });
   (async function init() { profile = await window.requireAuth(); if (!profile) return; $("whoami").textContent = (profile.full_name || profile.email) + " · Супер адмін"; if (profile.role !== "super_admin") { $("accounting-denied").hidden = false; return; } $("accounting-content").hidden = false; setDefaultDates(); await loadReferenceData(); await refresh(); })();
 })();
