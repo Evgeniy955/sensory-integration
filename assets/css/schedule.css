@@ -339,6 +339,44 @@ th.schedule-col-time {
 /* ---------- Slot editor modal ---------- */
 .schedule-cell-modal { max-width: 420px; }
 
+.schedule-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .7rem .8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface-alt);
+  cursor: pointer;
+}
+.schedule-group-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.schedule-group-toggle__track {
+  width: 38px;
+  height: 22px;
+  flex: none;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--color-ink-faint);
+  transition: background .15s ease;
+}
+.schedule-group-toggle__track span { display: block; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s ease; }
+.schedule-group-toggle input:checked + .schedule-group-toggle__track { background: var(--color-sage-deep); }
+.schedule-group-toggle input:checked + .schedule-group-toggle__track span { transform: translateX(16px); }
+.schedule-group-toggle strong, .schedule-group-toggle small { display: block; }
+.schedule-group-toggle small { margin-top: .1rem; color: var(--color-ink-soft); font-size: .76rem; }
+.schedule-group-fields { display: grid; gap: .8rem; }
+.schedule-group-fields[hidden] { display: none; }
+.schedule-group-options { display: grid; gap: .45rem; padding: .2rem 0; }
+.schedule-option { display: flex; align-items: center; gap: .5rem; font-size: .88rem; }
+.schedule-option input { accent-color: var(--color-sage-deep); }
+.schedule-empty-option { color: var(--color-ink-faint); font-size: .82rem; }
+.schedule-group-children { display: grid; gap: .5rem; }
+.schedule-group-child-row { display: flex; align-items: center; gap: .45rem; }
+.schedule-group-child-row .schedule-child-autocomplete { flex: 1; }
+.schedule-group-child-row input { width: 100%; }
+.schedule-remove-child { border: 0; background: transparent; color: var(--color-destructive); font-size: 1.35rem; cursor: pointer; }
+.schedule-add-child-btn { margin-top: .55rem; }
+
 /* An <option> popup is browser-native, and some browsers (Chrome/Windows
    with the OS in dark mode especially) skip inheriting the author color
    on the very first paint, flashing white-on-white until the next
