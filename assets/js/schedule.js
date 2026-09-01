@@ -133,7 +133,7 @@
   function effectiveSubscriptionEnd(subscription, attendance) {
     const frozenEnd = addIsoDays(subscription.base_ends_on || subscription.ends_on, Number(subscription.freeze_days || 0));
     const transferredEnd = latestDate(attendance.filter((row) => row.status === "transferred"), "transferred_to_date");
-    return transferredEnd && transferredEnd > frozenEnd ? transferredEnd : frozenEnd;
+    return [subscription.ends_on, frozenEnd, transferredEnd].filter(Boolean).sort().pop();
   }
 
   async function updateSubscriptionLifecycle(subscriptionId) {
@@ -660,10 +660,14 @@
     if (!childNames.length) { select.innerHTML = '<option value="">Без прив\'язки</option>'; hint.textContent = "Оберіть дитину, щоб побачити доступні абонементи."; return; }
     const result = await window.sbClient.from("subscriptions").select("id, direction, starts_on, ends_on, base_ends_on, freeze_days, sessions_used, sessions_total, burned_sessions, closed_reason, is_group, is_frozen, subscription_children(child_name), subscription_specialists(specialist_id)").lte("starts_on", toISODate(currentDate));
     if (result.error) return;
+    const subscriptionIds = (result.data || []).map((subscription) => subscription.id);
+    const transfers = subscriptionIds.length ? await window.sbClient.from("subscription_attendance").select("subscription_id").in("subscription_id", subscriptionIds).eq("status", "transferred") : { data: [] };
+    if (transfers.error) return;
+    const transferredSubscriptionIds = new Set((transfers.data || []).map((row) => row.subscription_id));
     cellSubscriptions = (result.data || []).filter((subscription) => {
       const names = (subscription.subscription_children || []).map((child) => normalizeChildName(child.child_name));
       const linked = linkedIds.has(subscription.id);
-      const available = subscription.ends_on >= toISODate(currentDate) && remainingSessions(subscription) > 0 && !subscription.closed_reason;
+      const available = (subscription.ends_on >= toISODate(currentDate) || transferredSubscriptionIds.has(subscription.id)) && remainingSessions(subscription) > 0 && !subscription.closed_reason;
       return childNames.some((name) => names.includes(name)) && (linked || available) && (editingGroup ? subscription.direction === "Групове" : subscription.direction !== "Групове");
     });
     if (editingGroup) { renderGroupChildren(); return; }
@@ -775,7 +779,7 @@
     if (!entry) return;
     const status = entry.attendanceStatus || (entry.noShow ? "no_show" : "attended");
     const dateIso = sessionDate || toISODate(currentDate);
-    const rows = entryChildren(entry).filter((child) => child.childName && (child.subscriptionId || entry.subscriptionId)).map((child) => ({
+    const allRows = entryChildren(entry).filter((child) => child.childName && (child.subscriptionId || entry.subscriptionId)).map((child) => ({
       subscription_id: child.subscriptionId || entry.subscriptionId,
       child_name: child.childName,
       schedule_cell_key: scheduleKey || editingKey,
@@ -785,7 +789,18 @@
       transferred_to_hour: entry.isGroup ? (child.transferHour || null) : (entry.transferHour || null),
       created_by: currentProfileId,
       updated_at: new Date().toISOString(),
-    })).filter((row) => row.session_date <= toISODate(new Date()) || row.status !== "attended");
+    }));
+    const today = toISODate(new Date());
+    const futureBookingIds = [...new Set(allRows.filter((row) => row.session_date > today && row.status === "attended").map((row) => row.subscription_id))];
+    if (futureBookingIds.length) {
+      const subscriptionsResult = await window.sbClient.from("subscriptions").select("id, ends_on").in("id", futureBookingIds);
+      if (subscriptionsResult.error) { setStatus("error", subscriptionsResult.error.message); return; }
+      const extensions = (subscriptionsResult.data || []).filter((subscription) => subscription.ends_on < dateIso).map((subscription) => window.sbClient.from("subscriptions").update({ ends_on: dateIso }).eq("id", subscription.id));
+      const extensionResults = await Promise.all(extensions);
+      const failedExtension = extensionResults.find((result) => result.error);
+      if (failedExtension) { setStatus("error", failedExtension.error.message); return; }
+    }
+    const rows = allRows.filter((row) => row.session_date <= today || row.status !== "attended");
     if (!rows.length) return;
     const result = await window.sbClient.from("subscription_attendance").upsert(rows, { onConflict: "subscription_id,child_name,schedule_cell_key" });
     if (result.error) { setStatus("Статус не збережено: " + result.error.message, true); return; }

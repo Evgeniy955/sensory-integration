@@ -19,7 +19,7 @@
     const baseEnd = row.base_ends_on || row.ends_on;
     const frozenEnd = addDays(baseEnd, Number(row.freeze_days || 0));
     const transferEnd = latestDate(rows.filter((item) => item.status === "transferred"), "transferred_to_date");
-    return transferEnd && transferEnd > frozenEnd ? transferEnd : frozenEnd;
+    return [row.ends_on, frozenEnd, transferEnd].filter(Boolean).sort().pop();
   }
 
   function calendarChildren(entry) {
@@ -157,7 +157,7 @@
     const result = await window.sbClient.from("subscription_attendance").select("id, child_name, session_date, status, schedule_cell_key, transferred_to_date, transferred_to_hour").order("session_date", { ascending: false }).limit(100);
     if (result.error) throw result.error;
     const labels = { attended: "Відвідав", no_show: "Не прийшов", transferred: "Перенос" };
-    $("attendance-body").innerHTML = result.data && result.data.length ? result.data.map((row) => { const target = row.status === "transferred" && row.transferred_to_date ? " → " + formatDate(row.transferred_to_date) + (row.transferred_to_hour != null ? " · " + String(row.transferred_to_hour).padStart(2, "0") + ":00" : "") : ""; const label = row.status === "transferred" && !row.transferred_to_date ? "Перенесено" : labels[row.status]; return '<tr><td>' + formatDate(row.session_date) + '</td><td>' + escapeHtml(row.child_name) + '</td><td><span class="accounting-status-badge">' + label + '</span><div class="accounting-table__muted">' + target + '</div></td><td class="accounting-table__muted">' + escapeHtml(row.schedule_cell_key) + '</td></tr>'; }).join("") : '<tr><td colspan="4" class="anketa-table-empty">Статусів відвідування ще немає.</td></tr>';
+    $("attendance-body").innerHTML = result.data && result.data.length ? result.data.map((row) => { const target = row.status === "transferred" && row.transferred_to_date ? " → " + formatDate(row.transferred_to_date) + (row.transferred_to_hour != null ? " · " + String(row.transferred_to_hour).padStart(2, "0") + ":00" : "") : ""; const transferred = row.status === "transferred"; const label = transferred && !row.transferred_to_date ? "Перенесено" : labels[row.status]; return '<tr' + (transferred ? ' class="accounting-attendance-row--transferred"' : "") + '><td>' + formatDate(row.session_date) + '</td><td>' + escapeHtml(row.child_name) + '</td><td><span class="accounting-status-badge' + (transferred ? ' accounting-status-badge--transferred' : "") + '">' + label + '</span><div class="accounting-table__muted">' + target + '</div></td><td class="accounting-table__muted">' + escapeHtml(row.schedule_cell_key) + '</td></tr>'; }).join("") : '<tr><td colspan="4" class="anketa-table-empty">Статусів відвідування ще немає.</td></tr>';
   }
 
   function renderSubscription(row) {
