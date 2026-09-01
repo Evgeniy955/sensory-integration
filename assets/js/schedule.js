@@ -149,7 +149,7 @@
     const expired = actualUsed < Number(subscription.sessions_total) && endsOn < toISODate(new Date());
     const burned = expired ? Number(subscription.sessions_total) - actualUsed : 0;
     const lastUsedDate = latestDate(attendance.filter((row) => row.status !== "transferred"), "session_date");
-    const reason = expired ? "expired" : (actualUsed >= Number(subscription.sessions_total) && lastUsedDate && lastUsedDate < endsOn ? "early" : null);
+    const reason = expired ? "expired" : (actualUsed >= Number(subscription.sessions_total) && lastUsedDate && toISODate(new Date()) > lastUsedDate && lastUsedDate < endsOn ? "early" : null);
     const update = { ends_on: endsOn, sessions_used: actualUsed + burned, burned_sessions: burned, closed_reason: reason, closed_at: reason ? (subscription.closed_reason === reason && subscription.closed_at ? subscription.closed_at : new Date().toISOString()) : null };
     const differs = Object.keys(update).some((key) => String(subscription[key] == null ? "" : subscription[key]) !== String(update[key] == null ? "" : update[key]));
     if (differs) await window.sbClient.from("subscriptions").update(update).eq("id", subscriptionId);

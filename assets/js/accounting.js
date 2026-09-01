@@ -36,7 +36,7 @@
       const burned = hasExpired ? Number(row.sessions_total) - actualUsed : 0;
       const used = actualUsed + burned;
       const lastUsedDate = latestDate(visits.filter((item) => item.status !== "transferred"), "session_date");
-      const reason = hasExpired ? "expired" : (actualUsed >= Number(row.sessions_total) && lastUsedDate && lastUsedDate < endsOn ? "early" : null);
+      const reason = hasExpired ? "expired" : (actualUsed >= Number(row.sessions_total) && lastUsedDate && today > lastUsedDate && lastUsedDate < endsOn ? "early" : null);
       const update = { ends_on: endsOn, sessions_used: used, burned_sessions: burned, closed_reason: reason, closed_at: reason ? (row.closed_reason === reason && row.closed_at ? row.closed_at : new Date().toISOString()) : null };
       const differs = Object.keys(update).some((key) => String(row[key] == null ? "" : row[key]) !== String(update[key] == null ? "" : update[key]));
       if (!differs) return false;
@@ -92,8 +92,9 @@
     const people = (row.subscription_specialists || []).map((item) => item.specialist_name).join(", ") || "—";
     const today = isoDate(new Date());
     const remaining = remainingSessions(row);
-    const closed = row.closed_reason || row.ends_on < today || remaining === 0;
-    const status = row.is_frozen ? '<span class="accounting-status-badge accounting-status-badge--frozen">Заморожений' + (row.frozen_until ? " до " + formatDate(row.frozen_until) : "") + '</span>' : (row.closed_reason === "early" ? '<span class="accounting-status-badge">✓ Достроково</span>' : (row.closed_reason === "expired" ? '<span class="accounting-status-badge accounting-status-badge--expired">Згоріло: ' + Number(row.burned_sessions || 0) + '</span>' : (closed ? '<span class="accounting-status-badge accounting-status-badge--expired">Завершений</span>' : '<span class="accounting-status-badge">Активний</span>')));
+    const closed = row.closed_reason || row.ends_on < today;
+    const fullyScheduled = !row.closed_reason && remaining === 0;
+    const status = row.is_frozen ? '<span class="accounting-status-badge accounting-status-badge--frozen">Заморожений' + (row.frozen_until ? " до " + formatDate(row.frozen_until) : "") + '</span>' : (row.closed_reason === "early" ? '<span class="accounting-status-badge">✓ Достроково</span>' : (row.closed_reason === "expired" ? '<span class="accounting-status-badge accounting-status-badge--expired">Згоріло: ' + Number(row.burned_sessions || 0) + '</span>' : (closed ? '<span class="accounting-status-badge accounting-status-badge--expired">Завершений</span>' : (fullyScheduled ? '<span class="accounting-status-badge">Заплановано</span>' : '<span class="accounting-status-badge">Активний</span>'))));
     const action = closed ? "" : (row.is_frozen ? '<button type="button" class="anketa-btn" data-unfreeze="' + row.id + '">Розморозити</button>' : '<button type="button" class="anketa-btn" data-freeze="' + row.id + '">Заморозити</button>');
     return '<tr><td>' + escapeHtml(children) + (row.is_group ? '<div class="accounting-table__muted">Група</div>' : "") + '</td><td>' + escapeHtml(row.direction) + '<div class="accounting-table__muted">' + escapeHtml(people) + '</div></td><td>' + row.sessions_used + " / " + row.sessions_total + '</td><td><strong>' + remaining + '</strong></td><td>' + formatDate(row.starts_on) + " — " + formatDate(row.ends_on) + '</td><td>' + status + '</td><td><div class="accounting-row-actions">' + action + '<button type="button" class="anketa-btn anketa-btn--danger" data-delete="' + row.id + '">Видалити</button></div></td></tr>';
   }
