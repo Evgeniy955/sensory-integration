@@ -131,10 +131,17 @@
   function countsTowardsSubscription(row) { return row.status !== "transferred" || !row.transferred_to_date; }
   function uniqueUsedSessions(rows) { return new Set(rows.filter(countsTowardsSubscription).map((row) => row.schedule_cell_key)).size; }
   function latestDate(rows, field) { return rows.reduce((latest, row) => row[field] && (!latest || row[field] > latest) ? row[field] : latest, ""); }
+  function scheduledEndForSubscription(subscriptionId) {
+    return Object.entries(board.cells).reduce((latest, [key, entry]) => {
+      const parts = key.split("|");
+      if (parts.length !== 3 || !entry || !entryChildren(entry).some((child) => (child.subscriptionId || entry.subscriptionId) === subscriptionId)) return latest;
+      return !latest || parts[1] > latest ? parts[1] : latest;
+    }, "");
+  }
   function effectiveSubscriptionEnd(subscription, attendance) {
     const frozenEnd = addIsoDays(subscription.base_ends_on || subscription.ends_on, Number(subscription.freeze_days || 0));
     const transferredEnd = latestDate(attendance.filter((row) => row.status === "transferred"), "transferred_to_date");
-    return [subscription.ends_on, frozenEnd, transferredEnd].filter(Boolean).sort().pop();
+    return [frozenEnd, transferredEnd, scheduledEndForSubscription(subscription.id)].filter(Boolean).sort().pop();
   }
 
   async function updateSubscriptionLifecycle(subscriptionId) {
@@ -718,7 +725,7 @@
     const answer = window.prompt("На скільки днів заморозити? Від 7 до 21.", "14");
     if (answer === null) return;
     const days = Math.min(21, Math.max(7, Number(answer) || 14));
-    const attendance = await window.sbClient.from("subscription_attendance").select("status, transferred_to_date").eq("subscription_id", id);
+    const attendance = await window.sbClient.from("subscription_attendance").select("status, session_date, transferred_to_date").eq("subscription_id", id);
     if (attendance.error) { window.alert(attendance.error.message); return; }
     const freezeDays = Number(subscription.freeze_days || 0) + days;
     const end = effectiveSubscriptionEnd({ ...subscription, freeze_days: freezeDays }, attendance.data || []);

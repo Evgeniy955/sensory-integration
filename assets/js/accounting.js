@@ -20,7 +20,8 @@
     const baseEnd = row.base_ends_on || row.ends_on;
     const frozenEnd = addDays(baseEnd, Number(row.freeze_days || 0));
     const transferEnd = latestDate(rows.filter((item) => item.status === "transferred"), "transferred_to_date");
-    return [row.ends_on, frozenEnd, transferEnd].filter(Boolean).sort().pop();
+    const scheduledEnd = latestDate(rows.filter(countsTowardsSubscription), "session_date");
+    return [frozenEnd, transferEnd, scheduledEnd].filter(Boolean).sort().pop();
   }
 
   function calendarChildren(entry) {
@@ -204,7 +205,7 @@
     let days = 14;
     if (frozen) { const input = window.prompt("На скільки днів заморозити абонемент? Від 7 до 21.", "14"); if (input === null) return; days = Math.min(21, Math.max(7, Number(input) || 14)); }
     const row = subscriptions.find((item) => item.id === id); if (!row) return;
-    const attendance = await window.sbClient.from("subscription_attendance").select("status, transferred_to_date").eq("subscription_id", id);
+    const attendance = await window.sbClient.from("subscription_attendance").select("status, session_date, transferred_to_date").eq("subscription_id", id);
     if (attendance.error) { window.alert(attendance.error.message); return; }
     const freezeDays = frozen ? Number(row.freeze_days || 0) + days : Number(row.freeze_days || 0);
     const withFreeze = { ...row, freeze_days: freezeDays };
