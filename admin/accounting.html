@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Бухгалтерія — Центр сенсорної інтеграції</title>
+<script>(function(){try{var s=localStorage.getItem('siteTheme');document.documentElement.setAttribute('data-theme',s==='cosmic'?'cosmic':'light')}catch(e){document.documentElement.setAttribute('data-theme','light')}})();</script>
+<link rel="stylesheet" href="../assets/css/styles.css">
+<link rel="stylesheet" href="../assets/css/anketa.css">
+<link rel="stylesheet" href="../assets/css/accounting.css">
+</head>
+<body class="anketa-shell accounting-shell">
+  <header class="anketa-topbar anketa-topbar--collapsible">
+    <a class="anketa-btn anketa-btn--primary" href="dashboard.html">← Адмінпанель</a>
+    <div class="anketa-topbar__user" id="topbar-menu"><span id="whoami">перевіряємо доступ...</span><button type="button" class="theme-toggle" id="themeToggle" aria-label="Перемкнути тему" aria-pressed="false">◐</button><button class="anketa-btn" id="logout-btn" type="button">Вийти</button></div>
+    <button type="button" class="anketa-topbar__toggle" id="topbar-toggle" aria-label="Меню" aria-expanded="false" aria-controls="topbar-menu">☰</button>
+  </header>
+  <main class="anketa-main accounting-main">
+    <div data-admin-status></div>
+    <div id="accounting-denied" hidden class="anketa-denied"><h2>Доступ обмежено</h2><p>Бухгалтерія доступна лише супер-адміністратору.</p></div>
+    <div id="accounting-content" hidden>
+      <div class="anketa-intro"><span class="anketa-intro__eyebrow">Бухгалтерія</span><h1>Абонементи</h1><p>Кожен абонемент оформлюється на одну дитину. Для напрямку «Групове» спеціаліст не обирається.</p></div>
+      <section class="accounting-card">
+        <h2>Новий абонемент</h2>
+        <form id="subscription-form" class="accounting-form">
+          <div class="accounting-form__grid">
+            <label class="anketa-field"><span class="anketa-field__label">Кількість занять</span><select id="sessions-total" required><option value="1">1 заняття</option><option value="4">4 заняття</option><option value="8">8 занять</option><option value="12">12 занять</option></select></label>
+            <label class="anketa-field"><span class="anketa-field__label">Напрям</span><select id="direction" required><option value="Сенсорна інтеграція">Сенсорна інтеграція</option><option value="ABA">ABA</option><option value="Логопедія">Логопедія</option><option value="Групове">Групове</option></select></label>
+            <label class="anketa-field"><span class="anketa-field__label">Початок</span><input type="date" id="starts-on" required></label>
+            <label class="anketa-field"><span class="anketa-field__label">Закінчення</span><input type="date" id="ends-on" required></label>
+          </div>
+          <div class="accounting-form__grid">
+            <label class="anketa-field accounting-child-search"><span class="anketa-field__label">Дитина</span><input type="text" id="subscription-child-search" autocomplete="off" placeholder="Почніть вводити ПІБ дитини…" required><input type="hidden" id="subscription-child-id"><div id="subscription-child-results" class="accounting-child-results" hidden></div></label>
+            <label class="anketa-field" id="specialist-field"><span class="anketa-field__label">Спеціаліст</span><select id="regular-specialist" required></select></label>
+          </div>
+          <div class="accounting-actions"><button class="anketa-submit" type="submit">Створити абонемент</button><span id="form-status" class="accounting-status"></span></div>
+        </form>
+      </section>
+      <section class="accounting-card"><div class="accounting-section-heading"><h2>Абонементи</h2><button type="button" class="anketa-btn" id="refresh-btn">Оновити</button></div><div class="anketa-table-wrap"><table class="anketa-table accounting-table"><thead><tr><th>Діти</th><th>Напрям / спеціалісти</th><th>Заняття</th><th>Період</th><th>Статус</th><th>Дії</th></tr></thead><tbody id="subscriptions-body"><tr><td colspan="6" class="anketa-table-empty">Завантаження…</td></tr></tbody></table></div></section>
+      <section class="accounting-card"><div class="accounting-section-heading"><h2>Відвідування та статуси</h2></div><div class="anketa-table-wrap"><table class="anketa-table accounting-table"><thead><tr><th>Дата</th><th>Дитина</th><th>Статус</th><th>Запис</th></tr></thead><tbody id="attendance-body"><tr><td colspan="4" class="anketa-table-empty">Завантаження…</td></tr></tbody></table></div></section>
+    </div>
+  </main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="../assets/js/supabase-config.js"></script><script src="../assets/js/admin-auth.js"></script><script src="../assets/js/accounting.js"></script>
+</body>
+</html>

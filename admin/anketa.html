@@ -699,6 +699,11 @@
       }
 
       const cells = (data && data.data && data.data.cells) || {};
+      const attendanceResult = await window.sbClient
+        .from("subscription_attendance")
+        .select("child_name, session_date, status")
+        .ilike("child_name", childName);
+      const subscriptionAttendance = attendanceResult.error ? [] : (attendanceResult.data || []);
       const today = todayIso();
       // Matched by (normalized) child name, not anketaId — a schedule
       // slot points at whichever anketa version was picked at booking
@@ -717,12 +722,23 @@
         if (parts.length !== 3) return;
         const [, dateIso] = parts;
         const entry = cells[cellKey];
-        if (!entry || !key || normalizeChildName(entry.childName) !== key || dateIso >= today) return;
+        if (!entry || !key || dateIso >= today) return;
+        const entryChildren = Array.isArray(entry.children) && entry.children.length ? entry.children : [{ childName: entry.childName }];
+        if (!entryChildren.some((child) => normalizeChildName(child.childName) === key)) return;
         if (entry.noShow) {
           if (dateStatus[dateIso] !== "attended") dateStatus[dateIso] = "noshow";
         } else {
           dateStatus[dateIso] = "attended";
         }
+      });
+
+      const statusLabels = { attended: "Відвідав", no_show: "Не прийшов", transferred: "Перенос" };
+      subscriptionAttendance.forEach((row) => {
+        if (!row.session_date || row.session_date >= today || normalizeChildName(row.child_name) !== key) return;
+        if (row.status === "transferred") dateStatus[row.session_date] = "transferred";
+        else if (row.status === "no_show") {
+          if (dateStatus[row.session_date] !== "attended") dateStatus[row.session_date] = "noshow";
+        } else dateStatus[row.session_date] = "attended";
       });
 
       const formatDate = (iso) => new Date(iso + "T00:00:00").toLocaleDateString("uk-UA", { day: "2-digit", month: "long", year: "numeric" });
@@ -731,13 +747,17 @@
 
       const attended = Object.keys(dateStatus).filter((d) => dateStatus[d] === "attended").sort().reverse();
       const noShow = Object.keys(dateStatus).filter((d) => dateStatus[d] === "noshow").sort().reverse();
+      const transferred = Object.keys(dateStatus).filter((d) => dateStatus[d] === "transferred").sort().reverse();
 
-      countEl.textContent = "Відвідувань: " + attended.length + (noShow.length ? " · Не з'явився: " + noShow.length : "");
+      countEl.textContent = "Відвідувань: " + attended.length + (noShow.length ? " · Не з'явився: " + noShow.length : "") + (transferred.length ? " · Перенос: " + transferred.length : "");
       let html = attended.length
         ? listHtml(attended)
         : "<p class=\"anketa-modal__hint\" style=\"margin:0;\">Ще немає жодного завершеного заняття за розкладом.</p>";
       if (noShow.length) {
         html += "<h3 style=\"margin:1.2rem 0 .4rem;font-size:.9rem;color:var(--color-destructive);\">Не з'явився</h3>" + listHtml(noShow);
+      }
+      if (transferred.length) {
+        html += "<h3 style=\"margin:1.2rem 0 .4rem;font-size:.9rem;color:var(--color-sky-deep);\">" + statusLabels.transferred + "</h3>" + listHtml(transferred);
       }
       bodyEl.innerHTML = html;
     }

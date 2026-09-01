@@ -333,3 +333,110 @@ where a.id = ranked.id and a.is_active <> (ranked.rn = 1);
 -- 2) Then run this, replacing the email:
 --
 --   update public.profiles set role = 'super_admin' where email = 'you@example.com';
+
+-- 11. Accounting: subscriptions and attendance statuses -----------------
+-- Accounting is intentionally restricted to super_admin. A subscription is
+-- scoped to one direction/specialist; group subscriptions use the join tables
+-- below for their participants. Dates are kept explicitly so the schedule
+-- can show whether a booking is inside the package period.
+create table if not exists public.subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  sessions_total integer not null check (sessions_total in (1, 4, 8, 12)),
+  sessions_used integer not null default 0 check (sessions_used >= 0),
+  direction text not null,
+  specialist_id text,
+  starts_on date not null,
+  ends_on date not null,
+  is_group boolean not null default false,
+  is_frozen boolean not null default false,
+  frozen_until date,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  check (ends_on >= starts_on),
+  check (sessions_used <= sessions_total)
+);
+
+create table if not exists public.subscription_children (
+  id uuid primary key default gen_random_uuid(),
+  subscription_id uuid not null references public.subscriptions(id) on delete cascade,
+  anketa_id uuid references public.anketas(id) on delete set null,
+  child_name text not null,
+  created_at timestamptz not null default now(),
+  unique (subscription_id, child_name)
+);
+alter table public.subscription_children add column if not exists is_frozen boolean not null default false;
+alter table public.subscription_children add column if not exists frozen_until date;
+
+create table if not exists public.subscription_specialists (
+  id uuid primary key default gen_random_uuid(),
+  subscription_id uuid not null references public.subscriptions(id) on delete cascade,
+  specialist_id text not null,
+  specialist_name text not null,
+  unique (subscription_id, specialist_id)
+);
+
+create table if not exists public.subscription_attendance (
+  id uuid primary key default gen_random_uuid(),
+  subscription_id uuid not null references public.subscriptions(id) on delete cascade,
+  child_id uuid references public.subscription_children(id) on delete cascade,
+  child_name text not null,
+  schedule_cell_key text not null,
+  session_date date not null,
+  status text not null default 'attended' check (status in ('attended', 'no_show', 'transferred')),
+  transferred_to_date date,
+  transferred_to_hour smallint check (transferred_to_hour between 8 and 18),
+  created_by uuid references auth.users(id) on delete set null,
+  updated_at timestamptz not null default now(),
+  unique (subscription_id, child_name, schedule_cell_key)
+);
+alter table public.subscription_attendance add column if not exists transferred_to_date date;
+alter table public.subscription_attendance add column if not exists transferred_to_hour smallint check (transferred_to_hour between 8 and 18);
+
+create index if not exists subscriptions_dates_idx on public.subscriptions (starts_on, ends_on);
+create index if not exists subscription_children_name_idx on public.subscription_children (child_name);
+create index if not exists subscription_attendance_date_idx on public.subscription_attendance (session_date desc);
+
+alter table public.subscriptions enable row level security;
+alter table public.subscription_children enable row level security;
+alter table public.subscription_specialists enable row level security;
+alter table public.subscription_attendance enable row level security;
+
+drop policy if exists "Super admins can manage subscriptions" on public.subscriptions;
+create policy "Super admins can manage subscriptions" on public.subscriptions for all
+  using (public.current_user_role() = 'super_admin')
+  with check (public.current_user_role() = 'super_admin');
+drop policy if exists "Staff can view subscriptions" on public.subscriptions;
+create policy "Staff can view subscriptions" on public.subscriptions for select
+  using (public.current_user_role() in ('admin', 'super_admin', 'instructor'));
+drop policy if exists "Admins can update subscription freeze" on public.subscriptions;
+create policy "Admins can update subscription freeze" on public.subscriptions for update
+  using (public.current_user_role() in ('admin', 'super_admin'))
+  with check (public.current_user_role() in ('admin', 'super_admin'));
+drop policy if exists "Super admins can manage subscription children" on public.subscription_children;
+create policy "Super admins can manage subscription children" on public.subscription_children for all
+  using (public.current_user_role() = 'super_admin')
+  with check (public.current_user_role() = 'super_admin');
+drop policy if exists "Staff can view subscription children" on public.subscription_children;
+create policy "Staff can view subscription children" on public.subscription_children for select
+  using (public.current_user_role() in ('admin', 'super_admin', 'instructor'));
+drop policy if exists "Super admins can manage subscription specialists" on public.subscription_specialists;
+create policy "Super admins can manage subscription specialists" on public.subscription_specialists for all
+  using (public.current_user_role() = 'super_admin')
+  with check (public.current_user_role() = 'super_admin');
+drop policy if exists "Staff can view subscription specialists" on public.subscription_specialists;
+create policy "Staff can view subscription specialists" on public.subscription_specialists for select
+  using (public.current_user_role() in ('admin', 'super_admin', 'instructor'));
+drop policy if exists "Super admins can manage subscription attendance" on public.subscription_attendance;
+create policy "Super admins can manage subscription attendance" on public.subscription_attendance for all
+  using (public.current_user_role() = 'super_admin')
+  with check (public.current_user_role() = 'super_admin');
+drop policy if exists "Staff can view subscription attendance" on public.subscription_attendance;
+create policy "Staff can view subscription attendance" on public.subscription_attendance for select
+  using (public.current_user_role() in ('admin', 'super_admin', 'instructor'));
+drop policy if exists "Admins can update subscription attendance" on public.subscription_attendance;
+create policy "Admins can update subscription attendance" on public.subscription_attendance for insert
+  with check (public.current_user_role() in ('admin', 'super_admin'));
+drop policy if exists "Admins can edit subscription attendance" on public.subscription_attendance;
+create policy "Admins can edit subscription attendance" on public.subscription_attendance for update
+  using (public.current_user_role() in ('admin', 'super_admin'))
+  with check (public.current_user_role() in ('admin', 'super_admin'));

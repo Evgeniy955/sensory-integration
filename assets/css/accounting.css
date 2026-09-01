@@ -1,0 +1,15 @@
+.accounting-main { max-width: 1180px; }
+.accounting-card { margin: 1.25rem 0; padding: 1.25rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; box-shadow: var(--shadow-sm); }
+.accounting-card h2 { margin: 0 0 1rem; font-size: 1.05rem; }
+.accounting-form__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
+.accounting-form select, .accounting-form input { width: 100%; }
+.accounting-child-search { position: relative; }
+.accounting-child-results { position: absolute; top: calc(100% - .15rem); left: 0; right: 0; z-index: 4; max-height: 220px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); box-shadow: var(--shadow-md); }
+.accounting-child-results__item { display: block; width: 100%; padding: .55rem .7rem; border: 0; border-bottom: 1px solid var(--color-border); background: transparent; color: var(--color-ink); text-align: left; font: inherit; cursor: pointer; }
+.accounting-child-results__item:hover, .accounting-child-results__item:focus-visible { background: var(--color-surface-alt); outline: 0; }
+.accounting-actions, .accounting-section-heading { display: flex; align-items: center; justify-content: space-between; gap: .8rem; }.accounting-actions { margin-top: 1rem; justify-content: flex-start; }
+.accounting-status { font-size: .85rem; color: var(--color-ink-soft); }.accounting-status.is-error { color: var(--color-destructive); }
+.accounting-table { min-width: 760px; }.accounting-table td, .accounting-table th { vertical-align: top; }.accounting-table__muted { color: var(--color-ink-soft); font-size: .8rem; }
+.accounting-status-badge { display: inline-block; padding: .2rem .45rem; border-radius: 999px; font-size: .75rem; font-weight: 700; background: var(--color-sage-tint); color: var(--color-sage-deep); }.accounting-status-badge--frozen { background: var(--color-apricot-tint); color: var(--color-apricot-deep); }.accounting-status-badge--expired { background: color-mix(in srgb, var(--color-destructive) 14%, transparent); color: var(--color-destructive); }
+.accounting-row-actions { display: flex; flex-wrap: wrap; gap: .4rem; }.accounting-row-actions .anketa-btn { padding: .35rem .55rem; font-size: .75rem; }
+@media (max-width: 640px) { .accounting-form__grid { grid-template-columns: 1fr; } .accounting-card { padding: 1rem; } }

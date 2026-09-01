@@ -177,6 +177,12 @@
         </div>
       </div>
 
+      <div class="anketa-field" id="cell-subscription-field" data-type="select">
+        <label class="anketa-field__label" for="cell-subscription-select">Абонемент</label>
+        <select id="cell-subscription-select"><option value="">Без прив'язки</option></select>
+        <small class="schedule-subscription-hint" id="cell-subscription-hint">Оберіть дитину, щоб побачити доступні абонементи.</small>
+      </div>
+
       <!-- Only meaningful once this slot actually has a child booked —
            hidden until then, same rule as "Очистити"/"Не прийшов" below. -->
       <button type="button" class="anketa-btn anketa-modal__edit-link schedule-attendance-btn" id="cell-attendance-btn" hidden>
@@ -185,6 +191,12 @@
       </button>
 
       <button type="button" class="anketa-btn schedule-noshow-btn" id="cell-noshow-toggle" aria-pressed="false" hidden>Позначити «Не прийшов»</button>
+      <button type="button" class="anketa-btn schedule-transfer-btn" id="cell-transfer-btn" aria-pressed="false" hidden>Перенос</button>
+      <div class="schedule-transfer-fields" id="cell-transfer-fields" hidden>
+        <label><span>Нова дата</span><input type="date" id="cell-transfer-date"></label>
+        <label><span>Час</span><select id="cell-transfer-hour"></select></label>
+      </div>
+      <button type="button" class="anketa-btn schedule-freeze-btn" id="cell-freeze-btn" hidden>Заморозити абонемент</button>
       <p class="anketa-modal__hint schedule-noshow-hint">Якщо заздалегідь не попередили про відсутність, заняття за замовчуванням рахується проведеним — позначте тут, якщо дитина не прийшла.</p>
 
       <div class="schedule-cell-modal__actions">
