@@ -43,7 +43,9 @@
         // A future slot is a booking, not an attendance. The original
         // transfer remains in history as "Перенос" and carries its target.
         if (!subscriptionId || !child.childName || (sessionDate > today && status !== "transferred")) return [];
-        return [{ subscription_id: subscriptionId, child_name: child.childName, schedule_cell_key: scheduleCellKey, session_date: sessionDate, status, transferred_to_date: transferredToDate || null, transferred_to_hour: transferredToHour == null ? null : Number(transferredToHour), created_by: profile.id, updated_at: new Date().toISOString() }];
+        const transferHour = Number(transferredToHour);
+        const validTransferHour = Number.isInteger(transferHour) && transferHour >= 8 && transferHour <= 18 ? transferHour : null;
+        return [{ subscription_id: subscriptionId, child_name: child.childName, schedule_cell_key: scheduleCellKey, session_date: sessionDate, status, transferred_to_date: transferredToDate || null, transferred_to_hour: validTransferHour, created_by: profile.id, updated_at: new Date().toISOString() }];
       });
     });
   }
