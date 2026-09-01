@@ -22,6 +22,57 @@
     return transferEnd && transferEnd > frozenEnd ? transferEnd : frozenEnd;
   }
 
+  function calendarChildren(entry) {
+    return Array.isArray(entry.children) && entry.children.length ? entry.children : (entry.anketaId ? [{ anketaId: entry.anketaId, childName: entry.childName || "", subscriptionId: entry.subscriptionId || null }] : []);
+  }
+
+  function calendarAttendanceRows(boardData, existingRows) {
+    const today = isoDate(new Date());
+    const cells = boardData && boardData.cells && typeof boardData.cells === "object" ? boardData.cells : {};
+    const existingByCalendarSlot = new Map((existingRows || []).map((row) => [row.schedule_cell_key + "|" + normalizeName(row.child_name), row]));
+    return Object.entries(cells).flatMap(([scheduleCellKey, entry]) => {
+      const parts = scheduleCellKey.split("|");
+      if (parts.length !== 3 || !entry || !/^\d{4}-\d{2}-\d{2}$/.test(parts[1])) return [];
+      const sessionDate = parts[1];
+      return calendarChildren(entry).flatMap((child) => {
+        const previous = existingByCalendarSlot.get(scheduleCellKey + "|" + normalizeName(child.childName));
+        const subscriptionId = child.subscriptionId || entry.subscriptionId || (previous && previous.subscription_id);
+        const status = entry.isGroup ? (child.status || "attended") : (entry.attendanceStatus || (entry.noShow ? "no_show" : "attended"));
+        const transferredToDate = entry.isGroup ? child.transferDate : entry.transferDate;
+        const transferredToHour = entry.isGroup ? child.transferHour : entry.transferHour;
+        // A future slot is a booking, not an attendance. The original
+        // transfer remains in history as "Перенос" and carries its target.
+        if (!subscriptionId || !child.childName || (sessionDate > today && status !== "transferred")) return [];
+        return [{ subscription_id: subscriptionId, child_name: child.childName, schedule_cell_key: scheduleCellKey, session_date: sessionDate, status, transferred_to_date: transferredToDate || null, transferred_to_hour: transferredToHour == null ? null : Number(transferredToHour), created_by: profile.id, updated_at: new Date().toISOString() }];
+      });
+    });
+  }
+
+  function attendanceKey(row) { return [row.subscription_id, normalizeName(row.child_name), row.schedule_cell_key].join("|"); }
+  function normalizeName(value) { return String(value || "").trim().replace(/\s+/g, " ").toLowerCase(); }
+
+  async function syncAttendanceWithCalendar() {
+    const [boardResult, attendanceResult] = await Promise.all([
+      window.sbClient.from("schedule_boards").select("data").eq("id", "main").maybeSingle(),
+      window.sbClient.from("subscription_attendance").select("id, subscription_id, child_name, schedule_cell_key"),
+    ]);
+    if (boardResult.error) throw boardResult.error;
+    if (attendanceResult.error) throw attendanceResult.error;
+    if (!boardResult.data || !boardResult.data.data) return;
+    const expected = calendarAttendanceRows(boardResult.data && boardResult.data.data, attendanceResult.data || []);
+    const expectedByKey = new Map(expected.map((row) => [attendanceKey(row), row]));
+    const staleIds = (attendanceResult.data || []).filter((row) => !expectedByKey.has(attendanceKey(row))).map((row) => row.id);
+    if (staleIds.length) {
+      const deleted = await Promise.all(staleIds.map((id) => window.sbClient.from("subscription_attendance").delete().eq("id", id)));
+      const failed = deleted.find((result) => result.error);
+      if (failed) throw failed.error;
+    }
+    if (expected.length) {
+      const saved = await window.sbClient.from("subscription_attendance").upsert(expected, { onConflict: "subscription_id,child_name,schedule_cell_key" });
+      if (saved.error) throw saved.error;
+    }
+  }
+
   async function reconcileSubscriptions(rows, attendanceRows) {
     const attendanceBySubscription = (attendanceRows || []).reduce((result, row) => {
       (result[row.subscription_id] ||= []).push(row);
@@ -138,7 +189,7 @@
     const result = await window.sbClient.from("subscriptions").update(update).eq("id", id); if (result.error) window.alert(result.error.message); else await refresh();
   }
   async function deleteSubscription(id) { if (!window.confirm("Видалити абонемент і його статуси відвідування?")) return; const result = await window.sbClient.from("subscriptions").delete().eq("id", id); if (result.error) window.alert(result.error.message); else await refresh(); }
-  async function refresh() { try { await Promise.all([loadSubscriptions(), loadAttendance()]); } catch (error) { setStatus(error.message, true); } }
+  async function refresh() { try { await syncAttendanceWithCalendar(); await Promise.all([loadSubscriptions(), loadAttendance()]); } catch (error) { setStatus(error.message, true); } }
 
   $("subscription-child-search").addEventListener("input", (event) => { selectedChildId = ""; $("subscription-child-id").value = ""; renderChildResults(event.target.value); });
   $("subscription-child-results").addEventListener("click", (event) => { const option = event.target.closest("[data-child-id]"); if (!option) return; selectedChildId = option.dataset.childId; $("subscription-child-id").value = selectedChildId; $("subscription-child-search").value = option.dataset.childName || ""; hideChildResults(); });

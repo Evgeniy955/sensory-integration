@@ -785,7 +785,7 @@
       transferred_to_hour: entry.isGroup ? (child.transferHour || null) : (entry.transferHour || null),
       created_by: currentProfileId,
       updated_at: new Date().toISOString(),
-    }));
+    })).filter((row) => row.session_date <= toISODate(new Date()) || row.status !== "attended");
     if (!rows.length) return;
     const result = await window.sbClient.from("subscription_attendance").upsert(rows, { onConflict: "subscription_id,child_name,schedule_cell_key" });
     if (result.error) { setStatus("Статус не збережено: " + result.error.message, true); return; }
