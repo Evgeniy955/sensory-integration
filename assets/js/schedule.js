@@ -399,15 +399,16 @@
     const specChipClass = "schedule-slot-specialist--" + (specColor || "none");
     const specialists = entry ? entrySpecialistIds(entry) : [];
     const children = entry ? entryChildren(entry) : [];
+    const transferred = entry && (entry.attendanceStatus === "transferred" || children.some((child) => child.status === "transferred"));
     const rescheduled = entry && isRescheduledTarget(key, entry);
     const inner = entry
       ? '<span class="schedule-slot-specialist ' + specChipClass + '">' + escapeHtml(specialists.map(specialistName).join(", ")) + "</span>" +
         '<span class="schedule-slot-child' + noShowClass + '">' + escapeHtml(children.map((c) => c.childName).join(", ")) + "</span>" +
-        (rescheduled ? '<span class="schedule-slot-noshow-badge schedule-slot-rescheduled-badge">відпрацювання</span>' : (entry.attendanceStatus === "transferred" ? '<span class="schedule-slot-noshow-badge schedule-slot-transfer-badge">перенос</span>' : (entry.noShow ? '<span class="schedule-slot-noshow-badge">не прийшов</span>' : "")))
+        (rescheduled ? '<span class="schedule-slot-noshow-badge schedule-slot-rescheduled-badge">відпрацювання</span>' : (transferred ? '<span class="schedule-slot-noshow-badge schedule-slot-transfer-badge">перенос · заняття не буде</span>' : (entry.noShow ? '<span class="schedule-slot-noshow-badge">не прийшов</span>' : "")))
       : '<span class="schedule-slot-add" aria-hidden="true">+</span>';
     const ariaLabel = room.name + ", " + label +
       (entry ? ": " + specialists.map(specialistName).join(", ") + ", " + children.map((c) => c.childName).join(", ") + (entry.noShow ? ", дитина не прийшла" : "") : ": вільно");
-    return '<td class="schedule-slot-cell ' + colorClass + '">' +
+    return '<td class="schedule-slot-cell ' + colorClass + (transferred ? ' schedule-slot--transferred' : '') + '">' +
       '<button type="button" class="schedule-slot-btn" data-cell="' + key + '" data-room="' + room.id +
       '" data-hour="' + hour + '" aria-label="' + escapeHtml(ariaLabel) + '">' + inner + "</button></td>";
   }
