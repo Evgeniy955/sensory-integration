@@ -226,6 +226,7 @@
           attendanceStatus: value.attendanceStatus === "transferred" ? "transferred" : (value.noShow ? "no_show" : "attended"),
           transferDate: /^\d{4}-\d{2}-\d{2}$/.test(value.transferDate || "") ? value.transferDate : "",
           transferHour: Number.isInteger(Number(value.transferHour)) ? Number(value.transferHour) : null,
+          isRescheduled: !!value.isRescheduled,
           noShow: !!value.noShow,
         };
       });
@@ -309,6 +310,24 @@
       ? entry.children : (entry && entry.anketaId ? [{ anketaId: entry.anketaId, childName: entry.childName || "" }] : []);
   }
 
+  function isRescheduledTarget(key, entry) {
+    if (!entry) return false;
+    if (entry.isRescheduled) return true;
+    const targetParts = key.split("|");
+    if (targetParts.length !== 3) return false;
+    const targetNames = new Set(entryChildren(entry).map((child) => normalizeChildName(child.childName)).filter(Boolean));
+    return Object.entries(board.cells).some(([sourceKey, source]) => {
+      const sourceParts = sourceKey.split("|");
+      if (sourceKey === key || sourceParts.length !== 3 || sourceParts[0] !== targetParts[0] || !source) return false;
+      return entryChildren(source).some((child) => {
+        const status = source.isGroup ? child.status : source.attendanceStatus;
+        const transferDate = source.isGroup ? child.transferDate : source.transferDate;
+        const transferHour = Number(source.isGroup ? child.transferHour : source.transferHour);
+        return status === "transferred" && transferDate === targetParts[1] && transferHour === Number(targetParts[2]) && targetNames.has(normalizeChildName(child.childName));
+      });
+    });
+  }
+
   function findConcurrentConflicts(entry, dateIso, hour, excludedKeys) {
     const excluded = new Set(excludedKeys || []);
     const candidateSpecialists = new Set(entrySpecialistIds(entry).filter(Boolean));
@@ -372,10 +391,11 @@
     const specChipClass = "schedule-slot-specialist--" + (specColor || "none");
     const specialists = entry ? entrySpecialistIds(entry) : [];
     const children = entry ? entryChildren(entry) : [];
+    const rescheduled = entry && isRescheduledTarget(key, entry);
     const inner = entry
       ? '<span class="schedule-slot-specialist ' + specChipClass + '">' + escapeHtml(specialists.map(specialistName).join(", ")) + "</span>" +
         '<span class="schedule-slot-child' + noShowClass + '">' + escapeHtml(children.map((c) => c.childName).join(", ")) + "</span>" +
-        (entry.attendanceStatus === "transferred" ? '<span class="schedule-slot-noshow-badge schedule-slot-transfer-badge">перенос</span>' : (entry.noShow ? '<span class="schedule-slot-noshow-badge">не прийшов</span>' : ""))
+        (rescheduled ? '<span class="schedule-slot-noshow-badge schedule-slot-rescheduled-badge">перенесено</span>' : (entry.attendanceStatus === "transferred" ? '<span class="schedule-slot-noshow-badge schedule-slot-transfer-badge">перенос</span>' : (entry.noShow ? '<span class="schedule-slot-noshow-badge">не прийшов</span>' : "")))
       : '<span class="schedule-slot-add" aria-hidden="true">+</span>';
     const ariaLabel = room.name + ", " + label +
       (entry ? ": " + specialists.map(specialistName).join(", ") + ", " + children.map((c) => c.childName).join(", ") + (entry.noShow ? ", дитина не прийшла" : "") : ": вільно");
@@ -846,6 +866,7 @@
         children: group.children,
         subscriptionId: isGroup ? null : (firstChild.subscriptionId || entry.subscriptionId || null),
         attendanceStatus: "attended",
+        isRescheduled: true,
         transferDate: "",
         transferHour: null,
         noShow: false,

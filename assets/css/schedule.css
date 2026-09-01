@@ -329,6 +329,7 @@ th.schedule-col-time {
   color: var(--color-destructive);
 }
 .schedule-slot-transfer-badge { color: var(--color-sky-deep); }
+.schedule-slot-rescheduled-badge { color: var(--color-destructive); background: color-mix(in srgb, var(--color-destructive) 13%, var(--color-surface)); padding: .14rem .4rem; border-radius: 999px; }
 
 .anketa-table-empty {
   padding: 2rem 1rem;
