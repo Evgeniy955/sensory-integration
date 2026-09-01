@@ -793,6 +793,15 @@
     await Promise.all(subscriptionIds.map(updateSubscriptionLifecycle));
   }
 
+  async function removeSubscriptionAttendance(scheduleKey, entry) {
+    const lookup = await window.sbClient.from("subscription_attendance").select("subscription_id").eq("schedule_cell_key", scheduleKey);
+    if (lookup.error) { setStatus("Не вдалося оновити абонемент: " + lookup.error.message, true); return; }
+    const subscriptionIds = new Set([...(lookup.data || []).map((row) => row.subscription_id), ...entrySubscriptionIds(entry)]);
+    const result = await window.sbClient.from("subscription_attendance").delete().eq("schedule_cell_key", scheduleKey);
+    if (result.error) { setStatus("Не вдалося видалити статус заняття: " + result.error.message, true); return; }
+    await Promise.all([...subscriptionIds].filter(Boolean).map(updateSubscriptionLifecycle));
+  }
+
   function buildTransferBookings(entry) {
     const transferredChildren = entry.isGroup
       ? entryChildren(entry).filter((child) => child.status === "transferred")
@@ -880,12 +889,15 @@
     closeCellModal();
   }
 
-  function clearCellFromModal() {
+  async function clearCellFromModal() {
     if (!editingKey) return;
+    const removedEntry = board.cells[editingKey] || null;
+    const removedKey = editingKey;
     delete board.cells[editingKey];
     render();
     flushSave();
     closeCellModal();
+    await removeSubscriptionAttendance(removedKey, removedEntry);
   }
 
   // ---------- Copy a completed day ----------
