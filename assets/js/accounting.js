@@ -30,16 +30,36 @@
     const today = isoDate(new Date());
     const cells = boardData && boardData.cells && typeof boardData.cells === "object" ? boardData.cells : {};
     const existingByCalendarSlot = new Map((existingRows || []).map((row) => [row.schedule_cell_key + "|" + normalizeName(row.child_name), row]));
+    const transferredTargets = new Map();
+    Object.entries(cells).forEach(([sourceKey, entry]) => {
+      const sourceParts = sourceKey.split("|");
+      if (sourceParts.length !== 3 || !entry) return;
+      calendarChildren(entry).forEach((child) => {
+        const status = entry.isGroup ? (child.status || "attended") : (entry.attendanceStatus || (entry.noShow ? "no_show" : "attended"));
+        const transferDate = entry.isGroup ? child.transferDate : entry.transferDate;
+        const transferHour = Number(entry.isGroup ? child.transferHour : entry.transferHour);
+        if (status !== "transferred" || !transferDate || !Number.isInteger(transferHour) || transferHour < 8 || transferHour > 18) return;
+        const sourceAttendance = existingByCalendarSlot.get(sourceKey + "|" + normalizeName(child.childName));
+        const subscriptionId = child.subscriptionId || entry.subscriptionId || (sourceAttendance && sourceAttendance.subscription_id);
+        if (!subscriptionId) return;
+        transferredTargets.set(sourceParts[0] + "|" + transferDate + "|" + String(transferHour).padStart(2, "0") + "|" + normalizeName(child.childName), subscriptionId);
+      });
+    });
     return Object.entries(cells).flatMap(([scheduleCellKey, entry]) => {
       const parts = scheduleCellKey.split("|");
       if (parts.length !== 3 || !entry || !/^\d{4}-\d{2}-\d{2}$/.test(parts[1])) return [];
       const sessionDate = parts[1];
       return calendarChildren(entry).flatMap((child) => {
         const previous = existingByCalendarSlot.get(scheduleCellKey + "|" + normalizeName(child.childName));
-        const subscriptionId = child.subscriptionId || entry.subscriptionId || (previous && previous.subscription_id);
-        const status = entry.isGroup ? (child.status || "attended") : (entry.attendanceStatus || (entry.noShow ? "no_show" : "attended"));
-        const transferredToDate = entry.isGroup ? child.transferDate : entry.transferDate;
-        const transferredToHour = entry.isGroup ? child.transferHour : entry.transferHour;
+        const transferredSubscriptionId = transferredTargets.get(scheduleCellKey + "|" + normalizeName(child.childName));
+        let subscriptionId = child.subscriptionId || entry.subscriptionId || (previous && previous.subscription_id) || transferredSubscriptionId;
+        let status = entry.isGroup ? (child.status || "attended") : (entry.attendanceStatus || (entry.noShow ? "no_show" : "attended"));
+        let transferredToDate = entry.isGroup ? child.transferDate : entry.transferDate;
+        let transferredToHour = entry.isGroup ? child.transferHour : entry.transferHour;
+        // A target created by a transfer is displayed as "Перенесено" until
+        // its date. It uses the non-counting transfer state internally and
+        // becomes attended automatically on the scheduled day.
+        if (sessionDate > today && status === "attended" && transferredSubscriptionId) { status = "transferred"; transferredToDate = null; transferredToHour = null; }
         // A future slot is a booking, not an attendance. The original
         // transfer remains in history as "Перенос" and carries its target.
         if (!subscriptionId || !child.childName || (sessionDate > today && status !== "transferred")) return [];
@@ -137,7 +157,7 @@
     const result = await window.sbClient.from("subscription_attendance").select("id, child_name, session_date, status, schedule_cell_key, transferred_to_date, transferred_to_hour").order("session_date", { ascending: false }).limit(100);
     if (result.error) throw result.error;
     const labels = { attended: "Відвідав", no_show: "Не прийшов", transferred: "Перенос" };
-    $("attendance-body").innerHTML = result.data && result.data.length ? result.data.map((row) => { const target = row.status === "transferred" && row.transferred_to_date ? " → " + formatDate(row.transferred_to_date) + (row.transferred_to_hour != null ? " · " + String(row.transferred_to_hour).padStart(2, "0") + ":00" : "") : ""; return '<tr><td>' + formatDate(row.session_date) + '</td><td>' + escapeHtml(row.child_name) + '</td><td><span class="accounting-status-badge">' + labels[row.status] + '</span><div class="accounting-table__muted">' + target + '</div></td><td class="accounting-table__muted">' + escapeHtml(row.schedule_cell_key) + '</td></tr>'; }).join("") : '<tr><td colspan="4" class="anketa-table-empty">Статусів відвідування ще немає.</td></tr>';
+    $("attendance-body").innerHTML = result.data && result.data.length ? result.data.map((row) => { const target = row.status === "transferred" && row.transferred_to_date ? " → " + formatDate(row.transferred_to_date) + (row.transferred_to_hour != null ? " · " + String(row.transferred_to_hour).padStart(2, "0") + ":00" : "") : ""; const label = row.status === "transferred" && !row.transferred_to_date ? "Перенесено" : labels[row.status]; return '<tr><td>' + formatDate(row.session_date) + '</td><td>' + escapeHtml(row.child_name) + '</td><td><span class="accounting-status-badge">' + label + '</span><div class="accounting-table__muted">' + target + '</div></td><td class="accounting-table__muted">' + escapeHtml(row.schedule_cell_key) + '</td></tr>'; }).join("") : '<tr><td colspan="4" class="anketa-table-empty">Статусів відвідування ще немає.</td></tr>';
   }
 
   function renderSubscription(row) {
