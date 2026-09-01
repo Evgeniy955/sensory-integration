@@ -463,3 +463,6 @@ drop policy if exists "Admins can edit subscription attendance" on public.subscr
 create policy "Admins can edit subscription attendance" on public.subscription_attendance for update
   using (public.current_user_role() in ('admin', 'super_admin'))
   with check (public.current_user_role() in ('admin', 'super_admin'));
+drop policy if exists "Admins can delete subscription attendance" on public.subscription_attendance;
+create policy "Admins can delete subscription attendance" on public.subscription_attendance for delete
+  using (public.current_user_role() in ('admin', 'super_admin'));

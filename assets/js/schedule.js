@@ -795,10 +795,10 @@
 
   async function removeSubscriptionAttendance(scheduleKey, entry) {
     const lookup = await window.sbClient.from("subscription_attendance").select("subscription_id").eq("schedule_cell_key", scheduleKey);
-    if (lookup.error) { setStatus("Не вдалося оновити абонемент: " + lookup.error.message, true); return; }
+    if (lookup.error) { setStatus("error", "Не вдалося оновити абонемент: " + lookup.error.message); return; }
     const subscriptionIds = new Set([...(lookup.data || []).map((row) => row.subscription_id), ...entrySubscriptionIds(entry)]);
     const result = await window.sbClient.from("subscription_attendance").delete().eq("schedule_cell_key", scheduleKey);
-    if (result.error) { setStatus("Не вдалося видалити статус заняття: " + result.error.message, true); return; }
+    if (result.error) { setStatus("error", "Не вдалося видалити статус заняття: " + result.error.message); return; }
     await Promise.all([...subscriptionIds].filter(Boolean).map(updateSubscriptionLifecycle));
   }
 
