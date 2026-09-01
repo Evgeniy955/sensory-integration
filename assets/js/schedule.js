@@ -590,6 +590,42 @@
     return cellSubscriptions.filter((subscription) => (subscription.subscription_children || []).some((item) => normalizeChildName(item.child_name) === childName));
   }
 
+  function entrySubscriptionIds(entry) {
+    if (!entry) return [];
+    return [...new Set(entryChildren(entry).map((child) => child.subscriptionId || entry.subscriptionId).filter(Boolean))];
+  }
+
+  function attachSubscriptionToEntry(entry, childName, subscriptionId) {
+    if (!entry || !subscriptionId) return false;
+    const normalizedName = normalizeChildName(childName);
+    let changed = false;
+    if (Array.isArray(entry.children)) {
+      entry.children.forEach((child) => {
+        if (!child.subscriptionId && normalizeChildName(child.childName) === normalizedName) { child.subscriptionId = subscriptionId; changed = true; }
+      });
+    }
+    if (!entry.subscriptionId && normalizeChildName(entry.childName) === normalizedName) { entry.subscriptionId = subscriptionId; changed = true; }
+    return changed;
+  }
+
+  async function restoreSubscriptionLinks(entry) {
+    if (!entry || !entryChildren(entry).some((child) => !(child.subscriptionId || entry.subscriptionId))) return;
+    const result = await window.sbClient.from("subscription_attendance").select("subscription_id, child_name").eq("schedule_cell_key", editingKey);
+    if (result.error || !(result.data || []).length) return;
+    let restored = false;
+    (result.data || []).forEach((row) => { restored = attachSubscriptionToEntry(entry, row.child_name, row.subscription_id) || restored; });
+    if (!restored) return;
+    entryChildren(entry).forEach((child) => {
+      const transferDate = child.transferDate || entry.transferDate;
+      const transferHour = child.transferHour == null ? entry.transferHour : child.transferHour;
+      const subscriptionId = child.subscriptionId || entry.subscriptionId;
+      if (!transferDate || !Number.isInteger(Number(transferHour)) || !subscriptionId) return;
+      attachSubscriptionToEntry(board.cells[cellKey(editingRoomId, transferDate, Number(transferHour))], child.childName, subscriptionId);
+    });
+    flushSave();
+    await saveSubscriptionAttendance(entry);
+  }
+
   function hourOptions(selectedHour) {
     return HOURS.map((hour) => '<option value="' + hour + '"' + (Number(selectedHour) === hour ? " selected" : "") + '>' + hourLabel(hour) + "</option>").join("");
   }
@@ -618,16 +654,20 @@
   async function loadCellSubscriptions() {
     const select = document.getElementById("cell-subscription-select");
     const hint = document.getElementById("cell-subscription-hint");
+    const currentEntry = board.cells[editingKey] || null;
+    const linkedIds = new Set(entrySubscriptionIds(currentEntry));
     const childNames = (editingGroup ? groupChildren : [{ childName: selectedChildName }]).map((child) => normalizeChildName(child.childName)).filter(Boolean);
     if (!childNames.length) { select.innerHTML = '<option value="">Без прив\'язки</option>'; hint.textContent = "Оберіть дитину, щоб побачити доступні абонементи."; return; }
-    const result = await window.sbClient.from("subscriptions").select("id, direction, starts_on, ends_on, base_ends_on, freeze_days, sessions_used, sessions_total, burned_sessions, closed_reason, is_group, is_frozen, subscription_children(child_name), subscription_specialists(specialist_id)").lte("starts_on", toISODate(currentDate)).gte("ends_on", toISODate(currentDate));
+    const result = await window.sbClient.from("subscriptions").select("id, direction, starts_on, ends_on, base_ends_on, freeze_days, sessions_used, sessions_total, burned_sessions, closed_reason, is_group, is_frozen, subscription_children(child_name), subscription_specialists(specialist_id)").lte("starts_on", toISODate(currentDate));
     if (result.error) return;
     cellSubscriptions = (result.data || []).filter((subscription) => {
       const names = (subscription.subscription_children || []).map((child) => normalizeChildName(child.child_name));
-      return childNames.some((name) => names.includes(name)) && remainingSessions(subscription) > 0 && !subscription.closed_reason && (editingGroup ? subscription.direction === "Групове" : subscription.direction !== "Групове");
+      const linked = linkedIds.has(subscription.id);
+      const available = subscription.ends_on >= toISODate(currentDate) && remainingSessions(subscription) > 0 && !subscription.closed_reason;
+      return childNames.some((name) => names.includes(name)) && (linked || available) && (editingGroup ? subscription.direction === "Групове" : subscription.direction !== "Групове");
     });
     if (editingGroup) { renderGroupChildren(); return; }
-    select.innerHTML = '<option value="">Без прив\'язки</option>' + cellSubscriptions.map((subscription) => '<option value="' + subscription.id + '"' + (subscription.id === (board.cells[editingKey] && board.cells[editingKey].subscriptionId) ? " selected" : "") + '>' + escapeHtml(subscription.direction) + " · залишилось " + remainingSessions(subscription) + " з " + subscription.sessions_total + " · до " + escapeHtml(subscription.ends_on) + (subscription.is_frozen ? " · заморожений" : "") + "</option>").join("");
+    select.innerHTML = '<option value="">Без прив\'язки</option>' + cellSubscriptions.map((subscription) => '<option value="' + subscription.id + '"' + (linkedIds.has(subscription.id) ? " selected" : "") + '>' + escapeHtml(subscription.direction) + " · залишилось " + remainingSessions(subscription) + " з " + subscription.sessions_total + " · до " + escapeHtml(subscription.ends_on) + (linkedIds.has(subscription.id) && subscription.closed_reason ? " · поточна прив'язка" : "") + (subscription.is_frozen ? " · заморожений" : "") + "</option>").join("");
     hint.textContent = cellSubscriptions.length ? "Лічильник показує доступні заняття на обрану дату." : "Активного абонемента для цієї дитини на цю дату не знайдено.";
     updateFreezeButtonUI();
   }
@@ -676,6 +716,7 @@
     editingHour = hour;
 
     const entry = board.cells[editingKey] || null;
+    await restoreSubscriptionLinks(entry);
     editingGroup = !!(entry && entry.isGroup);
     selectedAnketaId = entry ? entry.anketaId : null;
     selectedChildName = entry ? (entry.childName || "") : "";
@@ -817,7 +858,10 @@
       editingTransferDate = document.getElementById("cell-transfer-date").value;
       editingTransferHour = Number(document.getElementById("cell-transfer-hour").value);
       if (editingTransferred && (!editingTransferDate || !editingTransferHour)) { window.alert("Для переносу оберіть нову дату та час."); return; }
-      board.cells[editingKey] = { specialistId, specialistIds: [specialistId], anketaId: selectedAnketaId, childName: selectedChildName, children: [{ anketaId: selectedAnketaId, childName: selectedChildName, subscriptionId: document.getElementById("cell-subscription-select").value || null, transferDate: editingTransferred ? editingTransferDate : "", transferHour: editingTransferred ? editingTransferHour : null }], isGroup: false, subscriptionId: document.getElementById("cell-subscription-select").value || null, attendanceStatus: editingTransferred ? "transferred" : (editingNoShow ? "no_show" : "attended"), transferDate: editingTransferred ? editingTransferDate : "", transferHour: editingTransferred ? editingTransferHour : null, noShow: editingNoShow };
+      const previousChild = entryChildren(previousEntry)[0];
+      const preservedSubscriptionId = previousChild && previousChild.anketaId === selectedAnketaId ? (previousChild.subscriptionId || previousEntry.subscriptionId || null) : null;
+      const subscriptionId = document.getElementById("cell-subscription-select").value || preservedSubscriptionId;
+      board.cells[editingKey] = { specialistId, specialistIds: [specialistId], anketaId: selectedAnketaId, childName: selectedChildName, children: [{ anketaId: selectedAnketaId, childName: selectedChildName, subscriptionId, transferDate: editingTransferred ? editingTransferDate : "", transferHour: editingTransferred ? editingTransferHour : null }], isGroup: false, subscriptionId, attendanceStatus: editingTransferred ? "transferred" : (editingNoShow ? "no_show" : "attended"), transferDate: editingTransferred ? editingTransferDate : "", transferHour: editingTransferred ? editingTransferHour : null, noShow: editingNoShow };
     }
     const savedEntry = board.cells[editingKey];
     const conflicts = findConcurrentConflicts(savedEntry, toISODate(currentDate), editingHour, [editingKey]);
@@ -833,7 +877,6 @@
     render();
     flushSave();
     saveSubscriptionAttendance(savedEntry);
-    transferBookings.forEach((booking) => saveSubscriptionAttendance(booking.entry, booking.key, booking.key.split("|")[1]));
     closeCellModal();
   }
 
