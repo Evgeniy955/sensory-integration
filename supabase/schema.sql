@@ -343,18 +343,41 @@ create table if not exists public.subscriptions (
   id uuid primary key default gen_random_uuid(),
   sessions_total integer not null check (sessions_total in (1, 4, 8, 12)),
   sessions_used integer not null default 0 check (sessions_used >= 0),
+  burned_sessions integer not null default 0 check (burned_sessions >= 0),
   direction text not null,
   specialist_id text,
   starts_on date not null,
   ends_on date not null,
+  base_ends_on date,
+  freeze_days integer not null default 0 check (freeze_days >= 0),
   is_group boolean not null default false,
   is_frozen boolean not null default false,
   frozen_until date,
+  closed_at timestamptz,
+  closed_reason text check (closed_reason in ('early', 'expired')),
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   check (ends_on >= starts_on),
   check (sessions_used <= sessions_total)
 );
+alter table public.subscriptions add column if not exists base_ends_on date;
+alter table public.subscriptions add column if not exists freeze_days integer not null default 0 check (freeze_days >= 0);
+alter table public.subscriptions add column if not exists burned_sessions integer not null default 0 check (burned_sessions >= 0);
+alter table public.subscriptions add column if not exists closed_at timestamptz;
+alter table public.subscriptions add column if not exists closed_reason text check (closed_reason in ('early', 'expired'));
+
+-- Existing subscriptions keep their current end date. For packages, the
+-- original 1.5-month period is recorded separately; any later difference is
+-- treated as an already granted extension (for example, a freeze).
+update public.subscriptions
+set base_ends_on = case
+  when sessions_total = 1 then ends_on
+  else least(ends_on, starts_on + 45)
+end
+where base_ends_on is null;
+update public.subscriptions
+set freeze_days = greatest(ends_on - base_ends_on, 0)
+where freeze_days = 0 and base_ends_on is not null;
 
 create table if not exists public.subscription_children (
   id uuid primary key default gen_random_uuid(),

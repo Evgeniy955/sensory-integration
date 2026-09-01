@@ -126,6 +126,35 @@
     return r;
   }
 
+  function addIsoDays(value, days) { return toISODate(addDays(parseISODate(value), days)); }
+  function remainingSessions(subscription) { return Math.max(0, Number(subscription.sessions_total || 0) - Number(subscription.sessions_used || 0)); }
+  function uniqueUsedSessions(rows) { return new Set(rows.filter((row) => row.status !== "transferred").map((row) => row.schedule_cell_key)).size; }
+  function latestDate(rows, field) { return rows.reduce((latest, row) => row[field] && (!latest || row[field] > latest) ? row[field] : latest, ""); }
+  function effectiveSubscriptionEnd(subscription, attendance) {
+    const frozenEnd = addIsoDays(subscription.base_ends_on || subscription.ends_on, Number(subscription.freeze_days || 0));
+    const transferredEnd = latestDate(attendance.filter((row) => row.status === "transferred"), "transferred_to_date");
+    return transferredEnd && transferredEnd > frozenEnd ? transferredEnd : frozenEnd;
+  }
+
+  async function updateSubscriptionLifecycle(subscriptionId) {
+    const [subscriptionResult, attendanceResult] = await Promise.all([
+      window.sbClient.from("subscriptions").select("id, sessions_total, sessions_used, ends_on, base_ends_on, freeze_days, burned_sessions, closed_reason, closed_at").eq("id", subscriptionId).single(),
+      window.sbClient.from("subscription_attendance").select("schedule_cell_key, status, session_date, transferred_to_date").eq("subscription_id", subscriptionId),
+    ]);
+    if (subscriptionResult.error || attendanceResult.error) return;
+    const subscription = subscriptionResult.data;
+    const attendance = attendanceResult.data || [];
+    const actualUsed = Math.min(uniqueUsedSessions(attendance), Number(subscription.sessions_total));
+    const endsOn = effectiveSubscriptionEnd(subscription, attendance);
+    const expired = actualUsed < Number(subscription.sessions_total) && endsOn < toISODate(new Date());
+    const burned = expired ? Number(subscription.sessions_total) - actualUsed : 0;
+    const lastUsedDate = latestDate(attendance.filter((row) => row.status !== "transferred"), "session_date");
+    const reason = expired ? "expired" : (actualUsed >= Number(subscription.sessions_total) && lastUsedDate && lastUsedDate < endsOn ? "early" : null);
+    const update = { ends_on: endsOn, sessions_used: actualUsed + burned, burned_sessions: burned, closed_reason: reason, closed_at: reason ? (subscription.closed_reason === reason && subscription.closed_at ? subscription.closed_at : new Date().toISOString()) : null };
+    const differs = Object.keys(update).some((key) => String(subscription[key] == null ? "" : subscription[key]) !== String(update[key] == null ? "" : update[key]));
+    if (differs) await window.sbClient.from("subscriptions").update(update).eq("id", subscriptionId);
+  }
+
   function formatDayLabel(d) {
     const weekday = WEEKDAY_FULL[d.getDay()];
     const capitalized = weekday.charAt(0).toUpperCase() + weekday.slice(1);
@@ -571,7 +600,7 @@
       const status = child.status || "attended";
       const subscriptions = subscriptionsForChild(child);
       const selectedSubscription = subscriptions.find((subscription) => subscription.id === child.subscriptionId);
-      const subscriptionSelect = child.anketaId ? '<select class="schedule-child-subscription" data-group-subscription-index="' + index + '"><option value="">Без абонемента</option>' + subscriptions.map((subscription) => '<option value="' + subscription.id + '"' + (subscription.id === child.subscriptionId ? " selected" : "") + '>' + escapeHtml(subscription.direction) + " · до " + subscription.ends_on + "</option>").join("") + '</select>' : "";
+      const subscriptionSelect = child.anketaId ? '<select class="schedule-child-subscription" data-group-subscription-index="' + index + '"><option value="">Без абонемента</option>' + subscriptions.map((subscription) => '<option value="' + subscription.id + '"' + (subscription.id === child.subscriptionId ? " selected" : "") + '>' + escapeHtml(subscription.direction) + " · залишилось " + remainingSessions(subscription) + " · до " + subscription.ends_on + "</option>").join("") + '</select>' : "";
       const transfer = status === "transferred" ? '<div class="schedule-group-child-transfer"><input type="date" value="' + escapeHtml(child.transferDate || "") + '" data-group-transfer-date-index="' + index + '"><select data-group-transfer-hour-index="' + index + '">' + hourOptions(child.transferHour) + '</select></div>' : "";
       const freeze = selectedSubscription ? '<button type="button" class="anketa-btn schedule-group-child-freeze' + (selectedSubscription.is_frozen ? " is-frozen" : "") + '" data-group-freeze-index="' + index + '">' + (selectedSubscription.is_frozen ? "Розморозити" : "Заморозити") + '</button>' : "";
       return '<div class="schedule-group-child-row"><div class="schedule-child-autocomplete"><input type="text" data-group-child-index="' + index + '" value="' + escapeHtml(child.childName || "") + '" autocomplete="off" placeholder="Почніть вводити ПІБ дитини…"><div class="schedule-child-results" data-group-results-index="' + index + '" hidden></div>' + subscriptionSelect + transfer + freeze + '</div><div class="schedule-child-status-actions"><button type="button" class="schedule-child-status-btn' + (status === "no_show" ? " is-active" : "") + '" data-group-status="no_show" data-group-status-index="' + index + '">Не прийшов</button><button type="button" class="schedule-child-status-btn' + (status === "transferred" ? " is-active" : "") + '" data-group-status="transferred" data-group-status-index="' + index + '">Перенос</button></div>' + (groupChildren.length > 1 ? '<button type="button" class="schedule-remove-child" data-remove-child-index="' + index + '" aria-label="Видалити дитину">×</button>' : "") + '</div>';
@@ -591,15 +620,15 @@
     const hint = document.getElementById("cell-subscription-hint");
     const childNames = (editingGroup ? groupChildren : [{ childName: selectedChildName }]).map((child) => normalizeChildName(child.childName)).filter(Boolean);
     if (!childNames.length) { select.innerHTML = '<option value="">Без прив\'язки</option>'; hint.textContent = "Оберіть дитину, щоб побачити доступні абонементи."; return; }
-    const result = await window.sbClient.from("subscriptions").select("id, direction, starts_on, ends_on, sessions_used, sessions_total, is_group, is_frozen, subscription_children(child_name), subscription_specialists(specialist_id)").lte("starts_on", toISODate(currentDate)).gte("ends_on", toISODate(currentDate));
+    const result = await window.sbClient.from("subscriptions").select("id, direction, starts_on, ends_on, base_ends_on, freeze_days, sessions_used, sessions_total, burned_sessions, closed_reason, is_group, is_frozen, subscription_children(child_name), subscription_specialists(specialist_id)").lte("starts_on", toISODate(currentDate)).gte("ends_on", toISODate(currentDate));
     if (result.error) return;
     cellSubscriptions = (result.data || []).filter((subscription) => {
       const names = (subscription.subscription_children || []).map((child) => normalizeChildName(child.child_name));
-      return childNames.some((name) => names.includes(name)) && (editingGroup ? subscription.direction === "Групове" : subscription.direction !== "Групове");
+      return childNames.some((name) => names.includes(name)) && remainingSessions(subscription) > 0 && !subscription.closed_reason && (editingGroup ? subscription.direction === "Групове" : subscription.direction !== "Групове");
     });
     if (editingGroup) { renderGroupChildren(); return; }
-    select.innerHTML = '<option value="">Без прив\'язки</option>' + cellSubscriptions.map((subscription) => '<option value="' + subscription.id + '"' + (subscription.id === (board.cells[editingKey] && board.cells[editingKey].subscriptionId) ? " selected" : "") + '>' + escapeHtml(subscription.direction) + " · " + subscription.sessions_used + "/" + subscription.sessions_total + " · до " + escapeHtml(subscription.ends_on) + (subscription.is_frozen ? " · заморожений" : "") + "</option>").join("");
-    hint.textContent = cellSubscriptions.length ? "Абонемент діє на обрану дату." : "Активного абонемента для цієї дитини на цю дату не знайдено.";
+    select.innerHTML = '<option value="">Без прив\'язки</option>' + cellSubscriptions.map((subscription) => '<option value="' + subscription.id + '"' + (subscription.id === (board.cells[editingKey] && board.cells[editingKey].subscriptionId) ? " selected" : "") + '>' + escapeHtml(subscription.direction) + " · залишилось " + remainingSessions(subscription) + " з " + subscription.sessions_total + " · до " + escapeHtml(subscription.ends_on) + (subscription.is_frozen ? " · заморожений" : "") + "</option>").join("");
+    hint.textContent = cellSubscriptions.length ? "Лічильник показує доступні заняття на обрану дату." : "Активного абонемента для цієї дитини на цю дату не знайдено.";
     updateFreezeButtonUI();
   }
 
@@ -624,10 +653,13 @@
     const answer = window.prompt("На скільки днів заморозити? Від 7 до 21.", "14");
     if (answer === null) return;
     const days = Math.min(21, Math.max(7, Number(answer) || 14));
-    const end = new Date(subscription.ends_on + "T00:00:00"); end.setDate(end.getDate() + days);
+    const attendance = await window.sbClient.from("subscription_attendance").select("status, transferred_to_date").eq("subscription_id", id);
+    if (attendance.error) { window.alert(attendance.error.message); return; }
+    const freezeDays = Number(subscription.freeze_days || 0) + days;
+    const end = effectiveSubscriptionEnd({ ...subscription, freeze_days: freezeDays }, attendance.data || []);
     const frozenUntil = new Date(); frozenUntil.setDate(frozenUntil.getDate() + days);
-    const result = await window.sbClient.from("subscriptions").update({ is_frozen: true, frozen_until: toISODate(frozenUntil), ends_on: toISODate(end) }).eq("id", id);
-    if (result.error) window.alert(result.error.message); else { subscription.is_frozen = true; subscription.ends_on = toISODate(end); updateFreezeButtonUI(); renderGroupChildren(); }
+    const result = await window.sbClient.from("subscriptions").update({ is_frozen: true, frozen_until: toISODate(frozenUntil), freeze_days: freezeDays, ends_on: end }).eq("id", id);
+    if (result.error) window.alert(result.error.message); else { subscription.is_frozen = true; subscription.freeze_days = freezeDays; subscription.ends_on = end; updateFreezeButtonUI(); renderGroupChildren(); }
   }
 
   function updateNoShowToggleUI() {
@@ -698,14 +730,14 @@
     hideChildResults();
   }
 
-  async function saveSubscriptionAttendance(entry) {
+  async function saveSubscriptionAttendance(entry, scheduleKey, sessionDate) {
     if (!entry) return;
     const status = entry.attendanceStatus || (entry.noShow ? "no_show" : "attended");
-    const dateIso = toISODate(currentDate);
+    const dateIso = sessionDate || toISODate(currentDate);
     const rows = entryChildren(entry).filter((child) => child.childName && (child.subscriptionId || entry.subscriptionId)).map((child) => ({
       subscription_id: child.subscriptionId || entry.subscriptionId,
       child_name: child.childName,
-      schedule_cell_key: editingKey,
+      schedule_cell_key: scheduleKey || editingKey,
       session_date: dateIso,
       status: entry.isGroup ? (child.status || "attended") : status,
       transferred_to_date: entry.isGroup ? (child.transferDate || null) : (entry.transferDate || null),
@@ -717,13 +749,7 @@
     const result = await window.sbClient.from("subscription_attendance").upsert(rows, { onConflict: "subscription_id,child_name,schedule_cell_key" });
     if (result.error) { setStatus("Статус не збережено: " + result.error.message, true); return; }
     const subscriptionIds = [...new Set(rows.map((row) => row.subscription_id))];
-    await Promise.all(subscriptionIds.map(async (subscriptionId) => {
-      const usage = await window.sbClient.from("subscription_attendance").select("schedule_cell_key, status").eq("subscription_id", subscriptionId);
-      if (!usage.error) {
-        const used = new Set((usage.data || []).filter((item) => item.status !== "transferred").map((item) => item.schedule_cell_key)).size;
-        await window.sbClient.from("subscriptions").update({ sessions_used: used }).eq("id", subscriptionId);
-      }
-    }));
+    await Promise.all(subscriptionIds.map(updateSubscriptionLifecycle));
   }
 
   function buildTransferBookings(entry) {
@@ -807,6 +833,7 @@
     render();
     flushSave();
     saveSubscriptionAttendance(savedEntry);
+    transferBookings.forEach((booking) => saveSubscriptionAttendance(booking.entry, booking.key, booking.key.split("|")[1]));
     closeCellModal();
   }
 

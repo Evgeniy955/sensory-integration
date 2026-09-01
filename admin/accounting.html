@@ -28,7 +28,7 @@
             <label class="anketa-field"><span class="anketa-field__label">Кількість занять</span><select id="sessions-total" required><option value="1">1 заняття</option><option value="4">4 заняття</option><option value="8">8 занять</option><option value="12">12 занять</option></select></label>
             <label class="anketa-field"><span class="anketa-field__label">Напрям</span><select id="direction" required><option value="Сенсорна інтеграція">Сенсорна інтеграція</option><option value="ABA">ABA</option><option value="Логопедія">Логопедія</option><option value="Групове">Групове</option></select></label>
             <label class="anketa-field"><span class="anketa-field__label">Початок</span><input type="date" id="starts-on" required></label>
-            <label class="anketa-field"><span class="anketa-field__label">Закінчення</span><input type="date" id="ends-on" required></label>
+            <label class="anketa-field"><span class="anketa-field__label">Закінчення</span><input type="date" id="ends-on" required readonly></label>
           </div>
           <div class="accounting-form__grid">
             <label class="anketa-field accounting-child-search"><span class="anketa-field__label">Дитина</span><input type="text" id="subscription-child-search" autocomplete="off" placeholder="Почніть вводити ПІБ дитини…" required><input type="hidden" id="subscription-child-id"><div id="subscription-child-results" class="accounting-child-results" hidden></div></label>
@@ -37,7 +37,7 @@
           <div class="accounting-actions"><button class="anketa-submit" type="submit">Створити абонемент</button><span id="form-status" class="accounting-status"></span></div>
         </form>
       </section>
-      <section class="accounting-card"><div class="accounting-section-heading"><h2>Абонементи</h2><button type="button" class="anketa-btn" id="refresh-btn">Оновити</button></div><div class="anketa-table-wrap"><table class="anketa-table accounting-table"><thead><tr><th>Діти</th><th>Напрям / спеціалісти</th><th>Заняття</th><th>Період</th><th>Статус</th><th>Дії</th></tr></thead><tbody id="subscriptions-body"><tr><td colspan="6" class="anketa-table-empty">Завантаження…</td></tr></tbody></table></div></section>
+      <section class="accounting-card"><div class="accounting-section-heading"><h2>Абонементи</h2><button type="button" class="anketa-btn" id="refresh-btn">Оновити</button></div><div class="anketa-table-wrap"><table class="anketa-table accounting-table"><thead><tr><th>Діти</th><th>Напрям / спеціалісти</th><th>Заняття</th><th>Залишилось</th><th>Період</th><th>Статус</th><th>Дії</th></tr></thead><tbody id="subscriptions-body"><tr><td colspan="7" class="anketa-table-empty">Завантаження…</td></tr></tbody></table></div></section>
       <section class="accounting-card"><div class="accounting-section-heading"><h2>Відвідування та статуси</h2></div><div class="anketa-table-wrap"><table class="anketa-table accounting-table"><thead><tr><th>Дата</th><th>Дитина</th><th>Статус</th><th>Запис</th></tr></thead><tbody id="attendance-body"><tr><td colspan="4" class="anketa-table-empty">Завантаження…</td></tr></tbody></table></div></section>
     </div>
   </main>
