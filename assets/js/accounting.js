@@ -13,7 +13,8 @@
   function setStatus(message, error) { $("form-status").textContent = message || ""; $("form-status").classList.toggle("is-error", !!error); }
   function addDays(value, days) { const date = new Date(value + "T00:00:00"); date.setDate(date.getDate() + days); return isoDate(date); }
   function remainingSessions(row) { return Math.max(0, Number(row.sessions_total || 0) - Number(row.sessions_used || 0)); }
-  function uniqueUsedSessions(rows) { return new Set(rows.filter((item) => item.status !== "transferred").map((item) => item.schedule_cell_key)).size; }
+  function countsTowardsSubscription(item) { return item.status !== "transferred" || !item.transferred_to_date; }
+  function uniqueUsedSessions(rows) { return new Set(rows.filter(countsTowardsSubscription).map((item) => item.schedule_cell_key)).size; }
   function latestDate(rows, field) { return rows.reduce((latest, row) => row[field] && (!latest || row[field] > latest) ? row[field] : latest, ""); }
   function effectiveEndDate(row, rows) {
     const baseEnd = row.base_ends_on || row.ends_on;
@@ -56,13 +57,13 @@
         let status = entry.isGroup ? (child.status || "attended") : (entry.attendanceStatus || (entry.noShow ? "no_show" : "attended"));
         let transferredToDate = entry.isGroup ? child.transferDate : entry.transferDate;
         let transferredToHour = entry.isGroup ? child.transferHour : entry.transferHour;
-        // A target created by a transfer is displayed as "Перенесено" until
+        // A target created by a transfer is displayed as "Відпрацювання" until
         // its date. It uses the non-counting transfer state internally and
         // becomes attended automatically on the scheduled day.
         if (sessionDate > today && status === "attended" && transferredSubscriptionId) { status = "transferred"; transferredToDate = null; transferredToHour = null; }
-        // A future slot is a booking, not an attendance. The original
-        // transfer remains in history as "Перенос" and carries its target.
-        if (!subscriptionId || !child.childName || (sessionDate > today && status !== "transferred")) return [];
+        // Future bookings reserve a place in the package. The target of a
+        // transfer uses the same reservation while its source stays "Перенос".
+        if (!subscriptionId || !child.childName) return [];
         const transferHour = Number(transferredToHour);
         const validTransferHour = Number.isInteger(transferHour) && transferHour >= 8 && transferHour <= 18 ? transferHour : null;
         return [{ subscription_id: subscriptionId, child_name: child.childName, schedule_cell_key: scheduleCellKey, session_date: sessionDate, status, transferred_to_date: transferredToDate || null, transferred_to_hour: validTransferHour, created_by: profile.id, updated_at: new Date().toISOString() }];
@@ -108,7 +109,7 @@
       const hasExpired = actualUsed < Number(row.sessions_total) && endsOn < today;
       const burned = hasExpired ? Number(row.sessions_total) - actualUsed : 0;
       const used = actualUsed + burned;
-      const lastUsedDate = latestDate(visits.filter((item) => item.status !== "transferred"), "session_date");
+      const lastUsedDate = latestDate(visits.filter(countsTowardsSubscription), "session_date");
       const reason = hasExpired ? "expired" : (actualUsed >= Number(row.sessions_total) && lastUsedDate && today > lastUsedDate && lastUsedDate < endsOn ? "early" : null);
       const update = { ends_on: endsOn, sessions_used: used, burned_sessions: burned, closed_reason: reason, closed_at: reason ? (row.closed_reason === reason && row.closed_at ? row.closed_at : new Date().toISOString()) : null };
       const differs = Object.keys(update).some((key) => String(row[key] == null ? "" : row[key]) !== String(update[key] == null ? "" : update[key]));
@@ -157,7 +158,7 @@
     const result = await window.sbClient.from("subscription_attendance").select("id, child_name, session_date, status, schedule_cell_key, transferred_to_date, transferred_to_hour").order("session_date", { ascending: false }).limit(100);
     if (result.error) throw result.error;
     const labels = { attended: "Відвідав", no_show: "Не прийшов", transferred: "Перенос" };
-    $("attendance-body").innerHTML = result.data && result.data.length ? result.data.map((row) => { const target = row.status === "transferred" && row.transferred_to_date ? " → " + formatDate(row.transferred_to_date) + (row.transferred_to_hour != null ? " · " + String(row.transferred_to_hour).padStart(2, "0") + ":00" : "") : ""; const transferred = row.status === "transferred"; const label = transferred && !row.transferred_to_date ? "Перенесено" : labels[row.status]; return '<tr' + (transferred ? ' class="accounting-attendance-row--transferred"' : "") + '><td>' + formatDate(row.session_date) + '</td><td>' + escapeHtml(row.child_name) + '</td><td><span class="accounting-status-badge' + (transferred ? ' accounting-status-badge--transferred' : "") + '">' + label + '</span><div class="accounting-table__muted">' + target + '</div></td><td class="accounting-table__muted">' + escapeHtml(row.schedule_cell_key) + '</td></tr>'; }).join("") : '<tr><td colspan="4" class="anketa-table-empty">Статусів відвідування ще немає.</td></tr>';
+    $("attendance-body").innerHTML = result.data && result.data.length ? result.data.map((row) => { const target = row.status === "transferred" && row.transferred_to_date ? " → " + formatDate(row.transferred_to_date) + (row.transferred_to_hour != null ? " · " + String(row.transferred_to_hour).padStart(2, "0") + ":00" : "") : ""; const transferred = row.status === "transferred"; const rescheduled = transferred && !row.transferred_to_date; const planned = row.status === "attended" && row.session_date > isoDate(new Date()); const label = rescheduled ? "Відпрацювання" : (planned ? "Заплановано" : labels[row.status]); return '<tr' + (transferred ? ' class="accounting-attendance-row--transferred"' : "") + '><td>' + formatDate(row.session_date) + '</td><td>' + escapeHtml(row.child_name) + '</td><td><span class="accounting-status-badge' + (transferred ? ' accounting-status-badge--transferred' : "") + '">' + label + '</span><div class="accounting-table__muted">' + target + '</div></td><td class="accounting-table__muted">' + escapeHtml(row.schedule_cell_key) + '</td></tr>'; }).join("") : '<tr><td colspan="4" class="anketa-table-empty">Статусів відвідування ще немає.</td></tr>';
   }
 
   function renderSubscription(row) {

@@ -128,7 +128,8 @@
 
   function addIsoDays(value, days) { return toISODate(addDays(parseISODate(value), days)); }
   function remainingSessions(subscription) { return Math.max(0, Number(subscription.sessions_total || 0) - Number(subscription.sessions_used || 0)); }
-  function uniqueUsedSessions(rows) { return new Set(rows.filter((row) => row.status !== "transferred").map((row) => row.schedule_cell_key)).size; }
+  function countsTowardsSubscription(row) { return row.status !== "transferred" || !row.transferred_to_date; }
+  function uniqueUsedSessions(rows) { return new Set(rows.filter(countsTowardsSubscription).map((row) => row.schedule_cell_key)).size; }
   function latestDate(rows, field) { return rows.reduce((latest, row) => row[field] && (!latest || row[field] > latest) ? row[field] : latest, ""); }
   function effectiveSubscriptionEnd(subscription, attendance) {
     const frozenEnd = addIsoDays(subscription.base_ends_on || subscription.ends_on, Number(subscription.freeze_days || 0));
@@ -148,7 +149,7 @@
     const endsOn = effectiveSubscriptionEnd(subscription, attendance);
     const expired = actualUsed < Number(subscription.sessions_total) && endsOn < toISODate(new Date());
     const burned = expired ? Number(subscription.sessions_total) - actualUsed : 0;
-    const lastUsedDate = latestDate(attendance.filter((row) => row.status !== "transferred"), "session_date");
+    const lastUsedDate = latestDate(attendance.filter(countsTowardsSubscription), "session_date");
     const reason = expired ? "expired" : (actualUsed >= Number(subscription.sessions_total) && lastUsedDate && toISODate(new Date()) > lastUsedDate && lastUsedDate < endsOn ? "early" : null);
     const update = { ends_on: endsOn, sessions_used: actualUsed + burned, burned_sessions: burned, closed_reason: reason, closed_at: reason ? (subscription.closed_reason === reason && subscription.closed_at ? subscription.closed_at : new Date().toISOString()) : null };
     const differs = Object.keys(update).some((key) => String(subscription[key] == null ? "" : subscription[key]) !== String(update[key] == null ? "" : update[key]));
@@ -395,7 +396,7 @@
     const inner = entry
       ? '<span class="schedule-slot-specialist ' + specChipClass + '">' + escapeHtml(specialists.map(specialistName).join(", ")) + "</span>" +
         '<span class="schedule-slot-child' + noShowClass + '">' + escapeHtml(children.map((c) => c.childName).join(", ")) + "</span>" +
-        (rescheduled ? '<span class="schedule-slot-noshow-badge schedule-slot-rescheduled-badge">перенесено</span>' : (entry.attendanceStatus === "transferred" ? '<span class="schedule-slot-noshow-badge schedule-slot-transfer-badge">перенос</span>' : (entry.noShow ? '<span class="schedule-slot-noshow-badge">не прийшов</span>' : "")))
+        (rescheduled ? '<span class="schedule-slot-noshow-badge schedule-slot-rescheduled-badge">відпрацювання</span>' : (entry.attendanceStatus === "transferred" ? '<span class="schedule-slot-noshow-badge schedule-slot-transfer-badge">перенос</span>' : (entry.noShow ? '<span class="schedule-slot-noshow-badge">не прийшов</span>' : "")))
       : '<span class="schedule-slot-add" aria-hidden="true">+</span>';
     const ariaLabel = room.name + ", " + label +
       (entry ? ": " + specialists.map(specialistName).join(", ") + ", " + children.map((c) => c.childName).join(", ") + (entry.noShow ? ", дитина не прийшла" : "") : ": вільно");
@@ -820,7 +821,7 @@
       const failedExtension = extensionResults.find((result) => result.error);
       if (failedExtension) { setStatus("error", failedExtension.error.message); return; }
     }
-    const rows = allRows.filter((row) => row.session_date <= today || row.status !== "attended");
+    const rows = allRows;
     if (!rows.length) return;
     const result = await window.sbClient.from("subscription_attendance").upsert(rows, { onConflict: "subscription_id,child_name,schedule_cell_key" });
     if (result.error) { setStatus("Статус не збережено: " + result.error.message, true); return; }
