@@ -352,6 +352,7 @@ create table if not exists public.subscriptions (
   freeze_days integer not null default 0 check (freeze_days >= 0),
   is_group boolean not null default false,
   is_frozen boolean not null default false,
+  frozen_started_on date,
   frozen_until date,
   closed_at timestamptz,
   closed_reason text check (closed_reason in ('early', 'expired')),
@@ -365,6 +366,7 @@ alter table public.subscriptions add column if not exists freeze_days integer no
 alter table public.subscriptions add column if not exists burned_sessions integer not null default 0 check (burned_sessions >= 0);
 alter table public.subscriptions add column if not exists closed_at timestamptz;
 alter table public.subscriptions add column if not exists closed_reason text check (closed_reason in ('early', 'expired'));
+alter table public.subscriptions add column if not exists frozen_started_on date;
 
 -- Existing subscriptions keep their current end date. For packages, the
 -- original 1.5-month period is recorded separately; any later difference is

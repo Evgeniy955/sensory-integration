@@ -127,6 +127,11 @@
   }
 
   function addIsoDays(value, days) { return toISODate(addDays(parseISODate(value), days)); }
+  function daysBetween(start, end) {
+    if (!start || !end) return 0;
+    const toUtc = (value) => { const [year, month, day] = String(value).split("-").map(Number); return Date.UTC(year, month - 1, day); };
+    return Math.max(0, Math.round((toUtc(end) - toUtc(start)) / 86400000));
+  }
   function remainingSessions(subscription) { return Math.max(0, Number(subscription.sessions_total || 0) - Number(subscription.sessions_used || 0)); }
   function countsTowardsSubscription(row) { return row.status !== "transferred" || !row.transferred_to_date; }
   function uniqueUsedSessions(rows) { return new Set(rows.filter(countsTowardsSubscription).map((row) => row.schedule_cell_key)).size; }
@@ -146,11 +151,12 @@
 
   async function updateSubscriptionLifecycle(subscriptionId) {
     const [subscriptionResult, attendanceResult] = await Promise.all([
-      window.sbClient.from("subscriptions").select("id, sessions_total, sessions_used, ends_on, base_ends_on, freeze_days, burned_sessions, closed_reason, closed_at").eq("id", subscriptionId).single(),
+      window.sbClient.from("subscriptions").select("id, sessions_total, sessions_used, ends_on, base_ends_on, freeze_days, burned_sessions, closed_reason, closed_at, is_frozen").eq("id", subscriptionId).single(),
       window.sbClient.from("subscription_attendance").select("schedule_cell_key, status, session_date, transferred_to_date").eq("subscription_id", subscriptionId),
     ]);
     if (subscriptionResult.error || attendanceResult.error) return;
     const subscription = subscriptionResult.data;
+    if (subscription.is_frozen) return;
     const attendance = attendanceResult.data || [];
     const actualUsed = Math.min(uniqueUsedSessions(attendance), Number(subscription.sessions_total));
     const endsOn = effectiveSubscriptionEnd(subscription, attendance);
@@ -637,6 +643,23 @@
     return changed;
   }
 
+  async function validateSubscriptionsAreActive(subscriptionIds) {
+    if (!subscriptionIds.length) return true;
+    const result = await window.sbClient.from("subscriptions").select("id, is_frozen").in("id", subscriptionIds);
+    if (result.error) { window.alert("Не вдалося перевірити абонемент: " + result.error.message); return false; }
+    if ((result.data || []).some((subscription) => subscription.is_frozen)) {
+      window.alert("Заморожений абонемент не можна додати до розкладу. Спочатку розморозьте його.");
+      return false;
+    }
+    return true;
+  }
+
+  async function validateNewSubscriptionLinks(previousEntry, nextEntry) {
+    const previousIds = new Set(entrySubscriptionIds(previousEntry));
+    const addedIds = entrySubscriptionIds(nextEntry).filter((id) => !previousIds.has(id));
+    return validateSubscriptionsAreActive(addedIds);
+  }
+
   async function restoreSubscriptionLinks(entry) {
     if (!entry || !entryChildren(entry).some((child) => !(child.subscriptionId || entry.subscriptionId))) return;
     const result = await window.sbClient.from("subscription_attendance").select("subscription_id, child_name").eq("schedule_cell_key", editingKey);
@@ -667,7 +690,7 @@
       const selectedSubscription = subscriptions.find((subscription) => subscription.id === child.subscriptionId);
       const subscriptionSelect = child.anketaId ? '<select class="schedule-child-subscription" data-group-subscription-index="' + index + '"><option value="">Без абонемента</option>' + subscriptions.map((subscription) => '<option value="' + subscription.id + '"' + (subscription.id === child.subscriptionId ? " selected" : "") + '>' + escapeHtml(subscription.direction) + " · залишилось " + remainingSessions(subscription) + " · до " + subscription.ends_on + "</option>").join("") + '</select>' : "";
       const transfer = status === "transferred" ? '<div class="schedule-group-child-transfer"><input type="date" value="' + escapeHtml(child.transferDate || "") + '" data-group-transfer-date-index="' + index + '"><select data-group-transfer-hour-index="' + index + '">' + hourOptions(child.transferHour) + '</select></div>' : "";
-      const freeze = selectedSubscription ? '<button type="button" class="anketa-btn schedule-group-child-freeze' + (selectedSubscription.is_frozen ? " is-frozen" : "") + '" data-group-freeze-index="' + index + '">' + (selectedSubscription.is_frozen ? "Розморозити" : "Заморозити") + '</button>' : "";
+      const freeze = child.subscriptionId ? '<button type="button" class="anketa-btn schedule-group-child-freeze' + (selectedSubscription && selectedSubscription.is_frozen ? " is-frozen" : "") + '" data-group-freeze-id="' + escapeHtml(child.subscriptionId) + '">' + (selectedSubscription ? (selectedSubscription.is_frozen ? "Розморозити" : "Заморозити") : "Керувати заморозкою") + '</button>' : "";
       return '<div class="schedule-group-child-row"><div class="schedule-child-autocomplete"><input type="text" data-group-child-index="' + index + '" value="' + escapeHtml(child.childName || "") + '" autocomplete="off" placeholder="Почніть вводити ПІБ дитини…"><div class="schedule-child-results" data-group-results-index="' + index + '" hidden></div>' + subscriptionSelect + transfer + freeze + '</div><div class="schedule-child-status-actions"><button type="button" class="schedule-child-status-btn' + (status === "no_show" ? " is-active" : "") + '" data-group-status="no_show" data-group-status-index="' + index + '">Не прийшов</button><button type="button" class="schedule-child-status-btn' + (status === "transferred" ? " is-active" : "") + '" data-group-status="transferred" data-group-status-index="' + index + '">Перенос</button></div>' + (groupChildren.length > 1 ? '<button type="button" class="schedule-remove-child" data-remove-child-index="' + index + '" aria-label="Видалити дитину">×</button>' : "") + '</div>';
     }).join("");
   }
@@ -688,7 +711,12 @@
     const childNames = (editingGroup ? groupChildren : [{ childName: selectedChildName }]).map((child) => normalizeChildName(child.childName)).filter(Boolean);
     if (!childNames.length) { select.innerHTML = '<option value="">Без прив\'язки</option>'; hint.textContent = "Оберіть дитину, щоб побачити доступні абонементи."; return; }
     const result = await window.sbClient.from("subscriptions").select("id, direction, starts_on, ends_on, base_ends_on, freeze_days, sessions_used, sessions_total, burned_sessions, closed_reason, is_group, is_frozen, subscription_children(child_name), subscription_specialists(specialist_id)").lte("starts_on", toISODate(currentDate));
-    if (result.error) return;
+    if (result.error) {
+      cellSubscriptions = [];
+      hint.textContent = "Не вдалося завантажити абонементи: " + result.error.message;
+      updateFreezeButtonUI();
+      return;
+    }
     const subscriptionIds = (result.data || []).map((subscription) => subscription.id);
     const transfers = subscriptionIds.length ? await window.sbClient.from("subscription_attendance").select("subscription_id").in("subscription_id", subscriptionIds).eq("status", "transferred") : { data: [] };
     if (transfers.error) return;
@@ -696,7 +724,7 @@
     cellSubscriptions = (result.data || []).filter((subscription) => {
       const names = (subscription.subscription_children || []).map((child) => normalizeChildName(child.child_name));
       const linked = linkedIds.has(subscription.id);
-      const available = (subscription.ends_on >= toISODate(currentDate) || transferredSubscriptionIds.has(subscription.id)) && remainingSessions(subscription) > 0 && !subscription.closed_reason;
+      const available = !subscription.is_frozen && (subscription.ends_on >= toISODate(currentDate) || transferredSubscriptionIds.has(subscription.id)) && remainingSessions(subscription) > 0 && !subscription.closed_reason;
       return childNames.some((name) => names.includes(name)) && (linked || available) && (editingGroup ? subscription.direction === "Групове" : subscription.direction !== "Групове");
     });
     if (editingGroup) { renderGroupChildren(); return; }
@@ -707,32 +735,38 @@
 
   function updateFreezeButtonUI() {
     const button = document.getElementById("cell-freeze-btn");
-    const subscription = cellSubscriptions.find((item) => item.id === document.getElementById("cell-subscription-select").value);
-    if (!subscription) { button.hidden = true; return; }
+    if (editingGroup) { button.hidden = true; button.dataset.subscriptionId = ""; return; }
+    const entry = board.cells[editingKey] || null;
+    const subscriptionId = document.getElementById("cell-subscription-select").value || entrySubscriptionIds(entry)[0] || "";
+    const subscription = cellSubscriptions.find((item) => item.id === subscriptionId);
+    if (!subscriptionId) { button.hidden = true; button.dataset.subscriptionId = ""; return; }
     button.hidden = false;
-    button.textContent = subscription.is_frozen ? "Розморозити абонемент" : "Заморозити абонемент";
-    button.classList.toggle("schedule-freeze-btn--active", !!subscription.is_frozen);
+    button.dataset.subscriptionId = subscriptionId;
+    button.textContent = subscription ? (subscription.is_frozen ? "Розморозити абонемент" : "Заморозити абонемент") : "Керувати заморозкою";
+    button.classList.toggle("schedule-freeze-btn--active", !!(subscription && subscription.is_frozen));
   }
 
   async function toggleSubscriptionFreeze(id) {
-    id = id || document.getElementById("cell-subscription-select").value;
-    const subscription = cellSubscriptions.find((item) => item.id === id);
-    if (!subscription) return;
+    id = id || document.getElementById("cell-subscription-select").value || document.getElementById("cell-freeze-btn").dataset.subscriptionId;
+    if (!id) return;
+    const lookup = await window.sbClient.from("subscriptions").select("id, sessions_total, sessions_used, ends_on, base_ends_on, freeze_days, burned_sessions, closed_reason, closed_at, is_frozen, frozen_started_on").eq("id", id).single();
+    if (lookup.error) { window.alert("Не вдалося змінити заморозку: " + lookup.error.message); return; }
+    const localSubscription = cellSubscriptions.find((item) => item.id === id);
+    const subscription = { ...(localSubscription || {}), ...lookup.data };
     if (subscription.is_frozen) {
-      const result = await window.sbClient.from("subscriptions").update({ is_frozen: false, frozen_until: null }).eq("id", id);
-      if (result.error) window.alert(result.error.message); else { subscription.is_frozen = false; updateFreezeButtonUI(); renderGroupChildren(); }
+      const attendance = await window.sbClient.from("subscription_attendance").select("status, session_date, transferred_to_date").eq("subscription_id", id);
+      if (attendance.error) { window.alert(attendance.error.message); return; }
+      const addedDays = subscription.frozen_started_on ? daysBetween(subscription.frozen_started_on, toISODate(new Date())) : 0;
+      const freezeDays = Number(subscription.freeze_days || 0) + addedDays;
+      const end = effectiveSubscriptionEnd({ ...subscription, freeze_days: freezeDays }, attendance.data || []);
+      const update = { is_frozen: false, frozen_started_on: null, frozen_until: null, freeze_days: freezeDays, ends_on: end };
+      const result = await window.sbClient.from("subscriptions").update(update).eq("id", id);
+      if (result.error) window.alert(result.error.message); else { if (localSubscription) Object.assign(localSubscription, update); await updateSubscriptionLifecycle(id); await loadCellSubscriptions(); }
       return;
     }
-    const answer = window.prompt("На скільки днів заморозити? Від 7 до 21.", "14");
-    if (answer === null) return;
-    const days = Math.min(21, Math.max(7, Number(answer) || 14));
-    const attendance = await window.sbClient.from("subscription_attendance").select("status, session_date, transferred_to_date").eq("subscription_id", id);
-    if (attendance.error) { window.alert(attendance.error.message); return; }
-    const freezeDays = Number(subscription.freeze_days || 0) + days;
-    const end = effectiveSubscriptionEnd({ ...subscription, freeze_days: freezeDays }, attendance.data || []);
-    const frozenUntil = new Date(); frozenUntil.setDate(frozenUntil.getDate() + days);
-    const result = await window.sbClient.from("subscriptions").update({ is_frozen: true, frozen_until: toISODate(frozenUntil), freeze_days: freezeDays, ends_on: end }).eq("id", id);
-    if (result.error) window.alert(result.error.message); else { subscription.is_frozen = true; subscription.freeze_days = freezeDays; subscription.ends_on = end; updateFreezeButtonUI(); renderGroupChildren(); }
+    const update = { is_frozen: true, frozen_started_on: toISODate(new Date()), frozen_until: null };
+    const result = await window.sbClient.from("subscriptions").update(update).eq("id", id);
+    if (result.error) window.alert(result.error.message); else { if (localSubscription) Object.assign(localSubscription, update); await loadCellSubscriptions(); }
   }
 
   function updateNoShowToggleUI() {
@@ -822,9 +856,9 @@
     const today = toISODate(new Date());
     const futureBookingIds = [...new Set(allRows.filter((row) => row.session_date > today && row.status === "attended").map((row) => row.subscription_id))];
     if (futureBookingIds.length) {
-      const subscriptionsResult = await window.sbClient.from("subscriptions").select("id, ends_on").in("id", futureBookingIds);
+      const subscriptionsResult = await window.sbClient.from("subscriptions").select("id, ends_on, is_frozen").in("id", futureBookingIds);
       if (subscriptionsResult.error) { setStatus("error", subscriptionsResult.error.message); return; }
-      const extensions = (subscriptionsResult.data || []).filter((subscription) => subscription.ends_on < dateIso).map((subscription) => window.sbClient.from("subscriptions").update({ ends_on: dateIso }).eq("id", subscription.id));
+      const extensions = (subscriptionsResult.data || []).filter((subscription) => !subscription.is_frozen && subscription.ends_on < dateIso).map((subscription) => window.sbClient.from("subscriptions").update({ ends_on: dateIso }).eq("id", subscription.id));
       const extensionResults = await Promise.all(extensions);
       const failedExtension = extensionResults.find((result) => result.error);
       if (failedExtension) { setStatus("error", failedExtension.error.message); return; }
@@ -892,7 +926,7 @@
     return bookings;
   }
 
-  function saveCellFromModal() {
+  async function saveCellFromModal() {
     if (!editingKey) return;
     const previousEntry = board.cells[editingKey] || null;
     const specialistId = document.getElementById("cell-specialist-select").value || null;
@@ -918,6 +952,11 @@
       board.cells[editingKey] = { specialistId, specialistIds: [specialistId], anketaId: selectedAnketaId, childName: selectedChildName, children: [{ anketaId: selectedAnketaId, childName: selectedChildName, subscriptionId, transferDate: editingTransferred ? editingTransferDate : "", transferHour: editingTransferred ? editingTransferHour : null }], isGroup: false, subscriptionId, attendanceStatus: editingTransferred ? "transferred" : (editingNoShow ? "no_show" : "attended"), transferDate: editingTransferred ? editingTransferDate : "", transferHour: editingTransferred ? editingTransferHour : null, noShow: editingNoShow };
     }
     const savedEntry = board.cells[editingKey];
+    if (!await validateNewSubscriptionLinks(previousEntry, savedEntry)) {
+      if (previousEntry) board.cells[editingKey] = previousEntry;
+      else delete board.cells[editingKey];
+      return;
+    }
     const conflicts = findConcurrentConflicts(savedEntry, toISODate(currentDate), editingHour, [editingKey]);
     if (conflicts.specialists.length || conflicts.children.length) {
       if (previousEntry) board.cells[editingKey] = previousEntry;
@@ -927,6 +966,12 @@
     }
     const transferBookings = buildTransferBookings(savedEntry);
     if (transferBookings === null) return;
+    const transferSubscriptionIds = [...new Set(transferBookings.flatMap((booking) => entrySubscriptionIds(booking.entry)))];
+    if (!await validateSubscriptionsAreActive(transferSubscriptionIds)) {
+      if (previousEntry) board.cells[editingKey] = previousEntry;
+      else delete board.cells[editingKey];
+      return;
+    }
     transferBookings.forEach((booking) => { board.cells[booking.key] = booking.entry; });
     render();
     flushSave();
@@ -1247,10 +1292,9 @@
       if (hourIndex !== null && groupChildren[Number(hourIndex)]) groupChildren[Number(hourIndex)].transferHour = Number(e.target.value);
     });
     document.getElementById("cell-group-children").addEventListener("click", (e) => {
-      const freezeButton = e.target.closest("[data-group-freeze-index]");
+      const freezeButton = e.target.closest("[data-group-freeze-id]");
       if (!freezeButton) return;
-      const child = groupChildren[Number(freezeButton.dataset.groupFreezeIndex)];
-      if (child && child.subscriptionId) toggleSubscriptionFreeze(child.subscriptionId);
+      toggleSubscriptionFreeze(freezeButton.dataset.groupFreezeId);
     });
     document.getElementById("cell-noshow-toggle").addEventListener("click", () => {
       editingNoShow = !editingNoShow;

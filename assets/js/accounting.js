@@ -12,6 +12,11 @@
   function formatDate(value) { return value ? new Date(value + "T00:00:00").toLocaleDateString("uk-UA") : "—"; }
   function setStatus(message, error) { $("form-status").textContent = message || ""; $("form-status").classList.toggle("is-error", !!error); }
   function addDays(value, days) { const date = new Date(value + "T00:00:00"); date.setDate(date.getDate() + days); return isoDate(date); }
+  function daysBetween(start, end) {
+    if (!start || !end) return 0;
+    const toUtc = (value) => { const [year, month, day] = String(value).split("-").map(Number); return Date.UTC(year, month - 1, day); };
+    return Math.max(0, Math.round((toUtc(end) - toUtc(start)) / 86400000));
+  }
   function remainingSessions(row) { return Math.max(0, Number(row.sessions_total || 0) - Number(row.sessions_used || 0)); }
   function countsTowardsSubscription(item) { return item.status !== "transferred" || !item.transferred_to_date; }
   function uniqueUsedSessions(rows) { return new Set(rows.filter(countsTowardsSubscription).map((item) => item.schedule_cell_key)).size; }
@@ -104,6 +109,9 @@
     }, {});
     const today = isoDate(new Date());
     const changes = rows.map(async (row) => {
+      // A freeze pauses the package completely. Do not burn sessions or mark
+      // it as completed while its previous end date passes.
+      if (row.is_frozen) return false;
       const visits = attendanceBySubscription[row.id] || [];
       const actualUsed = Math.min(uniqueUsedSessions(visits), Number(row.sessions_total));
       const endsOn = effectiveEndDate(row, visits);
@@ -167,9 +175,10 @@
     const people = (row.subscription_specialists || []).map((item) => item.specialist_name).join(", ") || "—";
     const today = isoDate(new Date());
     const remaining = remainingSessions(row);
-    const closed = row.closed_reason || row.ends_on < today;
+    const closed = !row.is_frozen && (row.closed_reason || row.ends_on < today);
     const fullyScheduled = !row.closed_reason && remaining === 0;
-    const status = row.is_frozen ? '<span class="accounting-status-badge accounting-status-badge--frozen">Заморожений' + (row.frozen_until ? " до " + formatDate(row.frozen_until) : "") + '</span>' : (row.closed_reason === "early" ? '<span class="accounting-status-badge">✓ Достроково</span>' : (row.closed_reason === "expired" ? '<span class="accounting-status-badge accounting-status-badge--expired">Згоріло: ' + Number(row.burned_sessions || 0) + '</span>' : (closed ? '<span class="accounting-status-badge accounting-status-badge--expired">Завершений</span>' : (fullyScheduled ? '<span class="accounting-status-badge">Заплановано</span>' : '<span class="accounting-status-badge">Активний</span>'))));
+    const freezeLabel = row.frozen_started_on ? " з " + formatDate(row.frozen_started_on) : (row.frozen_until ? " до " + formatDate(row.frozen_until) : "");
+    const status = row.is_frozen ? '<span class="accounting-status-badge accounting-status-badge--frozen">Заморожений' + freezeLabel + '</span>' : (row.closed_reason === "early" ? '<span class="accounting-status-badge">✓ Достроково</span>' : (row.closed_reason === "expired" ? '<span class="accounting-status-badge accounting-status-badge--expired">Згоріло: ' + Number(row.burned_sessions || 0) + '</span>' : (closed ? '<span class="accounting-status-badge accounting-status-badge--expired">Завершений</span>' : (fullyScheduled ? '<span class="accounting-status-badge">Заплановано</span>' : '<span class="accounting-status-badge">Активний</span>'))));
     const action = closed ? "" : (row.is_frozen ? '<button type="button" class="anketa-btn" data-unfreeze="' + row.id + '">Розморозити</button>' : '<button type="button" class="anketa-btn" data-freeze="' + row.id + '">Заморозити</button>');
     return '<tr><td>' + escapeHtml(children) + (row.is_group ? '<div class="accounting-table__muted">Група</div>' : "") + '</td><td>' + escapeHtml(row.direction) + '<div class="accounting-table__muted">' + escapeHtml(people) + '</div></td><td>' + row.sessions_used + " / " + row.sessions_total + '</td><td><strong>' + remaining + '</strong></td><td>' + formatDate(row.starts_on) + " — " + formatDate(row.ends_on) + '</td><td>' + status + '</td><td><div class="accounting-row-actions">' + action + '<button type="button" class="anketa-btn anketa-btn--danger" data-delete="' + row.id + '">Видалити</button></div></td></tr>';
   }
@@ -202,14 +211,21 @@
   function updateDirectionFields() { const isGroupDirection = $("direction").value === "Групове"; $("specialist-field").hidden = isGroupDirection; $("regular-specialist").required = !isGroupDirection; if (isGroupDirection) $("regular-specialist").value = ""; }
 
   async function changeFreeze(id, frozen) {
-    let days = 14;
-    if (frozen) { const input = window.prompt("На скільки днів заморозити абонемент? Від 7 до 21.", "14"); if (input === null) return; days = Math.min(21, Math.max(7, Number(input) || 14)); }
     const row = subscriptions.find((item) => item.id === id); if (!row) return;
+    const today = isoDate(new Date());
+    if (frozen) {
+      const result = await window.sbClient.from("subscriptions").update({ is_frozen: true, frozen_started_on: today, frozen_until: null }).eq("id", id);
+      if (result.error) window.alert(result.error.message); else await refresh();
+      return;
+    }
     const attendance = await window.sbClient.from("subscription_attendance").select("status, session_date, transferred_to_date").eq("subscription_id", id);
     if (attendance.error) { window.alert(attendance.error.message); return; }
-    const freezeDays = frozen ? Number(row.freeze_days || 0) + days : Number(row.freeze_days || 0);
+    // Older freezes have no start date because they already received their
+    // extension when created. New freezes are extended by the actual pause.
+    const addedDays = row.frozen_started_on ? daysBetween(row.frozen_started_on, today) : 0;
+    const freezeDays = Number(row.freeze_days || 0) + addedDays;
     const withFreeze = { ...row, freeze_days: freezeDays };
-    const update = frozen ? { is_frozen: true, frozen_until: addDays(isoDate(new Date()), days), freeze_days: freezeDays, ends_on: effectiveEndDate(withFreeze, attendance.data || []) } : { is_frozen: false, frozen_until: null };
+    const update = { is_frozen: false, frozen_started_on: null, frozen_until: null, freeze_days: freezeDays, ends_on: effectiveEndDate(withFreeze, attendance.data || []) };
     const result = await window.sbClient.from("subscriptions").update(update).eq("id", id); if (result.error) window.alert(result.error.message); else await refresh();
   }
   async function deleteSubscription(id) { if (!window.confirm("Видалити абонемент і його статуси відвідування?")) return; const result = await window.sbClient.from("subscriptions").delete().eq("id", id); if (result.error) window.alert(result.error.message); else await refresh(); }
