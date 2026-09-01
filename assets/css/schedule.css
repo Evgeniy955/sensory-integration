@@ -328,7 +328,10 @@ th.schedule-col-time {
   letter-spacing: .04em;
   color: var(--color-destructive);
 }
-.schedule-slot-transfer-badge { color: var(--color-sky-deep); }
+.schedule-slot-cell.schedule-slot--transferred { background: color-mix(in srgb, var(--color-destructive) 24%, var(--color-surface)); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-destructive) 62%, transparent); }
+.schedule-slot-cell.schedule-slot--transferred .schedule-slot-btn { background: color-mix(in srgb, var(--color-destructive) 8%, transparent); }
+.schedule-slot-transfer-badge { color: var(--color-destructive); background: var(--color-surface); padding: .16rem .45rem; border-radius: 999px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-destructive) 38%, transparent); }
+.schedule-slot-rescheduled-badge { color: var(--color-destructive); background: color-mix(in srgb, var(--color-destructive) 13%, var(--color-surface)); padding: .14rem .4rem; border-radius: 999px; }
 
 .anketa-table-empty {
   padding: 2rem 1rem;

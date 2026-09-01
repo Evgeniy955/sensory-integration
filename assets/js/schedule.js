@@ -126,6 +126,43 @@
     return r;
   }
 
+  function addIsoDays(value, days) { return toISODate(addDays(parseISODate(value), days)); }
+  function remainingSessions(subscription) { return Math.max(0, Number(subscription.sessions_total || 0) - Number(subscription.sessions_used || 0)); }
+  function countsTowardsSubscription(row) { return row.status !== "transferred" || !row.transferred_to_date; }
+  function uniqueUsedSessions(rows) { return new Set(rows.filter(countsTowardsSubscription).map((row) => row.schedule_cell_key)).size; }
+  function latestDate(rows, field) { return rows.reduce((latest, row) => row[field] && (!latest || row[field] > latest) ? row[field] : latest, ""); }
+  function scheduledEndForSubscription(subscriptionId) {
+    return Object.entries(board.cells).reduce((latest, [key, entry]) => {
+      const parts = key.split("|");
+      if (parts.length !== 3 || !entry || !entryChildren(entry).some((child) => (child.subscriptionId || entry.subscriptionId) === subscriptionId)) return latest;
+      return !latest || parts[1] > latest ? parts[1] : latest;
+    }, "");
+  }
+  function effectiveSubscriptionEnd(subscription, attendance) {
+    const frozenEnd = addIsoDays(subscription.base_ends_on || subscription.ends_on, Number(subscription.freeze_days || 0));
+    const transferredEnd = latestDate(attendance.filter((row) => row.status === "transferred"), "transferred_to_date");
+    return [frozenEnd, transferredEnd, scheduledEndForSubscription(subscription.id)].filter(Boolean).sort().pop();
+  }
+
+  async function updateSubscriptionLifecycle(subscriptionId) {
+    const [subscriptionResult, attendanceResult] = await Promise.all([
+      window.sbClient.from("subscriptions").select("id, sessions_total, sessions_used, ends_on, base_ends_on, freeze_days, burned_sessions, closed_reason, closed_at").eq("id", subscriptionId).single(),
+      window.sbClient.from("subscription_attendance").select("schedule_cell_key, status, session_date, transferred_to_date").eq("subscription_id", subscriptionId),
+    ]);
+    if (subscriptionResult.error || attendanceResult.error) return;
+    const subscription = subscriptionResult.data;
+    const attendance = attendanceResult.data || [];
+    const actualUsed = Math.min(uniqueUsedSessions(attendance), Number(subscription.sessions_total));
+    const endsOn = effectiveSubscriptionEnd(subscription, attendance);
+    const expired = actualUsed < Number(subscription.sessions_total) && endsOn < toISODate(new Date());
+    const burned = expired ? Number(subscription.sessions_total) - actualUsed : 0;
+    const lastUsedDate = latestDate(attendance.filter(countsTowardsSubscription), "session_date");
+    const reason = expired ? "expired" : (actualUsed >= Number(subscription.sessions_total) && lastUsedDate && toISODate(new Date()) > lastUsedDate && lastUsedDate < endsOn ? "early" : null);
+    const update = { ends_on: endsOn, sessions_used: actualUsed + burned, burned_sessions: burned, closed_reason: reason, closed_at: reason ? (subscription.closed_reason === reason && subscription.closed_at ? subscription.closed_at : new Date().toISOString()) : null };
+    const differs = Object.keys(update).some((key) => String(subscription[key] == null ? "" : subscription[key]) !== String(update[key] == null ? "" : update[key]));
+    if (differs) await window.sbClient.from("subscriptions").update(update).eq("id", subscriptionId);
+  }
+
   function formatDayLabel(d) {
     const weekday = WEEKDAY_FULL[d.getDay()];
     const capitalized = weekday.charAt(0).toUpperCase() + weekday.slice(1);
@@ -197,6 +234,7 @@
           attendanceStatus: value.attendanceStatus === "transferred" ? "transferred" : (value.noShow ? "no_show" : "attended"),
           transferDate: /^\d{4}-\d{2}-\d{2}$/.test(value.transferDate || "") ? value.transferDate : "",
           transferHour: Number.isInteger(Number(value.transferHour)) ? Number(value.transferHour) : null,
+          isRescheduled: !!value.isRescheduled,
           noShow: !!value.noShow,
         };
       });
@@ -280,6 +318,24 @@
       ? entry.children : (entry && entry.anketaId ? [{ anketaId: entry.anketaId, childName: entry.childName || "" }] : []);
   }
 
+  function isRescheduledTarget(key, entry) {
+    if (!entry) return false;
+    if (entry.isRescheduled) return true;
+    const targetParts = key.split("|");
+    if (targetParts.length !== 3) return false;
+    const targetNames = new Set(entryChildren(entry).map((child) => normalizeChildName(child.childName)).filter(Boolean));
+    return Object.entries(board.cells).some(([sourceKey, source]) => {
+      const sourceParts = sourceKey.split("|");
+      if (sourceKey === key || sourceParts.length !== 3 || sourceParts[0] !== targetParts[0] || !source) return false;
+      return entryChildren(source).some((child) => {
+        const status = source.isGroup ? child.status : source.attendanceStatus;
+        const transferDate = source.isGroup ? child.transferDate : source.transferDate;
+        const transferHour = Number(source.isGroup ? child.transferHour : source.transferHour);
+        return status === "transferred" && transferDate === targetParts[1] && transferHour === Number(targetParts[2]) && targetNames.has(normalizeChildName(child.childName));
+      });
+    });
+  }
+
   function findConcurrentConflicts(entry, dateIso, hour, excludedKeys) {
     const excluded = new Set(excludedKeys || []);
     const candidateSpecialists = new Set(entrySpecialistIds(entry).filter(Boolean));
@@ -343,14 +399,16 @@
     const specChipClass = "schedule-slot-specialist--" + (specColor || "none");
     const specialists = entry ? entrySpecialistIds(entry) : [];
     const children = entry ? entryChildren(entry) : [];
+    const transferred = entry && (entry.attendanceStatus === "transferred" || children.some((child) => child.status === "transferred"));
+    const rescheduled = entry && isRescheduledTarget(key, entry);
     const inner = entry
       ? '<span class="schedule-slot-specialist ' + specChipClass + '">' + escapeHtml(specialists.map(specialistName).join(", ")) + "</span>" +
         '<span class="schedule-slot-child' + noShowClass + '">' + escapeHtml(children.map((c) => c.childName).join(", ")) + "</span>" +
-        (entry.attendanceStatus === "transferred" ? '<span class="schedule-slot-noshow-badge schedule-slot-transfer-badge">перенос</span>' : (entry.noShow ? '<span class="schedule-slot-noshow-badge">не прийшов</span>' : ""))
+        (rescheduled ? '<span class="schedule-slot-noshow-badge schedule-slot-rescheduled-badge">відпрацювання</span>' : (transferred ? '<span class="schedule-slot-noshow-badge schedule-slot-transfer-badge">перенос · заняття не буде</span>' : (entry.noShow ? '<span class="schedule-slot-noshow-badge">не прийшов</span>' : "")))
       : '<span class="schedule-slot-add" aria-hidden="true">+</span>';
     const ariaLabel = room.name + ", " + label +
       (entry ? ": " + specialists.map(specialistName).join(", ") + ", " + children.map((c) => c.childName).join(", ") + (entry.noShow ? ", дитина не прийшла" : "") : ": вільно");
-    return '<td class="schedule-slot-cell ' + colorClass + '">' +
+    return '<td class="schedule-slot-cell ' + colorClass + (transferred ? ' schedule-slot--transferred' : '') + '">' +
       '<button type="button" class="schedule-slot-btn" data-cell="' + key + '" data-room="' + room.id +
       '" data-hour="' + hour + '" aria-label="' + escapeHtml(ariaLabel) + '">' + inner + "</button></td>";
   }
@@ -561,6 +619,42 @@
     return cellSubscriptions.filter((subscription) => (subscription.subscription_children || []).some((item) => normalizeChildName(item.child_name) === childName));
   }
 
+  function entrySubscriptionIds(entry) {
+    if (!entry) return [];
+    return [...new Set(entryChildren(entry).map((child) => child.subscriptionId || entry.subscriptionId).filter(Boolean))];
+  }
+
+  function attachSubscriptionToEntry(entry, childName, subscriptionId) {
+    if (!entry || !subscriptionId) return false;
+    const normalizedName = normalizeChildName(childName);
+    let changed = false;
+    if (Array.isArray(entry.children)) {
+      entry.children.forEach((child) => {
+        if (!child.subscriptionId && normalizeChildName(child.childName) === normalizedName) { child.subscriptionId = subscriptionId; changed = true; }
+      });
+    }
+    if (!entry.subscriptionId && normalizeChildName(entry.childName) === normalizedName) { entry.subscriptionId = subscriptionId; changed = true; }
+    return changed;
+  }
+
+  async function restoreSubscriptionLinks(entry) {
+    if (!entry || !entryChildren(entry).some((child) => !(child.subscriptionId || entry.subscriptionId))) return;
+    const result = await window.sbClient.from("subscription_attendance").select("subscription_id, child_name").eq("schedule_cell_key", editingKey);
+    if (result.error || !(result.data || []).length) return;
+    let restored = false;
+    (result.data || []).forEach((row) => { restored = attachSubscriptionToEntry(entry, row.child_name, row.subscription_id) || restored; });
+    if (!restored) return;
+    entryChildren(entry).forEach((child) => {
+      const transferDate = child.transferDate || entry.transferDate;
+      const transferHour = child.transferHour == null ? entry.transferHour : child.transferHour;
+      const subscriptionId = child.subscriptionId || entry.subscriptionId;
+      if (!transferDate || !Number.isInteger(Number(transferHour)) || !subscriptionId) return;
+      attachSubscriptionToEntry(board.cells[cellKey(editingRoomId, transferDate, Number(transferHour))], child.childName, subscriptionId);
+    });
+    flushSave();
+    await saveSubscriptionAttendance(entry);
+  }
+
   function hourOptions(selectedHour) {
     return HOURS.map((hour) => '<option value="' + hour + '"' + (Number(selectedHour) === hour ? " selected" : "") + '>' + hourLabel(hour) + "</option>").join("");
   }
@@ -571,7 +665,7 @@
       const status = child.status || "attended";
       const subscriptions = subscriptionsForChild(child);
       const selectedSubscription = subscriptions.find((subscription) => subscription.id === child.subscriptionId);
-      const subscriptionSelect = child.anketaId ? '<select class="schedule-child-subscription" data-group-subscription-index="' + index + '"><option value="">Без абонемента</option>' + subscriptions.map((subscription) => '<option value="' + subscription.id + '"' + (subscription.id === child.subscriptionId ? " selected" : "") + '>' + escapeHtml(subscription.direction) + " · до " + subscription.ends_on + "</option>").join("") + '</select>' : "";
+      const subscriptionSelect = child.anketaId ? '<select class="schedule-child-subscription" data-group-subscription-index="' + index + '"><option value="">Без абонемента</option>' + subscriptions.map((subscription) => '<option value="' + subscription.id + '"' + (subscription.id === child.subscriptionId ? " selected" : "") + '>' + escapeHtml(subscription.direction) + " · залишилось " + remainingSessions(subscription) + " · до " + subscription.ends_on + "</option>").join("") + '</select>' : "";
       const transfer = status === "transferred" ? '<div class="schedule-group-child-transfer"><input type="date" value="' + escapeHtml(child.transferDate || "") + '" data-group-transfer-date-index="' + index + '"><select data-group-transfer-hour-index="' + index + '">' + hourOptions(child.transferHour) + '</select></div>' : "";
       const freeze = selectedSubscription ? '<button type="button" class="anketa-btn schedule-group-child-freeze' + (selectedSubscription.is_frozen ? " is-frozen" : "") + '" data-group-freeze-index="' + index + '">' + (selectedSubscription.is_frozen ? "Розморозити" : "Заморозити") + '</button>' : "";
       return '<div class="schedule-group-child-row"><div class="schedule-child-autocomplete"><input type="text" data-group-child-index="' + index + '" value="' + escapeHtml(child.childName || "") + '" autocomplete="off" placeholder="Почніть вводити ПІБ дитини…"><div class="schedule-child-results" data-group-results-index="' + index + '" hidden></div>' + subscriptionSelect + transfer + freeze + '</div><div class="schedule-child-status-actions"><button type="button" class="schedule-child-status-btn' + (status === "no_show" ? " is-active" : "") + '" data-group-status="no_show" data-group-status-index="' + index + '">Не прийшов</button><button type="button" class="schedule-child-status-btn' + (status === "transferred" ? " is-active" : "") + '" data-group-status="transferred" data-group-status-index="' + index + '">Перенос</button></div>' + (groupChildren.length > 1 ? '<button type="button" class="schedule-remove-child" data-remove-child-index="' + index + '" aria-label="Видалити дитину">×</button>' : "") + '</div>';
@@ -589,17 +683,25 @@
   async function loadCellSubscriptions() {
     const select = document.getElementById("cell-subscription-select");
     const hint = document.getElementById("cell-subscription-hint");
+    const currentEntry = board.cells[editingKey] || null;
+    const linkedIds = new Set(entrySubscriptionIds(currentEntry));
     const childNames = (editingGroup ? groupChildren : [{ childName: selectedChildName }]).map((child) => normalizeChildName(child.childName)).filter(Boolean);
     if (!childNames.length) { select.innerHTML = '<option value="">Без прив\'язки</option>'; hint.textContent = "Оберіть дитину, щоб побачити доступні абонементи."; return; }
-    const result = await window.sbClient.from("subscriptions").select("id, direction, starts_on, ends_on, sessions_used, sessions_total, is_group, is_frozen, subscription_children(child_name), subscription_specialists(specialist_id)").lte("starts_on", toISODate(currentDate)).gte("ends_on", toISODate(currentDate));
+    const result = await window.sbClient.from("subscriptions").select("id, direction, starts_on, ends_on, base_ends_on, freeze_days, sessions_used, sessions_total, burned_sessions, closed_reason, is_group, is_frozen, subscription_children(child_name), subscription_specialists(specialist_id)").lte("starts_on", toISODate(currentDate));
     if (result.error) return;
+    const subscriptionIds = (result.data || []).map((subscription) => subscription.id);
+    const transfers = subscriptionIds.length ? await window.sbClient.from("subscription_attendance").select("subscription_id").in("subscription_id", subscriptionIds).eq("status", "transferred") : { data: [] };
+    if (transfers.error) return;
+    const transferredSubscriptionIds = new Set((transfers.data || []).map((row) => row.subscription_id));
     cellSubscriptions = (result.data || []).filter((subscription) => {
       const names = (subscription.subscription_children || []).map((child) => normalizeChildName(child.child_name));
-      return childNames.some((name) => names.includes(name)) && (editingGroup ? subscription.direction === "Групове" : subscription.direction !== "Групове");
+      const linked = linkedIds.has(subscription.id);
+      const available = (subscription.ends_on >= toISODate(currentDate) || transferredSubscriptionIds.has(subscription.id)) && remainingSessions(subscription) > 0 && !subscription.closed_reason;
+      return childNames.some((name) => names.includes(name)) && (linked || available) && (editingGroup ? subscription.direction === "Групове" : subscription.direction !== "Групове");
     });
     if (editingGroup) { renderGroupChildren(); return; }
-    select.innerHTML = '<option value="">Без прив\'язки</option>' + cellSubscriptions.map((subscription) => '<option value="' + subscription.id + '"' + (subscription.id === (board.cells[editingKey] && board.cells[editingKey].subscriptionId) ? " selected" : "") + '>' + escapeHtml(subscription.direction) + " · " + subscription.sessions_used + "/" + subscription.sessions_total + " · до " + escapeHtml(subscription.ends_on) + (subscription.is_frozen ? " · заморожений" : "") + "</option>").join("");
-    hint.textContent = cellSubscriptions.length ? "Абонемент діє на обрану дату." : "Активного абонемента для цієї дитини на цю дату не знайдено.";
+    select.innerHTML = '<option value="">Без прив\'язки</option>' + cellSubscriptions.map((subscription) => '<option value="' + subscription.id + '"' + (linkedIds.has(subscription.id) ? " selected" : "") + '>' + escapeHtml(subscription.direction) + " · залишилось " + remainingSessions(subscription) + " з " + subscription.sessions_total + " · до " + escapeHtml(subscription.ends_on) + (linkedIds.has(subscription.id) && subscription.closed_reason ? " · поточна прив'язка" : "") + (subscription.is_frozen ? " · заморожений" : "") + "</option>").join("");
+    hint.textContent = cellSubscriptions.length ? "Лічильник показує доступні заняття на обрану дату." : "Активного абонемента для цієї дитини на цю дату не знайдено.";
     updateFreezeButtonUI();
   }
 
@@ -624,10 +726,13 @@
     const answer = window.prompt("На скільки днів заморозити? Від 7 до 21.", "14");
     if (answer === null) return;
     const days = Math.min(21, Math.max(7, Number(answer) || 14));
-    const end = new Date(subscription.ends_on + "T00:00:00"); end.setDate(end.getDate() + days);
+    const attendance = await window.sbClient.from("subscription_attendance").select("status, session_date, transferred_to_date").eq("subscription_id", id);
+    if (attendance.error) { window.alert(attendance.error.message); return; }
+    const freezeDays = Number(subscription.freeze_days || 0) + days;
+    const end = effectiveSubscriptionEnd({ ...subscription, freeze_days: freezeDays }, attendance.data || []);
     const frozenUntil = new Date(); frozenUntil.setDate(frozenUntil.getDate() + days);
-    const result = await window.sbClient.from("subscriptions").update({ is_frozen: true, frozen_until: toISODate(frozenUntil), ends_on: toISODate(end) }).eq("id", id);
-    if (result.error) window.alert(result.error.message); else { subscription.is_frozen = true; subscription.ends_on = toISODate(end); updateFreezeButtonUI(); renderGroupChildren(); }
+    const result = await window.sbClient.from("subscriptions").update({ is_frozen: true, frozen_until: toISODate(frozenUntil), freeze_days: freezeDays, ends_on: end }).eq("id", id);
+    if (result.error) window.alert(result.error.message); else { subscription.is_frozen = true; subscription.freeze_days = freezeDays; subscription.ends_on = end; updateFreezeButtonUI(); renderGroupChildren(); }
   }
 
   function updateNoShowToggleUI() {
@@ -644,6 +749,7 @@
     editingHour = hour;
 
     const entry = board.cells[editingKey] || null;
+    await restoreSubscriptionLinks(entry);
     editingGroup = !!(entry && entry.isGroup);
     selectedAnketaId = entry ? entry.anketaId : null;
     selectedChildName = entry ? (entry.childName || "") : "";
@@ -698,14 +804,14 @@
     hideChildResults();
   }
 
-  async function saveSubscriptionAttendance(entry) {
+  async function saveSubscriptionAttendance(entry, scheduleKey, sessionDate) {
     if (!entry) return;
     const status = entry.attendanceStatus || (entry.noShow ? "no_show" : "attended");
-    const dateIso = toISODate(currentDate);
-    const rows = entryChildren(entry).filter((child) => child.childName && (child.subscriptionId || entry.subscriptionId)).map((child) => ({
+    const dateIso = sessionDate || toISODate(currentDate);
+    const allRows = entryChildren(entry).filter((child) => child.childName && (child.subscriptionId || entry.subscriptionId)).map((child) => ({
       subscription_id: child.subscriptionId || entry.subscriptionId,
       child_name: child.childName,
-      schedule_cell_key: editingKey,
+      schedule_cell_key: scheduleKey || editingKey,
       session_date: dateIso,
       status: entry.isGroup ? (child.status || "attended") : status,
       transferred_to_date: entry.isGroup ? (child.transferDate || null) : (entry.transferDate || null),
@@ -713,17 +819,31 @@
       created_by: currentProfileId,
       updated_at: new Date().toISOString(),
     }));
+    const today = toISODate(new Date());
+    const futureBookingIds = [...new Set(allRows.filter((row) => row.session_date > today && row.status === "attended").map((row) => row.subscription_id))];
+    if (futureBookingIds.length) {
+      const subscriptionsResult = await window.sbClient.from("subscriptions").select("id, ends_on").in("id", futureBookingIds);
+      if (subscriptionsResult.error) { setStatus("error", subscriptionsResult.error.message); return; }
+      const extensions = (subscriptionsResult.data || []).filter((subscription) => subscription.ends_on < dateIso).map((subscription) => window.sbClient.from("subscriptions").update({ ends_on: dateIso }).eq("id", subscription.id));
+      const extensionResults = await Promise.all(extensions);
+      const failedExtension = extensionResults.find((result) => result.error);
+      if (failedExtension) { setStatus("error", failedExtension.error.message); return; }
+    }
+    const rows = allRows;
     if (!rows.length) return;
     const result = await window.sbClient.from("subscription_attendance").upsert(rows, { onConflict: "subscription_id,child_name,schedule_cell_key" });
     if (result.error) { setStatus("Статус не збережено: " + result.error.message, true); return; }
     const subscriptionIds = [...new Set(rows.map((row) => row.subscription_id))];
-    await Promise.all(subscriptionIds.map(async (subscriptionId) => {
-      const usage = await window.sbClient.from("subscription_attendance").select("schedule_cell_key, status").eq("subscription_id", subscriptionId);
-      if (!usage.error) {
-        const used = new Set((usage.data || []).filter((item) => item.status !== "transferred").map((item) => item.schedule_cell_key)).size;
-        await window.sbClient.from("subscriptions").update({ sessions_used: used }).eq("id", subscriptionId);
-      }
-    }));
+    await Promise.all(subscriptionIds.map(updateSubscriptionLifecycle));
+  }
+
+  async function removeSubscriptionAttendance(scheduleKey, entry) {
+    const lookup = await window.sbClient.from("subscription_attendance").select("subscription_id").eq("schedule_cell_key", scheduleKey);
+    if (lookup.error) { setStatus("error", "Не вдалося оновити абонемент: " + lookup.error.message); return; }
+    const subscriptionIds = new Set([...(lookup.data || []).map((row) => row.subscription_id), ...entrySubscriptionIds(entry)]);
+    const result = await window.sbClient.from("subscription_attendance").delete().eq("schedule_cell_key", scheduleKey);
+    if (result.error) { setStatus("error", "Не вдалося видалити статус заняття: " + result.error.message); return; }
+    await Promise.all([...subscriptionIds].filter(Boolean).map(updateSubscriptionLifecycle));
   }
 
   function buildTransferBookings(entry) {
@@ -755,6 +875,7 @@
         children: group.children,
         subscriptionId: isGroup ? null : (firstChild.subscriptionId || entry.subscriptionId || null),
         attendanceStatus: "attended",
+        isRescheduled: true,
         transferDate: "",
         transferHour: null,
         noShow: false,
@@ -791,7 +912,10 @@
       editingTransferDate = document.getElementById("cell-transfer-date").value;
       editingTransferHour = Number(document.getElementById("cell-transfer-hour").value);
       if (editingTransferred && (!editingTransferDate || !editingTransferHour)) { window.alert("Для переносу оберіть нову дату та час."); return; }
-      board.cells[editingKey] = { specialistId, specialistIds: [specialistId], anketaId: selectedAnketaId, childName: selectedChildName, children: [{ anketaId: selectedAnketaId, childName: selectedChildName, subscriptionId: document.getElementById("cell-subscription-select").value || null, transferDate: editingTransferred ? editingTransferDate : "", transferHour: editingTransferred ? editingTransferHour : null }], isGroup: false, subscriptionId: document.getElementById("cell-subscription-select").value || null, attendanceStatus: editingTransferred ? "transferred" : (editingNoShow ? "no_show" : "attended"), transferDate: editingTransferred ? editingTransferDate : "", transferHour: editingTransferred ? editingTransferHour : null, noShow: editingNoShow };
+      const previousChild = entryChildren(previousEntry)[0];
+      const preservedSubscriptionId = previousChild && previousChild.anketaId === selectedAnketaId ? (previousChild.subscriptionId || previousEntry.subscriptionId || null) : null;
+      const subscriptionId = document.getElementById("cell-subscription-select").value || preservedSubscriptionId;
+      board.cells[editingKey] = { specialistId, specialistIds: [specialistId], anketaId: selectedAnketaId, childName: selectedChildName, children: [{ anketaId: selectedAnketaId, childName: selectedChildName, subscriptionId, transferDate: editingTransferred ? editingTransferDate : "", transferHour: editingTransferred ? editingTransferHour : null }], isGroup: false, subscriptionId, attendanceStatus: editingTransferred ? "transferred" : (editingNoShow ? "no_show" : "attended"), transferDate: editingTransferred ? editingTransferDate : "", transferHour: editingTransferred ? editingTransferHour : null, noShow: editingNoShow };
     }
     const savedEntry = board.cells[editingKey];
     const conflicts = findConcurrentConflicts(savedEntry, toISODate(currentDate), editingHour, [editingKey]);
@@ -810,12 +934,15 @@
     closeCellModal();
   }
 
-  function clearCellFromModal() {
+  async function clearCellFromModal() {
     if (!editingKey) return;
+    const removedEntry = board.cells[editingKey] || null;
+    const removedKey = editingKey;
     delete board.cells[editingKey];
     render();
     flushSave();
     closeCellModal();
+    await removeSubscriptionAttendance(removedKey, removedEntry);
   }
 
   // ---------- Copy a completed day ----------
