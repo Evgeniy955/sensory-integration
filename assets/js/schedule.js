@@ -280,6 +280,33 @@
       ? entry.children : (entry && entry.anketaId ? [{ anketaId: entry.anketaId, childName: entry.childName || "" }] : []);
   }
 
+  function findConcurrentConflicts(entry, dateIso, hour, excludedKeys) {
+    const excluded = new Set(excludedKeys || []);
+    const candidateSpecialists = new Set(entrySpecialistIds(entry).filter(Boolean));
+    const candidateChildren = new Set(entryChildren(entry).map((child) => normalizeChildName(child.childName)).filter(Boolean));
+    const specialistConflicts = new Set();
+    const childConflicts = new Set();
+    Object.keys(board.cells).forEach((key) => {
+      if (excluded.has(key)) return;
+      const parts = key.split("|");
+      if (parts.length !== 3 || parts[1] !== dateIso || Number(parts[2]) !== Number(hour)) return;
+      const scheduled = board.cells[key];
+      entrySpecialistIds(scheduled).forEach((id) => { if (candidateSpecialists.has(id)) specialistConflicts.add(specialistName(id)); });
+      entryChildren(scheduled).forEach((child) => {
+        const name = normalizeChildName(child.childName);
+        if (candidateChildren.has(name)) childConflicts.add(child.childName);
+      });
+    });
+    return { specialists: [...specialistConflicts], children: [...childConflicts] };
+  }
+
+  function conflictMessage(conflicts, dateIso, hour) {
+    const parts = [];
+    if (conflicts.specialists.length) parts.push("спеціаліст: " + conflicts.specialists.join(", "));
+    if (conflicts.children.length) parts.push("дитина: " + conflicts.children.join(", "));
+    return "На " + dateIso + " о " + pad2(hour) + ":00 уже є запис (" + parts.join("; ") + "). Оберіть інший час або зал.";
+  }
+
   // Slot backgrounds are tinted by *specialist*, not room — the room is
   // already identified by which column a cell sits in (headers carry the
   // room color), so using the cell's own background to carry the
@@ -719,21 +746,24 @@
       if (board.cells[key]) return { error: "На " + group.date + " о " + pad2(group.hour) + ":00 у цьому залі вже є запис." };
       const isGroup = entry.isGroup && group.children.length > 1;
       const firstChild = group.children[0];
+      const targetEntry = {
+        isGroup,
+        specialistId: entry.specialistId,
+        specialistIds: entrySpecialistIds(entry),
+        anketaId: firstChild.anketaId,
+        childName: firstChild.childName,
+        children: group.children,
+        subscriptionId: isGroup ? null : (firstChild.subscriptionId || entry.subscriptionId || null),
+        attendanceStatus: "attended",
+        transferDate: "",
+        transferHour: null,
+        noShow: false,
+      };
+      const conflicts = findConcurrentConflicts(targetEntry, group.date, group.hour, [editingKey]);
+      if (conflicts.specialists.length || conflicts.children.length) return { error: conflictMessage(conflicts, group.date, group.hour) };
       return {
         key,
-        entry: {
-          isGroup,
-          specialistId: entry.specialistId,
-          specialistIds: entrySpecialistIds(entry),
-          anketaId: firstChild.anketaId,
-          childName: firstChild.childName,
-          children: group.children,
-          subscriptionId: isGroup ? null : (firstChild.subscriptionId || entry.subscriptionId || null),
-          attendanceStatus: "attended",
-          transferDate: "",
-          transferHour: null,
-          noShow: false,
-        },
+        entry: targetEntry,
       };
     });
     const failure = bookings.find((booking) => booking.error);
@@ -743,6 +773,7 @@
 
   function saveCellFromModal() {
     if (!editingKey) return;
+    const previousEntry = board.cells[editingKey] || null;
     const specialistId = document.getElementById("cell-specialist-select").value || null;
     if (editingGroup) {
       const specialistIds = Array.from(document.querySelectorAll("#cell-group-specialists input:checked")).map((input) => input.value);
@@ -763,6 +794,13 @@
       board.cells[editingKey] = { specialistId, specialistIds: [specialistId], anketaId: selectedAnketaId, childName: selectedChildName, children: [{ anketaId: selectedAnketaId, childName: selectedChildName, subscriptionId: document.getElementById("cell-subscription-select").value || null, transferDate: editingTransferred ? editingTransferDate : "", transferHour: editingTransferred ? editingTransferHour : null }], isGroup: false, subscriptionId: document.getElementById("cell-subscription-select").value || null, attendanceStatus: editingTransferred ? "transferred" : (editingNoShow ? "no_show" : "attended"), transferDate: editingTransferred ? editingTransferDate : "", transferHour: editingTransferred ? editingTransferHour : null, noShow: editingNoShow };
     }
     const savedEntry = board.cells[editingKey];
+    const conflicts = findConcurrentConflicts(savedEntry, toISODate(currentDate), editingHour, [editingKey]);
+    if (conflicts.specialists.length || conflicts.children.length) {
+      if (previousEntry) board.cells[editingKey] = previousEntry;
+      else delete board.cells[editingKey];
+      window.alert(conflictMessage(conflicts, toISODate(currentDate), editingHour));
+      return;
+    }
     const transferBookings = buildTransferBookings(savedEntry);
     if (transferBookings === null) return;
     transferBookings.forEach((booking) => { board.cells[booking.key] = booking.entry; });
