@@ -625,6 +625,16 @@
     return cellSubscriptions.filter((subscription) => (subscription.subscription_children || []).some((item) => normalizeChildName(item.child_name) === childName));
   }
 
+  function chooseActiveSubscription(subscriptions, specialistId) {
+    const active = subscriptions.filter((subscription) => !subscription.is_frozen && !subscription.closed_reason && remainingSessions(subscription) > 0);
+    const matchingSpecialist = specialistId ? active.filter((subscription) => {
+      const specialists = subscription.subscription_specialists || [];
+      return !specialists.length || specialists.some((item) => item.specialist_id === specialistId);
+    }) : active;
+    if (!matchingSpecialist.length) return null;
+    return [...matchingSpecialist].sort((a, b) => String(a.ends_on).localeCompare(String(b.ends_on)))[0];
+  }
+
   function entrySubscriptionIds(entry) {
     if (!entry) return [];
     return [...new Set(entryChildren(entry).map((child) => child.subscriptionId || entry.subscriptionId).filter(Boolean))];
@@ -727,9 +737,23 @@
       const available = !subscription.is_frozen && (subscription.ends_on >= toISODate(currentDate) || transferredSubscriptionIds.has(subscription.id)) && remainingSessions(subscription) > 0 && !subscription.closed_reason;
       return childNames.some((name) => names.includes(name)) && (linked || available) && (editingGroup ? subscription.direction === "Групове" : subscription.direction !== "Групове");
     });
-    if (editingGroup) { renderGroupChildren(); return; }
-    select.innerHTML = '<option value="">Без прив\'язки</option>' + cellSubscriptions.map((subscription) => '<option value="' + subscription.id + '"' + (linkedIds.has(subscription.id) ? " selected" : "") + '>' + escapeHtml(subscription.direction) + " · залишилось " + remainingSessions(subscription) + " з " + subscription.sessions_total + " · до " + escapeHtml(subscription.ends_on) + (linkedIds.has(subscription.id) && subscription.closed_reason ? " · поточна прив'язка" : "") + (subscription.is_frozen ? " · заморожений" : "") + "</option>").join("");
-    hint.textContent = cellSubscriptions.length ? "Лічильник показує доступні заняття на обрану дату." : "Активного абонемента для цієї дитини на цю дату не знайдено.";
+    if (editingGroup) {
+      groupChildren.forEach((child) => {
+        if (!child.subscriptionId) {
+          const subscription = chooseActiveSubscription(subscriptionsForChild(child));
+          if (subscription) child.subscriptionId = subscription.id;
+        }
+      });
+      renderGroupChildren();
+      return;
+    }
+    const specialistId = document.getElementById("cell-specialist-select").value;
+    const currentSelection = cellSubscriptions.find((subscription) => subscription.id === select.value);
+    const linkedSubscription = cellSubscriptions.find((subscription) => linkedIds.has(subscription.id));
+    const selectedSubscription = linkedSubscription || (currentSelection && chooseActiveSubscription([currentSelection], specialistId) ? currentSelection : chooseActiveSubscription(cellSubscriptions, specialistId));
+    const selectedId = selectedSubscription ? selectedSubscription.id : "";
+    select.innerHTML = '<option value="">Без прив\'язки</option>' + cellSubscriptions.map((subscription) => '<option value="' + subscription.id + '"' + (subscription.id === selectedId ? " selected" : "") + '>' + escapeHtml(subscription.direction) + " · залишилось " + remainingSessions(subscription) + " з " + subscription.sessions_total + " · до " + escapeHtml(subscription.ends_on) + (linkedIds.has(subscription.id) && subscription.closed_reason ? " · поточна прив'язка" : "") + (subscription.is_frozen ? " · заморожений" : "") + "</option>").join("");
+    hint.textContent = cellSubscriptions.length ? (linkedSubscription ? "Лічильник показує доступні заняття на обрану дату." : (selectedSubscription ? "Активний абонемент обрано автоматично." : "Для обраного спеціаліста активного абонемента не знайдено.")) : "Активного абонемента для цієї дитини на цю дату не знайдено.";
     updateFreezeButtonUI();
   }
 
@@ -1315,6 +1339,7 @@
       document.getElementById("cell-transfer-fields").hidden = !editingTransferred;
     });
     document.getElementById("cell-subscription-select").addEventListener("change", updateFreezeButtonUI);
+    document.getElementById("cell-specialist-select").addEventListener("change", () => { loadCellSubscriptions(); });
     document.getElementById("cell-freeze-btn").addEventListener("click", toggleSubscriptionFreeze);
 
     // ---------- Attendance modal (opened from inside the cell modal) ----------
