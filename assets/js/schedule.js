@@ -853,18 +853,23 @@
       created_by: currentProfileId,
       updated_at: new Date().toISOString(),
     }));
+    if (!allRows.length) return;
+    const linkedSubscriptionIds = [...new Set(allRows.map((row) => row.subscription_id))];
+    const subscriptionsResult = await window.sbClient.from("subscriptions").select("id, ends_on, is_frozen").in("id", linkedSubscriptionIds);
+    if (subscriptionsResult.error) { setStatus("error", subscriptionsResult.error.message); return; }
+    const subscriptionsById = new Map((subscriptionsResult.data || []).map((subscription) => [subscription.id, subscription]));
+    // A deleted package can remain in the saved calendar JSON. Keep the
+    // lesson itself, but never recreate attendance for a missing package.
+    const rows = allRows.filter((row) => subscriptionsById.has(row.subscription_id));
+    if (!rows.length) return;
     const today = toISODate(new Date());
-    const futureBookingIds = [...new Set(allRows.filter((row) => row.session_date > today && row.status === "attended").map((row) => row.subscription_id))];
-    if (futureBookingIds.length) {
-      const subscriptionsResult = await window.sbClient.from("subscriptions").select("id, ends_on, is_frozen").in("id", futureBookingIds);
-      if (subscriptionsResult.error) { setStatus("error", subscriptionsResult.error.message); return; }
-      const extensions = (subscriptionsResult.data || []).filter((subscription) => !subscription.is_frozen && subscription.ends_on < dateIso).map((subscription) => window.sbClient.from("subscriptions").update({ ends_on: dateIso }).eq("id", subscription.id));
+    const futureBookingIds = new Set(rows.filter((row) => row.session_date > today && row.status === "attended").map((row) => row.subscription_id));
+    if (futureBookingIds.size) {
+      const extensions = [...subscriptionsById.values()].filter((subscription) => futureBookingIds.has(subscription.id) && !subscription.is_frozen && subscription.ends_on < dateIso).map((subscription) => window.sbClient.from("subscriptions").update({ ends_on: dateIso }).eq("id", subscription.id));
       const extensionResults = await Promise.all(extensions);
       const failedExtension = extensionResults.find((result) => result.error);
       if (failedExtension) { setStatus("error", failedExtension.error.message); return; }
     }
-    const rows = allRows;
-    if (!rows.length) return;
     const result = await window.sbClient.from("subscription_attendance").upsert(rows, { onConflict: "subscription_id,child_name,schedule_cell_key" });
     if (result.error) { setStatus("Статус не збережено: " + result.error.message, true); return; }
     const subscriptionIds = [...new Set(rows.map((row) => row.subscription_id))];

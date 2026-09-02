@@ -81,14 +81,17 @@
   function normalizeName(value) { return String(value || "").trim().replace(/\s+/g, " ").toLowerCase(); }
 
   async function syncAttendanceWithCalendar() {
-    const [boardResult, attendanceResult] = await Promise.all([
+    const [boardResult, attendanceResult, subscriptionsResult] = await Promise.all([
       window.sbClient.from("schedule_boards").select("data").eq("id", "main").maybeSingle(),
       window.sbClient.from("subscription_attendance").select("id, subscription_id, child_name, schedule_cell_key"),
+      window.sbClient.from("subscriptions").select("id"),
     ]);
     if (boardResult.error) throw boardResult.error;
     if (attendanceResult.error) throw attendanceResult.error;
+    if (subscriptionsResult.error) throw subscriptionsResult.error;
     if (!boardResult.data || !boardResult.data.data) return;
-    const expected = calendarAttendanceRows(boardResult.data && boardResult.data.data, attendanceResult.data || []);
+    const activeSubscriptionIds = new Set((subscriptionsResult.data || []).map((row) => row.id));
+    const expected = calendarAttendanceRows(boardResult.data && boardResult.data.data, attendanceResult.data || []).filter((row) => activeSubscriptionIds.has(row.subscription_id));
     const expectedByKey = new Map(expected.map((row) => [attendanceKey(row), row]));
     const staleIds = (attendanceResult.data || []).filter((row) => !expectedByKey.has(attendanceKey(row))).map((row) => row.id);
     if (staleIds.length) {
