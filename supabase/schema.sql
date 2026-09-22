@@ -190,10 +190,9 @@ create table if not exists public.schedule_boards (
 
 alter table public.schedule_boards enable row level security;
 
--- Same admin/super_admin shared-ownership model as anketas: any admin can
--- read and edit the board, not just whoever last saved it. Instructors
--- get the same read-only carve-out as anketas above — they can see the
--- schedule but never write to it.
+-- Shared-ownership board: any staff member (admin, super_admin or
+-- instructor) can read and edit it, not just whoever last saved it.
+-- Unlike anketas, instructors are allowed to edit the schedule.
 drop policy if exists "Admins can view schedule" on public.schedule_boards;
 create policy "Admins can view schedule"
   on public.schedule_boards for select
@@ -202,13 +201,13 @@ create policy "Admins can view schedule"
 drop policy if exists "Admins can insert schedule" on public.schedule_boards;
 create policy "Admins can insert schedule"
   on public.schedule_boards for insert
-  with check (public.current_user_role() in ('admin', 'super_admin'));
+  with check (public.current_user_role() in ('admin', 'super_admin', 'instructor'));
 
 drop policy if exists "Admins can update schedule" on public.schedule_boards;
 create policy "Admins can update schedule"
   on public.schedule_boards for update
-  using (public.current_user_role() in ('admin', 'super_admin'))
-  with check (public.current_user_role() in ('admin', 'super_admin'));
+  using (public.current_user_role() in ('admin', 'super_admin', 'instructor'))
+  with check (public.current_user_role() in ('admin', 'super_admin', 'instructor'));
 
 -- 8. AI assistant saved chats --------------------------------------------
 -- Each specialist's AI помічник conversations (admin/anketa.html), so they
@@ -434,9 +433,10 @@ drop policy if exists "Staff can view subscriptions" on public.subscriptions;
 create policy "Staff can view subscriptions" on public.subscriptions for select
   using (public.current_user_role() in ('admin', 'super_admin', 'instructor'));
 drop policy if exists "Admins can update subscription freeze" on public.subscriptions;
+-- instructor included: editing the schedule moves subscription end dates.
 create policy "Admins can update subscription freeze" on public.subscriptions for update
-  using (public.current_user_role() in ('admin', 'super_admin'))
-  with check (public.current_user_role() in ('admin', 'super_admin'));
+  using (public.current_user_role() in ('admin', 'super_admin', 'instructor'))
+  with check (public.current_user_role() in ('admin', 'super_admin', 'instructor'));
 drop policy if exists "Super admins can manage subscription children" on public.subscription_children;
 create policy "Super admins can manage subscription children" on public.subscription_children for all
   using (public.current_user_role() = 'super_admin')
@@ -459,12 +459,13 @@ drop policy if exists "Staff can view subscription attendance" on public.subscri
 create policy "Staff can view subscription attendance" on public.subscription_attendance for select
   using (public.current_user_role() in ('admin', 'super_admin', 'instructor'));
 drop policy if exists "Admins can update subscription attendance" on public.subscription_attendance;
+-- instructor included on insert/update/delete: schedule edits sync attendance.
 create policy "Admins can update subscription attendance" on public.subscription_attendance for insert
-  with check (public.current_user_role() in ('admin', 'super_admin'));
+  with check (public.current_user_role() in ('admin', 'super_admin', 'instructor'));
 drop policy if exists "Admins can edit subscription attendance" on public.subscription_attendance;
 create policy "Admins can edit subscription attendance" on public.subscription_attendance for update
-  using (public.current_user_role() in ('admin', 'super_admin'))
-  with check (public.current_user_role() in ('admin', 'super_admin'));
+  using (public.current_user_role() in ('admin', 'super_admin', 'instructor'))
+  with check (public.current_user_role() in ('admin', 'super_admin', 'instructor'));
 drop policy if exists "Admins can delete subscription attendance" on public.subscription_attendance;
 create policy "Admins can delete subscription attendance" on public.subscription_attendance for delete
-  using (public.current_user_role() in ('admin', 'super_admin'));
+  using (public.current_user_role() in ('admin', 'super_admin', 'instructor'));

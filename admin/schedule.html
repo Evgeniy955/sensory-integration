@@ -348,11 +348,9 @@
       document.getElementById("logout-btn").addEventListener("click", () => window.signOut());
       document.getElementById("schedule-content").hidden = false;
 
-      // Instructors get read-only access — the RLS policies (schema.sql)
-      // already block writes server-side; ScheduleBoard.init's canEdit
-      // flag just keeps the management panel and slot editor from
-      // showing up in the first place.
-      const canEdit = profile.role === "admin" || profile.role === "super_admin";
+      // Every staff role can edit the schedule (slots, «Керування»,
+      // copying days). RLS in schema.sql grants the same set of roles.
+      const canEdit = ["admin", "super_admin", "instructor"].includes(profile.role);
       window.ScheduleBoard.init(profile.id, canEdit);
       loadNotifyBadge();
     })();
