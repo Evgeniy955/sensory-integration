@@ -340,7 +340,10 @@
                 "Content-Type": "application/json",
                 "Authorization": "Bearer " + session.access_token,
               },
-              body: JSON.stringify({ email, role, full_name: fullName || null }),
+              body: JSON.stringify({
+                email, role, full_name: fullName || null,
+                redirect_to: window.location.origin + window.location.pathname.replace(/[^/]*$/, "login.html"),
+              }),
             });
 
             const result = await res.json();

@@ -70,7 +70,19 @@
           "</div>";
       }
 
-      // Already logged in? Skip straight to the dashboard.
+      // Came here from an invite email whose link is already used or
+      // expired (#error=access_denied&error_code=otp_expired). The invite
+      // itself still counts — the account just needs to sign in with Google.
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      if (hashParams.get("error")) {
+        status.innerHTML = '<div class="admin-notice admin-notice--error">' +
+          "Посилання із запрошення вже недійсне. Просто увійдіть через Google з тією ж поштою, на яку прийшов лист." +
+          "</div>";
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
+
+      // Already logged in (including straight from a valid invite link,
+      // whose #access_token supabase-js picks up)? Go to the dashboard.
       const existing = await window.getCurrentProfile();
       if (existing) {
         window.location.href = "dashboard.html";

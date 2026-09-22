@@ -63,14 +63,29 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Forbidden — super_admin only" }, 403);
   }
 
-  let body: { email?: string; role?: string; full_name?: string };
+  let body: { email?: string; role?: string; full_name?: string; redirect_to?: string };
   try {
     body = await req.json();
   } catch {
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  const { email, role, full_name } = body;
+  const { email, role, full_name, redirect_to } = body;
+
+  // Where the invite link should land: the panel's login.html on
+  // whatever origin the super_admin is using right now. Without this,
+  // Supabase falls back to the project's "Site URL" (was localhost:8080).
+  // The URL must also be listed in Authentication → URL Configuration →
+  // Redirect URLs, otherwise Supabase silently ignores it.
+  let redirectTo: string | undefined;
+  if (redirect_to) {
+    try {
+      const u = new URL(redirect_to);
+      if (u.protocol === "https:" || u.hostname === "localhost" || u.hostname === "127.0.0.1") {
+        redirectTo = u.toString();
+      }
+    } catch { /* ignore invalid value — fall back to Site URL */ }
+  }
   const allowedRoles = ["super_admin", "admin", "instructor"];
   if (!email || !role || !allowedRoles.includes(role)) {
     return json({ error: "email and a valid role are required" }, 400);
@@ -79,7 +94,7 @@ Deno.serve(async (req: Request) => {
   // Admin client with service_role — bypasses RLS, can manage auth users.
   const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email);
+  const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, { redirectTo });
 
   let userId: string;
   if (inviteError || !invited?.user) {
@@ -107,6 +122,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: inviteError?.message ?? "Could not create user" }, 400);
     }
     userId = existing.id;
+
   } else {
     userId = invited.user.id;
   }
