@@ -21,9 +21,13 @@
 <link rel="stylesheet" href="../assets/css/schedule.css">
 </head>
 <body class="anketa-shell schedule-shell">
-  <header class="anketa-topbar">
-    <a class="anketa-topbar__brand" href="dashboard.html">Центр сенсорної інтеграції</a>
-    <div class="anketa-topbar__user">
+  <header class="anketa-topbar anketa-topbar--collapsible">
+    <a class="anketa-btn anketa-btn--primary" href="../index.html">На головну сторінку</a>
+    <div class="anketa-topbar__user" id="topbar-menu">
+      <a class="topbar-notify" href="consultation-requests.html" id="notify-badge" hidden aria-label="Нові заявки на консультацію">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="topbar-notify__count" id="notify-badge-count">0</span>
+      </a>
       <span id="whoami">перевіряємо доступ...</span>
       <button type="button" class="theme-toggle" id="themeToggle" aria-label="Перемкнути тему" aria-pressed="false">
         <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
@@ -32,6 +36,10 @@
       <a class="anketa-btn" href="dashboard.html">← Назад</a>
       <button class="anketa-btn" id="logout-btn" type="button">Вийти</button>
     </div>
+    <button type="button" class="anketa-topbar__toggle" id="topbar-toggle" aria-label="Меню" aria-expanded="false" aria-controls="topbar-menu">
+      <svg class="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
   </header>
 
   <main class="anketa-main schedule-main">
@@ -52,7 +60,7 @@
           Розклад
         </span>
         <h1>Розклад залів</h1>
-        <p>Таблиця показує один робочий день (08:00–19:00) одразу — перемикайтеся стрілками, кнопкою «Сьогодні» або відкрийте календар, щоб перейти на конкретну дату. Усі зали видно одночасно як стовпці; натисніть на клітинку, щоб призначити спеціаліста і дитину на цю годину в цьому залі. Дитину можна обрати лише зі списку вже доданих анкет — почніть вводити ПІБ, і з'являться варіанти. Зміни зберігаються автоматично.</p>
+        <p>Таблиця показує один робочий день (08:00–19:00) одразу — перемикайтеся стрілками, кнопкою «Сьогодні» або відкрийте календар, щоб перейти на конкретну дату. Усі зали видно одночасно як стовпці; натисніть на клітинку, щоб призначити звичайне або групове заняття. У звичайному занятті обирається одна дитина й один спеціаліст, у груповому — кілька дітей і спеціалістів. Дітей можна обрати лише зі списку вже доданих анкет — почніть вводити ПІБ, і з'являться варіанти. Зміни зберігаються автоматично.</p>
       </div>
 
       <div class="anketa-toolbar schedule-toolbar">
@@ -112,6 +120,10 @@
           </button>
           <input type="date" id="calendar-date-input" class="schedule-calendar-input" aria-label="Обрати дату для переходу" tabindex="-1">
         </div>
+        <button type="button" class="anketa-btn" id="copy-schedule-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+          Копіювати розклад
+        </button>
       </div>
 
       <div class="anketa-table-wrap schedule-table-wrap">
@@ -125,7 +137,7 @@
     </div>
   </main>
 
-  <!-- Slot editor: pick a specialist + child (from existing anketas) for one room/hour -->
+  <!-- Slot editor: a regular booking has one child; group bookings can have several children and specialists. -->
   <div class="anketa-modal-overlay" id="cell-modal-overlay" hidden>
     <div class="anketa-modal schedule-cell-modal" role="dialog" aria-modal="true" aria-labelledby="cell-modal-title">
       <button type="button" class="anketa-modal__close" id="cell-modal-close" aria-label="Закрити">
@@ -134,12 +146,18 @@
       <h2 id="cell-modal-title">Запис на заняття</h2>
       <p class="anketa-modal__hint" id="cell-modal-meta"></p>
 
-      <div class="anketa-field" data-type="select">
+      <label class="schedule-group-toggle">
+        <input type="checkbox" id="cell-group-toggle">
+        <span class="schedule-group-toggle__track" aria-hidden="true"><span></span></span>
+        <span><strong>Групове заняття</strong><small>Додати кількох дітей і спеціалістів</small></span>
+      </label>
+
+      <div class="anketa-field" id="cell-regular-specialist-field" data-type="select">
         <label class="anketa-field__label" for="cell-specialist-select">Спеціаліст</label>
         <select id="cell-specialist-select"></select>
       </div>
 
-      <div class="anketa-field schedule-child-field" data-type="text">
+      <div class="anketa-field schedule-child-field" id="cell-regular-child-field" data-type="text">
         <label class="anketa-field__label" for="cell-child-input">Дитина</label>
         <div class="schedule-child-autocomplete">
           <input type="text" id="cell-child-input" autocomplete="off" placeholder="Почніть вводити ПІБ дитини…">
@@ -147,13 +165,84 @@
         </div>
       </div>
 
+      <div id="cell-group-fields" class="schedule-group-fields" hidden>
+        <div class="anketa-field" data-type="select">
+          <span class="anketa-field__label">Спеціалісти</span>
+          <div id="cell-group-specialists" class="schedule-group-options"></div>
+        </div>
+        <div class="anketa-field schedule-child-field" data-type="text">
+          <span class="anketa-field__label">Діти</span>
+          <div id="cell-group-children" class="schedule-group-children"></div>
+          <button type="button" class="anketa-btn schedule-add-child-btn" id="cell-add-child-btn">+ Додати дитину</button>
+        </div>
+      </div>
+
+      <div class="anketa-field" id="cell-subscription-field" data-type="select">
+        <label class="anketa-field__label" for="cell-subscription-select">Абонемент</label>
+        <select id="cell-subscription-select"><option value="">Без прив'язки</option></select>
+        <small class="schedule-subscription-hint" id="cell-subscription-hint">Оберіть дитину, щоб побачити доступні абонементи.</small>
+      </div>
+
+      <!-- Only meaningful once this slot actually has a child booked —
+           hidden until then, same rule as "Очистити"/"Не прийшов" below. -->
+      <button type="button" class="anketa-btn anketa-modal__edit-link schedule-attendance-btn" id="cell-attendance-btn" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/><path d="m8.5 14 2 2 4-4.2"/></svg>
+        Відвідування
+      </button>
+
       <button type="button" class="anketa-btn schedule-noshow-btn" id="cell-noshow-toggle" aria-pressed="false" hidden>Позначити «Не прийшов»</button>
+      <button type="button" class="anketa-btn schedule-transfer-btn" id="cell-transfer-btn" aria-pressed="false" hidden>Перенос</button>
+      <div class="schedule-transfer-fields" id="cell-transfer-fields" hidden>
+        <label><span>Нова дата</span><input type="date" id="cell-transfer-date"></label>
+        <label><span>Час</span><select id="cell-transfer-hour"></select></label>
+      </div>
+      <button type="button" class="anketa-btn schedule-freeze-btn" id="cell-freeze-btn" hidden>Заморозити абонемент</button>
       <p class="anketa-modal__hint schedule-noshow-hint">Якщо заздалегідь не попередили про відсутність, заняття за замовчуванням рахується проведеним — позначте тут, якщо дитина не прийшла.</p>
 
       <div class="schedule-cell-modal__actions">
         <button type="button" class="anketa-btn anketa-btn--danger" id="cell-clear-btn" hidden>Очистити</button>
         <button type="button" class="anketa-submit" id="cell-save-btn">Зберегти</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Copy bookings from a completed day into the currently displayed day. -->
+  <div class="anketa-modal-overlay" id="copy-schedule-modal-overlay" hidden>
+    <div class="anketa-modal schedule-copy-modal" role="dialog" aria-modal="true" aria-labelledby="copy-schedule-modal-title">
+      <button type="button" class="anketa-modal__close" id="copy-schedule-modal-close" aria-label="Закрити">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <h2 id="copy-schedule-modal-title">Копіювати розклад</h2>
+      <p class="anketa-modal__hint">Скопіювати записи з минулого дня в поточний: <strong id="copy-schedule-target-label">—</strong></p>
+
+      <div class="anketa-field" data-type="date">
+        <label class="anketa-field__label" for="copy-schedule-source-date">День, з якого копіювати</label>
+        <input type="date" id="copy-schedule-source-date" class="anketa-input">
+      </div>
+
+      <div class="anketa-field" data-type="select">
+        <label class="anketa-field__label" for="copy-schedule-specialist">Кого копіювати</label>
+        <select id="copy-schedule-specialist" class="anketa-input"></select>
+      </div>
+
+      <p class="anketa-modal__hint schedule-copy-hint" id="copy-schedule-summary">Оберіть день і спеціаліста.</p>
+      <div class="schedule-cell-modal__actions">
+        <button type="button" class="anketa-btn" id="copy-schedule-cancel-btn">Скасувати</button>
+        <button type="button" class="anketa-submit" id="copy-schedule-confirm-btn">Копіювати</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Attendance: dates this child was scheduled in the past on this board,
+       computed live from board.cells (already in memory) each time it's opened -->
+  <div class="anketa-modal-overlay" id="attendance-modal-overlay" hidden>
+    <div class="anketa-modal" role="dialog" aria-modal="true" aria-labelledby="attendance-modal-title">
+      <button type="button" class="anketa-modal__close" id="attendance-modal-close" aria-label="Закрити">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <h2 id="attendance-modal-title">Відвідування</h2>
+      <p class="anketa-modal__hint" id="attendance-modal-count">Рахуємо…</p>
+      <div id="attendance-modal-body"></div>
     </div>
   </div>
 
@@ -179,8 +268,53 @@
       });
     })();
   </script>
+  <script>
+    // Mobile menu: on narrow screens only "На головну сторінку" and
+    // "← Назад" stay on the topbar row — who's-signed-in, the theme
+    // switch, and "Вийти" collapse into this toggleable panel.
+    (function () {
+      var toggle = document.getElementById("topbar-toggle");
+      var menu = document.getElementById("topbar-menu");
+      if (!toggle || !menu) return;
+
+      var setOpen = function (open) {
+        menu.classList.toggle("is-open", open);
+        toggle.setAttribute("aria-expanded", String(open));
+      };
+
+      toggle.addEventListener("click", function () {
+        setOpen(!menu.classList.contains("is-open"));
+      });
+
+      window.addEventListener("resize", function () {
+        if (window.innerWidth > 720) setOpen(false);
+      });
+    })();
+  </script>
   <script src="../assets/js/schedule.js"></script>
   <script>
+    // Notification bell in the topbar — count of consultation_requests
+    // still marked "new". Same shared snippet copy-pasted on every admin
+    // page's topbar. Fails quiet (just hides the badge) rather than
+    // showing a broken 0/error — this is a "nice to notice" indicator,
+    // not critical path.
+    async function loadNotifyBadge() {
+      const badge = document.getElementById("notify-badge");
+      const countEl = document.getElementById("notify-badge-count");
+      if (!badge || !countEl) return;
+      try {
+        const { count, error } = await window.sbClient
+          .from("consultation_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "new");
+        if (error || !count) { badge.hidden = true; return; }
+        countEl.textContent = count > 99 ? "99+" : String(count);
+        badge.hidden = false;
+      } catch (e) {
+        badge.hidden = true;
+      }
+    }
+
     (async function () {
       const AUTH_TIMEOUT_MS = 8000;
       let profile;
@@ -220,6 +354,7 @@
       // showing up in the first place.
       const canEdit = profile.role === "admin" || profile.role === "super_admin";
       window.ScheduleBoard.init(profile.id, canEdit);
+      loadNotifyBadge();
     })();
   </script>
 </body>

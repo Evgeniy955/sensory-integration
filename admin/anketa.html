@@ -20,9 +20,13 @@
 <link rel="stylesheet" href="../assets/css/anketa.css">
 </head>
 <body class="anketa-shell">
-  <header class="anketa-topbar">
-    <a class="anketa-topbar__brand" href="dashboard.html">Центр сенсорної інтеграції</a>
-    <div class="anketa-topbar__user">
+  <header class="anketa-topbar anketa-topbar--collapsible">
+    <a class="anketa-btn anketa-btn--primary" href="../index.html">На головну сторінку</a>
+    <div class="anketa-topbar__user" id="topbar-menu">
+      <a class="topbar-notify" href="consultation-requests.html" id="notify-badge" hidden aria-label="Нові заявки на консультацію">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="topbar-notify__count" id="notify-badge-count">0</span>
+      </a>
       <span id="whoami">перевіряємо доступ...</span>
       <button type="button" class="theme-toggle" id="themeToggle" aria-label="Перемкнути тему" aria-pressed="false">
         <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
@@ -31,6 +35,10 @@
       <a class="anketa-btn" href="dashboard.html">← Назад</a>
       <button class="anketa-btn" id="logout-btn" type="button">Вийти</button>
     </div>
+    <button type="button" class="anketa-topbar__toggle" id="topbar-toggle" aria-label="Меню" aria-expanded="false" aria-controls="topbar-menu">
+      <svg class="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
   </header>
 
   <main class="anketa-main">
@@ -61,10 +69,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 18v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1"/></svg>
           Імпортувати CSV
         </button>
-        <button type="button" class="anketa-btn" id="ai-assistant-btn">
+        <a class="anketa-btn" id="ai-assistant-link" href="ai-assistant.html">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M12 3v3M12 18v3M5 12H2M22 12h-3M6.3 6.3 4.2 4.2M19.8 19.8l-2.1-2.1M6.3 17.7l-2.1 2.1M19.8 4.2l-2.1 2.1"/><circle cx="12" cy="12" r="4.2"/></svg>
           AI помічник
-        </button>
+        </a>
         <a id="add-anketa-link" class="anketa-btn anketa-btn--primary" href="anketa-form.html">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
           Додати нову анкету
@@ -120,7 +128,14 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/><path d="m8.5 14 2 2 4-4.2"/></svg>
         Відвідування
       </button>
-      <div id="view-modal-siblings" class="anketa-view-siblings" hidden></div>
+      <button type="button" id="view-modal-history-btn" class="anketa-btn anketa-modal__edit-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+        Історія
+      </button>
+      <button type="button" id="view-modal-export-btn" class="anketa-btn anketa-modal__edit-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><path d="M12 3v12M7 10.5l5 5 5-5"/><path d="M4.5 18.5v1.8a1.7 1.7 0 0 0 1.7 1.7h11.6a1.7 1.7 0 0 0 1.7-1.7v-1.8"/></svg>
+        <span id="view-modal-export-btn-text">Експорт у PDF</span>
+      </button>
       <div id="view-modal-body"></div>
     </div>
   </div>
@@ -134,6 +149,33 @@
       <h2 id="attendance-modal-title">Відвідування</h2>
       <p class="anketa-modal__hint" id="attendance-modal-count">Рахуємо…</p>
       <div id="attendance-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Anketa version history for one child, sorted newest-first; pick two to compare -->
+  <div class="anketa-modal-overlay" id="history-modal-overlay" hidden>
+    <div class="anketa-modal" role="dialog" aria-modal="true" aria-labelledby="history-modal-title">
+      <button type="button" class="anketa-modal__close" id="history-modal-close" aria-label="Закрити">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <h2 id="history-modal-title">Історія анкет</h2>
+      <p class="anketa-modal__hint">Позначте прапорцями версії (дві або більше), щоб порівняти зміни між ними.</p>
+      <div id="history-modal-list" class="anketa-history-list"></div>
+      <div class="anketa-submit-row" style="margin-top:1rem;">
+        <button type="button" class="anketa-submit" id="history-compare-btn" disabled>Порівняти обрані</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Field-by-field diff between two versions picked in the history list above -->
+  <div class="anketa-modal-overlay" id="compare-modal-overlay" hidden>
+    <div class="anketa-modal" role="dialog" aria-modal="true" aria-labelledby="compare-modal-title">
+      <button type="button" class="anketa-modal__close" id="compare-modal-close" aria-label="Закрити">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <h2 id="compare-modal-title">Порівняння версій</h2>
+      <p class="anketa-modal__hint" id="compare-modal-meta"></p>
+      <div id="compare-modal-body"></div>
     </div>
   </div>
 
@@ -166,22 +208,10 @@
     </div>
   </div>
 
-  <!-- AI assistant stub -->
-  <div class="anketa-modal-overlay" id="ai-modal-overlay" hidden>
-    <div class="anketa-modal" role="dialog" aria-modal="true" aria-labelledby="ai-modal-title">
-      <button type="button" class="anketa-modal__close" id="ai-modal-close" aria-label="Закрити">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
-      </button>
-      <h2 id="ai-modal-title">AI помічник</h2>
-      <p class="anketa-modal__hint">
-        Функція в розробці. Незабаром тут можна буде ставити запитання про анкети природною мовою —
-        наприклад, «які діти мають проблеми зі сном» — і отримувати відповідь на основі збережених даних.
-      </p>
-    </div>
-  </div>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="../assets/js/supabase-config.js"></script>
   <script src="../assets/js/admin-auth.js"></script>
   <script src="../assets/js/anketa.js"></script>
@@ -205,10 +235,56 @@
     })();
   </script>
   <script>
+    // Mobile menu: on narrow screens only "На головну сторінку" and
+    // "← Назад" stay on the topbar row — who's-signed-in, the theme
+    // switch, and "Вийти" collapse into this toggleable panel.
+    (function () {
+      var toggle = document.getElementById("topbar-toggle");
+      var menu = document.getElementById("topbar-menu");
+      if (!toggle || !menu) return;
+
+      var setOpen = function (open) {
+        menu.classList.toggle("is-open", open);
+        toggle.setAttribute("aria-expanded", String(open));
+      };
+
+      toggle.addEventListener("click", function () {
+        setOpen(!menu.classList.contains("is-open"));
+      });
+
+      window.addEventListener("resize", function () {
+        if (window.innerWidth > 720) setOpen(false);
+      });
+    })();
+  </script>
+  <script>
     function escapeHtml(str) {
       return String(str).replace(/[&<>"']/g, (c) => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
       }[c]));
+    }
+
+    // Notification bell in the topbar — count of consultation_requests
+    // still marked "new". Same shared snippet copy-pasted on every admin
+    // page's topbar (dashboard/anketa/schedule/ai-assistant/users/anketa-form),
+    // same pattern this file already uses for the theme toggle etc. Fails
+    // quiet (just hides the badge) rather than showing a broken 0/error —
+    // this is a "nice to notice" indicator, not critical path.
+    async function loadNotifyBadge() {
+      const badge = document.getElementById("notify-badge");
+      const countEl = document.getElementById("notify-badge-count");
+      if (!badge || !countEl) return;
+      try {
+        const { count, error } = await window.sbClient
+          .from("consultation_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "new");
+        if (error || !count) { badge.hidden = true; return; }
+        countEl.textContent = count > 99 ? "99+" : String(count);
+        badge.hidden = false;
+      } catch (e) {
+        badge.hidden = true;
+      }
     }
 
     // ПІБ дитини is written surname-first ("Прізвище Ім'я По-батькові"),
@@ -224,9 +300,10 @@
 
     [
       ["view-modal-overlay", "view-modal-close"],
-      ["ai-modal-overlay", "ai-modal-close"],
       ["import-modal-overlay", "import-modal-close"],
       ["attendance-modal-overlay", "attendance-modal-close"],
+      ["history-modal-overlay", "history-modal-close"],
+      ["compare-modal-overlay", "compare-modal-close"],
     ].forEach(([overlayId, closeId]) => {
       const overlay = document.getElementById(overlayId);
       document.getElementById(closeId).addEventListener("click", () => closeModal(overlay));
@@ -236,39 +313,21 @@
       });
     });
 
-    document.getElementById("ai-assistant-btn").addEventListener("click", () => {
-      openModal(document.getElementById("ai-modal-overlay"));
-    });
-
     function renderAnketaDetail(row) {
       const body = document.getElementById("view-modal-body");
       document.getElementById("view-modal-title").textContent =
         row.child_full_name || "Анкета";
       document.getElementById("view-modal-edit-link").href = "anketa-form.html?id=" + encodeURIComponent(row.id);
-      document.getElementById("view-modal-attendance-btn").dataset.anketaId = row.id;
       document.getElementById("view-modal-attendance-btn").dataset.childName = row.child_full_name || "";
+      document.getElementById("view-modal-history-btn").dataset.anketaId = row.id;
+      document.getElementById("view-modal-export-btn").dataset.anketaId = row.id;
 
       const data = row.data || {};
       const metaBits = ["Додано: " + new Date(row.created_at).toLocaleString("uk-UA")];
       if (data.respondent_email) metaBits.push("Відправник: " + data.respondent_email);
+      const versionCount = allAnketas.filter((r) => normalizeChildName(r.child_full_name) === normalizeChildName(row.child_full_name)).length;
+      if (versionCount > 1) metaBits.push(versionCount + " " + pluralizeUk(versionCount, "версія", "версії", "версій") + " — див. «Історія»");
       document.getElementById("view-modal-meta").textContent = metaBits.join(" · ");
-
-      // A child can have several anketas over time — surface the others
-      // right here instead of making the admin go search for them.
-      const siblingsEl = document.getElementById("view-modal-siblings");
-      const siblings = allAnketas
-        .filter((r) => r.id !== row.id && normalizeChildName(r.child_full_name) === normalizeChildName(row.child_full_name))
-        .sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0));
-      if (siblings.length) {
-        siblingsEl.innerHTML = "Інші анкети цієї дитини: " + siblings.map((s) =>
-          "<button type=\"button\" class=\"anketa-view-link\" data-view=\"" + s.id + "\">" +
-          new Date(s.created_at).toLocaleDateString("uk-UA") + "</button>"
-        ).join(" · ");
-        siblingsEl.hidden = false;
-      } else {
-        siblingsEl.hidden = true;
-        siblingsEl.innerHTML = "";
-      }
 
       body.innerHTML = window.ANKETA_SECTIONS.map((section) => {
         const rows = section.fields.map((f) => {
@@ -284,6 +343,330 @@
       openModal(document.getElementById("view-modal-overlay"));
     }
 
+    function pluralizeUk(n, one, few, many) {
+      const mod10 = n % 10, mod100 = n % 100;
+      if (mod10 === 1 && mod100 !== 11) return one;
+      if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+      return many;
+    }
+
+    // ---------- Anketa version history + compare ----------
+    // A child can have several anketas over time (returning after a break,
+    // an improvement or regression worth tracking, an edit that — per
+    // anketa-form.html — always saves as a new row rather than overwriting
+    // the old one). Grouped by normalized child name, same matching the
+    // "existing anketa" heads-up on the add/edit form already uses — this
+    // is a fuzzy "probably the same kid" grouping, not a hard foreign key.
+    let historySelection = []; // 2+ anketa ids, for "Порівняти обрані"
+
+    function openHistoryModal(row) {
+      const versions = allAnketas
+        .filter((r) => normalizeChildName(r.child_full_name) === normalizeChildName(row.child_full_name))
+        .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+      document.getElementById("history-modal-title").textContent =
+        "Історія анкет" + (row.child_full_name ? " — " + row.child_full_name : "");
+      historySelection = [];
+      renderHistoryList(versions);
+      document.getElementById("history-compare-btn").disabled = true;
+      openModal(document.getElementById("history-modal-overlay"));
+    }
+
+    function renderHistoryList(versions) {
+      const listEl = document.getElementById("history-modal-list");
+      listEl.innerHTML = versions.map((v) => {
+        const checked = historySelection.includes(v.id) ? " checked" : "";
+        // "Активна" reflects is_active (what the main list/"Редагувати"
+        // actually show) — not just whichever version happens to be open
+        // underneath right now.
+        const badge = v.is_active ? ' <span class="anketa-history-item__badge">активна</span>' : "";
+        // Both are writes, same as editing — instructors (read-only) get
+        // neither control, not just a disabled one.
+        const activateBtn = canEdit && !v.is_active
+          ? '<button type="button" class="anketa-history-item__activate" data-history-activate="' + v.id + '">Зробити активною</button>'
+          : "";
+        const deleteBtn = canEdit
+          ? '<button type="button" class="anketa-history-item__delete" data-history-delete="' + v.id + '" aria-label="Видалити цю версію" title="Видалити цю версію">✕</button>'
+          : "";
+        return '<div class="anketa-history-item">' +
+          '<label class="anketa-history-item__select">' +
+            '<input type="checkbox" data-history-select="' + v.id + '"' + checked + '>' +
+          '</label>' +
+          '<button type="button" class="anketa-history-item__view" data-history-view="' + v.id + '">' +
+            '<span class="anketa-history-item__date">' + new Date(v.created_at).toLocaleString("uk-UA") + '</span>' + badge +
+          '</button>' +
+          activateBtn +
+          deleteBtn +
+        '</div>';
+      }).join("");
+    }
+
+    // Marks one version active and every other version for the same
+    // child inactive — deliberately two calls (not a single atomic
+    // statement) to match the fuzzy, client-side-enforced grouping used
+    // for history/dedup everywhere else in this file, rather than adding
+    // a hard per-child uniqueness constraint in the DB.
+    async function activateAnketaVersion(id) {
+      const row = allAnketas.find((r) => r.id === id);
+      if (!row) return;
+      const siblingIds = allAnketas
+        .filter((r) => r.id !== id && normalizeChildName(r.child_full_name) === normalizeChildName(row.child_full_name))
+        .map((r) => r.id);
+
+      if (siblingIds.length) {
+        const { error: deactivateErr } = await window.sbClient.from("anketas").update({ is_active: false }).in("id", siblingIds);
+        if (deactivateErr) {
+          window.alert("Помилка: " + deactivateErr.message);
+          return;
+        }
+      }
+      const { error: activateErr } = await window.sbClient.from("anketas").update({ is_active: true }).eq("id", id);
+      if (activateErr) {
+        window.alert("Помилка: " + activateErr.message);
+        return;
+      }
+
+      allAnketas.forEach((r) => {
+        if (r.id === id) r.is_active = true;
+        else if (siblingIds.includes(r.id)) r.is_active = false;
+      });
+      renderRows();
+      renderAnketaDetail(row);
+      const versions = allAnketas
+        .filter((r) => normalizeChildName(r.child_full_name) === normalizeChildName(row.child_full_name))
+        .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+      renderHistoryList(versions);
+    }
+
+    document.getElementById("history-modal-list").addEventListener("change", (e) => {
+      const checkbox = e.target.closest("[data-history-select]");
+      if (!checkbox) return;
+      const id = checkbox.getAttribute("data-history-select");
+      if (checkbox.checked) {
+        historySelection.push(id);
+      } else {
+        historySelection = historySelection.filter((existingId) => existingId !== id);
+      }
+      // Any 2+ versions can be compared at once — see renderCompareModal.
+      document.getElementById("history-compare-btn").disabled = historySelection.length < 2;
+    });
+
+    document.getElementById("history-modal-list").addEventListener("click", async (e) => {
+      const viewBtn = e.target.closest("[data-history-view]");
+      if (viewBtn) {
+        const row = allAnketas.find((r) => r.id === viewBtn.getAttribute("data-history-view"));
+        if (!row) return;
+        closeModal(document.getElementById("history-modal-overlay"));
+        renderAnketaDetail(row);
+        return;
+      }
+
+      const activateBtn = e.target.closest("[data-history-activate]");
+      if (activateBtn) {
+        await activateAnketaVersion(activateBtn.getAttribute("data-history-activate"));
+        return;
+      }
+
+      const deleteBtn = e.target.closest("[data-history-delete]");
+      if (deleteBtn) {
+        const id = deleteBtn.getAttribute("data-history-delete");
+        const row = allAnketas.find((r) => r.id === id);
+        if (!row) return;
+        const label = new Date(row.created_at).toLocaleString("uk-UA");
+        if (!window.confirm("Видалити цю версію анкети (" + label + ")? Цю дію не можна скасувати.")) return;
+
+        const { error } = await window.sbClient.from("anketas").delete().eq("id", id);
+        if (error) {
+          window.alert("Помилка видалення: " + error.message);
+          return;
+        }
+
+        allAnketas = allAnketas.filter((r) => r.id !== id);
+        historySelection = historySelection.filter((existingId) => existingId !== id);
+        document.getElementById("history-compare-btn").disabled = historySelection.length < 2;
+
+        const remaining = allAnketas
+          .filter((r) => normalizeChildName(r.child_full_name) === normalizeChildName(row.child_full_name))
+          .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+
+        if (!remaining.length) {
+          // That was the only version — nothing left to show underneath.
+          renderRows();
+          closeModal(document.getElementById("history-modal-overlay"));
+          closeModal(document.getElementById("view-modal-overlay"));
+          return;
+        }
+
+        let activeRow = remaining.find((r) => r.is_active);
+        if (!activeRow) {
+          // The deleted version was the active one — promote the newest
+          // survivor so the group is never left without one.
+          activeRow = remaining[0];
+          activeRow.is_active = true;
+          await window.sbClient.from("anketas").update({ is_active: true }).eq("id", activeRow.id);
+        }
+        renderRows();
+        // Snap the view underneath back to the active version, so closing
+        // "Історія" never reveals stale or removed content.
+        renderAnketaDetail(activeRow);
+        renderHistoryList(remaining);
+      }
+    });
+
+    document.getElementById("view-modal-history-btn").addEventListener("click", (e) => {
+      const row = allAnketas.find((r) => r.id === e.currentTarget.dataset.anketaId);
+      if (row) openHistoryModal(row);
+    });
+
+    // ---------- Export anketa to PDF ----------
+    // Rendered off-screen as plain light-on-white HTML (not a clone of the
+    // themed modal, which can be dark/cosmic) and rasterized via
+    // html2canvas — this avoids embedding a Cyrillic-capable font in jsPDF,
+    // at the cost of the PDF text not being selectable.
+    async function exportAnketaPdf(row) {
+      if (!window.html2canvas || !window.jspdf) {
+        throw new Error("Бібліотека для експорту PDF не завантажилась. Перевірте інтернет-з'єднання і спробуйте ще раз.");
+      }
+      const data = row.data || {};
+      const metaBits = ["Додано: " + new Date(row.created_at).toLocaleString("uk-UA")];
+      if (data.respondent_email) metaBits.push("Відправник: " + data.respondent_email);
+
+      const container = document.createElement("div");
+      container.style.cssText =
+        "position:fixed;left:-10000px;top:0;width:760px;background:#ffffff;color:#1a1a1a;" +
+        "padding:32px;font-family:Arial,Helvetica,sans-serif;box-sizing:border-box;";
+      container.innerHTML =
+        "<h1 style=\"font-size:20px;margin:0 0 4px;\">" + escapeHtml(row.child_full_name || "Анкета") + "</h1>" +
+        "<p style=\"font-size:11px;color:#666;margin:0 0 20px;\">" + escapeHtml(metaBits.join(" · ")) + "</p>" +
+        window.ANKETA_SECTIONS.map((section) => {
+          const rows = section.fields.map((f) => {
+            const value = data[f.name];
+            const display = value === undefined || value === null || value === "" ? "—" : escapeHtml(value);
+            return "<tr><td style=\"padding:5px 10px 5px 0;font-size:11px;color:#666;width:42%;vertical-align:top;\">" +
+              escapeHtml(f.label) + "</td><td style=\"padding:5px 0;font-size:12.5px;vertical-align:top;white-space:pre-wrap;\">" +
+              display + "</td></tr>";
+          }).join("");
+          return "<h3 style=\"font-size:14px;margin:18px 0 6px;padding-bottom:4px;border-bottom:1px solid #ddd;\">" +
+            escapeHtml(section.title) + "</h3><table style=\"width:100%;border-collapse:collapse;\">" + rows + "</table>";
+        }).join("");
+
+      document.body.appendChild(container);
+      try {
+        const canvas = await window.html2canvas(container, { scale: 2, backgroundColor: "#ffffff" });
+        const pdf = new window.jspdf.jsPDF({ unit: "pt", format: "a4" });
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pageWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        // JPEG, not PNG: jsPDF re-encodes PNG image data uncompressed
+        // internally, which turned a ~1MB PNG into a 25MB+ PDF in testing.
+        // JPEG bytes are embedded as-is, so the file stays a few hundred KB.
+        const imgData = canvas.toDataURL("image/jpeg", 0.92);
+
+        let heightLeft = imgHeight;
+        let position = 0;
+        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+        while (heightLeft > 0) {
+          position -= pageHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+
+        const fileName = (row.child_full_name || "anketa").trim().replace(/\s+/g, "_") + ".pdf";
+        pdf.save(fileName);
+      } finally {
+        container.remove();
+      }
+    }
+
+    document.getElementById("view-modal-export-btn").addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      const row = allAnketas.find((r) => r.id === btn.dataset.anketaId);
+      if (!row) return;
+
+      const textEl = document.getElementById("view-modal-export-btn-text");
+      const originalText = textEl.textContent;
+      btn.disabled = true;
+      textEl.textContent = "Генеруємо…";
+      try {
+        await exportAnketaPdf(row);
+      } catch (err) {
+        window.alert("Не вдалося створити PDF: " + (err && err.message ? err.message : "невідома помилка"));
+      } finally {
+        btn.disabled = false;
+        textEl.textContent = originalText;
+      }
+    });
+
+    document.getElementById("history-compare-btn").addEventListener("click", () => {
+      if (historySelection.length < 2) return;
+      const rows = historySelection.map((id) => allAnketas.find((r) => r.id === id)).filter(Boolean);
+      if (rows.length >= 2) renderCompareModal(rows);
+    });
+
+    // Only the fields that actually differ somewhere across the selected
+    // versions — the point of comparing is spotting what changed
+    // (improvement or regression), not re-reading fifty unchanged answers
+    // once per version.
+    function buildAnketaDiff(rowsSorted) {
+      const diffRows = [];
+      window.ANKETA_SECTIONS.forEach((section) => {
+        section.fields.forEach((f) => {
+          const values = rowsSorted.map((r) => {
+            const v = (r.data || {})[f.name];
+            return v === undefined || v === null || v === "" ? "—" : String(v);
+          });
+          if (values.every((v) => v === values[0])) return;
+          diffRows.push({ label: f.label, values });
+        });
+      });
+      return diffRows;
+    }
+
+    // Compares any 2+ selected versions side by side, oldest to newest.
+    // Each cell is marked "changed" only relative to the PREVIOUS column
+    // (not the first/oldest one), so a wide comparison across many
+    // versions still shows exactly where each change happened along the
+    // timeline rather than just "different from the very first version".
+    function renderCompareModal(rows) {
+      const sorted = rows.slice().sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0));
+      document.getElementById("compare-modal-meta").textContent =
+        sorted.map((r) => new Date(r.created_at).toLocaleString("uk-UA")).join("  →  ");
+
+      const diffRows = buildAnketaDiff(sorted);
+      const body = document.getElementById("compare-modal-body");
+      if (!diffRows.length) {
+        body.innerHTML = '<p class="anketa-modal__hint">Відмінностей між цими версіями немає.</p>';
+        openModal(document.getElementById("compare-modal-overlay"));
+        return;
+      }
+
+      // scroll-snap-align on each version column's header cell — combined
+      // with the wrap's scroll-snap-type below — lets a swipe on mobile
+      // settle neatly on one version at a time instead of stopping
+      // mid-column; the sticky label column keeps "which field is this"
+      // visible no matter which version column you've swiped to.
+      const headerCells = sorted.map((r) =>
+        '<th class="anketa-compare-table__col">' + new Date(r.created_at).toLocaleDateString("uk-UA") + "</th>"
+      ).join("");
+      const bodyRows = diffRows.map((d) => {
+        const cells = d.values.map((v, i) => {
+          const changed = i > 0 && v !== d.values[i - 1];
+          return '<td class="anketa-compare-table__col' + (changed ? " anketa-compare-table__changed" : "") + '">' + escapeHtml(v) + "</td>";
+        }).join("");
+        return "<tr><td class=\"anketa-compare-table__label\">" + escapeHtml(d.label) + "</td>" + cells + "</tr>";
+      }).join("");
+
+      body.innerHTML =
+        '<div class="anketa-compare-table-wrap"><table class="anketa-compare-table">' +
+          '<thead><tr><th class="anketa-compare-table__label"></th>' + headerCells + "</tr></thead>" +
+          "<tbody>" + bodyRows + "</tbody>" +
+        "</table></div>";
+
+      openModal(document.getElementById("compare-modal-overlay"));
+    }
+
     // ---------- Attendance (computed live from Розклад, never persisted) ----------
     // Deliberately not cached in anketas.data: computing it fresh every
     // time the modal opens is what makes the count "update itself" the
@@ -295,7 +678,7 @@
       return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     }
 
-    async function openAttendanceModal(anketaId, childName) {
+    async function openAttendanceModal(childName) {
       const overlay = document.getElementById("attendance-modal-overlay");
       const countEl = document.getElementById("attendance-modal-count");
       const bodyEl = document.getElementById("attendance-modal-body");
@@ -316,23 +699,46 @@
       }
 
       const cells = (data && data.data && data.data.cells) || {};
+      const attendanceResult = await window.sbClient
+        .from("subscription_attendance")
+        .select("child_name, session_date, status")
+        .ilike("child_name", childName);
+      const subscriptionAttendance = attendanceResult.error ? [] : (attendanceResult.data || []);
       const today = todayIso();
+      // Matched by (normalized) child name, not anketaId — a schedule
+      // slot points at whichever anketa version was picked at booking
+      // time, but editing (admin/anketa-form.html) always creates a new
+      // version with a new id, so matching on anketaId would silently
+      // stop finding a child's attendance the moment their anketa is
+      // edited. Same fuzzy grouping "Історія" already uses elsewhere.
+      const key = normalizeChildName(childName);
       // Per date, not per slot: a date only counts as a no-show if every
       // slot that day was marked as one - if the child had two bookings
       // the same day and showed up for at least one, the day still
       // counts as a visit.
       const dateStatus = {}; // dateIso -> "attended" | "noshow"
-      Object.keys(cells).forEach((key) => {
-        const parts = key.split("|");
+      Object.keys(cells).forEach((cellKey) => {
+        const parts = cellKey.split("|");
         if (parts.length !== 3) return;
         const [, dateIso] = parts;
-        const entry = cells[key];
-        if (!entry || entry.anketaId !== anketaId || dateIso >= today) return;
+        const entry = cells[cellKey];
+        if (!entry || !key || dateIso >= today) return;
+        const entryChildren = Array.isArray(entry.children) && entry.children.length ? entry.children : [{ childName: entry.childName }];
+        if (!entryChildren.some((child) => normalizeChildName(child.childName) === key)) return;
         if (entry.noShow) {
           if (dateStatus[dateIso] !== "attended") dateStatus[dateIso] = "noshow";
         } else {
           dateStatus[dateIso] = "attended";
         }
+      });
+
+      const statusLabels = { attended: "Відвідав", no_show: "Не прийшов", transferred: "Перенос" };
+      subscriptionAttendance.forEach((row) => {
+        if (!row.session_date || row.session_date >= today || normalizeChildName(row.child_name) !== key) return;
+        if (row.status === "transferred") dateStatus[row.session_date] = "transferred";
+        else if (row.status === "no_show") {
+          if (dateStatus[row.session_date] !== "attended") dateStatus[row.session_date] = "noshow";
+        } else dateStatus[row.session_date] = "attended";
       });
 
       const formatDate = (iso) => new Date(iso + "T00:00:00").toLocaleDateString("uk-UA", { day: "2-digit", month: "long", year: "numeric" });
@@ -341,19 +747,23 @@
 
       const attended = Object.keys(dateStatus).filter((d) => dateStatus[d] === "attended").sort().reverse();
       const noShow = Object.keys(dateStatus).filter((d) => dateStatus[d] === "noshow").sort().reverse();
+      const transferred = Object.keys(dateStatus).filter((d) => dateStatus[d] === "transferred").sort().reverse();
 
-      countEl.textContent = "Відвідувань: " + attended.length + (noShow.length ? " · Не з'явився: " + noShow.length : "");
+      countEl.textContent = "Відвідувань: " + attended.length + (noShow.length ? " · Не з'явився: " + noShow.length : "") + (transferred.length ? " · Перенос: " + transferred.length : "");
       let html = attended.length
         ? listHtml(attended)
         : "<p class=\"anketa-modal__hint\" style=\"margin:0;\">Ще немає жодного завершеного заняття за розкладом.</p>";
       if (noShow.length) {
         html += "<h3 style=\"margin:1.2rem 0 .4rem;font-size:.9rem;color:var(--color-destructive);\">Не з'явився</h3>" + listHtml(noShow);
       }
+      if (transferred.length) {
+        html += "<h3 style=\"margin:1.2rem 0 .4rem;font-size:.9rem;color:var(--color-sky-deep);\">" + statusLabels.transferred + "</h3>" + listHtml(transferred);
+      }
       bodyEl.innerHTML = html;
     }
 
     document.getElementById("view-modal-attendance-btn").addEventListener("click", (e) => {
-      openAttendanceModal(e.currentTarget.dataset.anketaId, e.currentTarget.dataset.childName);
+      openAttendanceModal(e.currentTarget.dataset.childName);
     });
 
     // ---------- CSV import ----------
@@ -651,11 +1061,38 @@
       });
     }
 
+    // The table lists one row per CHILD, not one per anketa version — a
+    // child with several versions (see "Історія") would otherwise show up
+    // once per version, which reads as duplicate children. Older versions
+    // are still fully reachable from "Історія" on whichever version is
+    // shown here; they're just not separate rows in this list. Which one
+    // represents the child here is is_active (settable from "Історія" —
+    // see "Зробити активною"), not just "whichever is newest" — falling
+    // back to newest only covers rows saved before is_active existed or
+    // the rare case of a group with no active row at all.
+    function getActiveAnketaPerChild(list) {
+      const byKey = new Map();
+      list.forEach((r) => {
+        const key = normalizeChildName(r.child_full_name);
+        const existing = byKey.get(key);
+        if (!existing) {
+          byKey.set(key, r);
+          return;
+        }
+        if (r.is_active && !existing.is_active) {
+          byKey.set(key, r);
+        } else if (!(existing.is_active && !r.is_active) && r.created_at > existing.created_at) {
+          byKey.set(key, r);
+        }
+      });
+      return Array.from(byKey.values());
+    }
+
     function renderRows() {
       const tbody = document.getElementById("anketa-tbody");
       const q = searchQuery.trim().toLowerCase();
 
-      let rows = allAnketas.filter((r) => {
+      let rows = getActiveAnketaPerChild(allAnketas).filter((r) => {
         if (!q) return true;
         return (r.child_full_name || "").toLowerCase().includes(q) ||
                (r.parent_name || "").toLowerCase().includes(q);
@@ -702,7 +1139,7 @@
       const tbody = document.getElementById("anketa-tbody");
       const { data, error } = await window.sbClient
         .from("anketas")
-        .select("id, child_full_name, parent_name, data, created_at")
+        .select("id, child_full_name, parent_name, data, created_at, is_active")
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -802,6 +1239,7 @@
 
       updateSortIndicators();
       loadAnketas();
+      loadNotifyBadge();
     })();
   </script>
 </body>

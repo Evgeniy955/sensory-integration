@@ -71,7 +71,8 @@
   font-size: .85rem;
   cursor: pointer;
   text-decoration: none;
-  transition: background .15s ease, color .15s ease, transform .1s ease;
+  transition: background .15s ease, color .15s ease, transform .1s ease,
+    filter .15s ease, box-shadow .15s ease;
 }
 .anketa-btn:hover {
   background: var(--color-surface-alt);
@@ -84,6 +85,81 @@
    default. The delete button in anketa-form.html's edit mode is the
    first .anketa-btn actually toggled via hidden, so this is needed now. */
 .anketa-btn[hidden] { display: none; }
+
+/* Hamburger toggle for the collapsible topbar (Анкети/Розклад). Hidden by
+   default; only shown under the mobile breakpoint below. Scoped to
+   .anketa-topbar--collapsible's markup only, so plain .anketa-topbar__user
+   usages elsewhere (anketa-form.html) are unaffected. */
+.anketa-topbar__toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+  flex: none;
+}
+.anketa-topbar__toggle svg { width: 20px; height: 20px; }
+.anketa-topbar__toggle .icon-close { display: none; }
+.anketa-topbar__toggle[aria-expanded="true"] .icon-menu { display: none; }
+.anketa-topbar__toggle[aria-expanded="true"] .icon-close { display: block; }
+
+@media (max-width: 720px) {
+  .anketa-topbar--collapsible {
+    flex-wrap: wrap;
+  }
+
+  .anketa-topbar--collapsible .anketa-topbar__toggle {
+    display: inline-flex;
+    /* When "На головну сторінку" + the back link don't leave room for the
+       toggle on the same line, it wraps onto its own line — and being the
+       only item there, justify-content:space-between pins a lone item to
+       the start (left) instead of the end. margin-left:auto keeps it on
+       the right whether it shares the line with the buttons or not. */
+    margin-left: auto;
+  }
+
+  /* Collapsed by default: whoami, the theme switch, and "Вийти" hide —
+     "← Назад" (also inside .anketa-topbar__user) is left alone, so it
+     stays visible next to "На головну сторінку" and the toggle. */
+  .anketa-topbar--collapsible .anketa-topbar__user #whoami,
+  .anketa-topbar--collapsible .anketa-topbar__user .theme-toggle,
+  .anketa-topbar--collapsible .anketa-topbar__user #logout-btn {
+    display: none;
+  }
+
+  .anketa-topbar__user.is-open {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: .6rem;
+    margin-top: .9rem;
+    padding-top: .9rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .anketa-topbar__user.is-open #whoami,
+  .anketa-topbar__user.is-open .theme-toggle,
+  .anketa-topbar__user.is-open #logout-btn {
+    display: flex;
+  }
+
+  .anketa-topbar__user.is-open .anketa-btn {
+    width: 100%;
+  }
+
+  .anketa-topbar__user.is-open .theme-toggle {
+    /* Opt out of the column flex container's align-items:stretch — without
+       this the circular icon button stretches into a full-width bar. */
+    align-self: flex-start;
+  }
+}
 
 /* ---------- Layout ---------- */
 .anketa-main {
@@ -351,7 +427,18 @@
   font-weight: 700;
   border-color: transparent;
 }
-.anketa-btn--primary:hover { color: #0B0C22; filter: brightness(1.03); }
+/* Explicit background, not just color/filter: the generic .anketa-btn:hover
+   above sets a flat, dark background (var(--color-surface-alt)), and since
+   it comes first in the cascade with the same specificity as this rule,
+   it otherwise wins for that one property — replacing the gradient with a
+   dark fill while keeping this rule's near-black text, which made the
+   button unreadable on hover instead of just slightly brighter. */
+.anketa-btn--primary:hover {
+  background: linear-gradient(135deg, var(--color-sage), var(--color-sky));
+  color: #0B0C22;
+  filter: brightness(1.12);
+  box-shadow: var(--shadow-md);
+}
 
 .anketa-btn--danger {
   color: var(--color-destructive);
@@ -374,6 +461,23 @@
   width: 100%;
   border-collapse: collapse;
   font-size: .9rem;
+}
+
+@media (max-width: 720px) {
+  /* Four columns (Дитина / Ім'я одного з батьків / Дата додавання / Дії)
+     don't fit a phone screen — plain overflow:hidden above was clipping
+     the last two columns entirely with no way to reach them. Switch to a
+     horizontally scrollable table instead, wide enough that each column
+     keeps a readable width, so swiping actually reveals the rest. */
+  .anketa-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .anketa-table {
+    width: auto;
+    min-width: 640px;
+  }
 }
 
 .anketa-table th,
@@ -509,12 +613,16 @@
   font-weight: 700;
 }
 .anketa-modal__edit-link svg { stroke: var(--color-apricot-deep); }
+/* Not --color-ink: in cosmic theme both --color-apricot (this hover fill)
+   and --color-ink (the site's default text color) are light, so the text
+   nearly disappeared on hover. --on-apricot is the theme-aware pair made
+   for exactly this — text sitting on a solid apricot fill. */
 .anketa-modal__edit-link:hover {
   background: var(--color-apricot);
   border-color: var(--color-apricot);
-  color: var(--color-ink);
+  color: var(--on-apricot);
 }
-.anketa-modal__edit-link:hover svg { stroke: var(--color-ink); }
+.anketa-modal__edit-link:hover svg { stroke: var(--on-apricot); }
 
 .anketa-import-drop {
   border: 1.5px dashed var(--color-border);
@@ -533,16 +641,146 @@
 .anketa-import-summary { margin: 1rem 0 0; font-size: .9rem; color: var(--color-ink); }
 .anketa-import-summary strong { color: var(--color-sage-deep); }
 
-.anketa-view-siblings {
-  margin: -.3rem 0 1.1rem;
-  padding: .6rem .8rem;
-  background: var(--color-sky-tint);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  font-size: .85rem;
-  color: var(--color-ink-soft);
+/* ---------- Anketa version history + compare ---------- */
+.anketa-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  max-height: 50vh;
+  overflow-y: auto;
+  margin-bottom: .25rem;
 }
-.anketa-view-siblings .anketa-view-link { font-weight: 600; }
+
+.anketa-history-item {
+  display: flex;
+  align-items: stretch;
+  gap: .5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface-alt);
+}
+
+.anketa-history-item__select {
+  display: flex;
+  align-items: center;
+  padding: 0 .8rem;
+  cursor: pointer;
+}
+
+.anketa-history-item__view {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .65rem .8rem;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-ink);
+  font-family: var(--cx-font-body);
+  font-size: .87rem;
+  text-align: left;
+  cursor: pointer;
+}
+.anketa-history-item__view:hover { color: var(--color-sage-deep); }
+
+.anketa-history-item__badge {
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: var(--color-sage-deep);
+}
+
+.anketa-history-item__activate {
+  padding: 0 .8rem;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+  font-size: .78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.anketa-history-item__activate:hover { color: var(--color-sage-deep); }
+
+.anketa-history-item__delete {
+  padding: 0 .9rem;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-ink-faint);
+  cursor: pointer;
+  font-size: .95rem;
+}
+.anketa-history-item__delete:hover { color: var(--color-destructive); }
+
+/* Horizontally scrollable rather than stacking on narrow screens — with
+   2+ selected versions there's no fixed number of columns to collapse to.
+   scroll-snap settles a swipe on one version column at a time instead of
+   leaving it stopped mid-column; -webkit-overflow-scrolling keeps the
+   drag itself smooth on iOS. "proximity" (not "mandatory") so a small
+   nudge can still just nudge, not always jump a whole column. */
+.anketa-compare-table-wrap {
+  overflow-x: auto;
+  margin: 0 -.25rem;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+
+.anketa-compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .85rem;
+}
+
+.anketa-compare-table th,
+.anketa-compare-table td {
+  padding: .55rem .7rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.anketa-compare-table th {
+  color: var(--color-ink-soft);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* One version's column — wide enough to read comfortably as its own
+   "page" while swiping, and a snap point to settle on. A fixed width
+   (not e.g. vw) so this stays reasonable regardless of the browser
+   window's width, which — unlike the modal itself — isn't capped. */
+.anketa-compare-table__col {
+  min-width: 180px;
+  scroll-snap-align: start;
+}
+
+/* Shared by the label column's <td>s and its blank corner <th> — stays
+   put (and opaque, over whatever's scrolled underneath) while swiping
+   through version columns, so it's always clear which field is which. */
+.anketa-compare-table__label {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-surface);
+  color: var(--color-ink-soft);
+  font-weight: 600;
+  white-space: normal;
+  min-width: 160px;
+}
+
+/* Marks a value that differs from the version in the column right before
+   it — not just from the first/oldest one — so it's clear exactly where
+   along the timeline each change happened. */
+.anketa-compare-table__changed {
+  background: var(--color-apricot-tint);
+  font-weight: 600;
+}
 
 /* Attention-grabbing on purpose: this sits above the questionnaire so an
    admin sees "this child already exists" before filling out 50+ fields,
@@ -638,3 +876,63 @@
 .anketa-denied__icon svg { width: 24px; height: 24px; }
 .anketa-denied h2 { font-family: var(--cx-font-display); margin: 0 0 .5rem; font-size: 1.1rem; }
 .anketa-denied p { margin: 0; color: var(--color-ink-soft); font-size: .88rem; line-height: 1.6; }
+
+/* ---------- Notification bell (new consultation requests) ----------
+   Same component as assets/css/admin.css's copy (dashboard.html uses that
+   stylesheet instead of this one) — duplicated rather than shared since
+   this project doesn't have a common base stylesheet for admin chrome. */
+.topbar-notify {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  text-decoration: none;
+  flex: none;
+}
+.topbar-notify:hover { background: var(--color-surface-alt); color: var(--color-ink); }
+.topbar-notify svg { width: 19px; height: 19px; }
+/* Same [hidden] cascade trap documented elsewhere in this file: the
+   unconditional display:inline-flex above outranks the UA [hidden]{
+   display:none} default — the bell is hidden until loadNotifyBadge()
+   finds at least one "new" request. */
+.topbar-notify[hidden] { display: none; }
+
+.topbar-notify__count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--color-destructive);
+  color: #fff;
+  font-size: .68rem;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--color-surface);
+  animation: topbar-notify-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes topbar-notify-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+/* ---------- Consultation requests status pill ---------- */
+.consultation-status {
+  display: inline-block;
+  padding: .2rem .6rem;
+  border-radius: 999px;
+  font-size: .76rem;
+  font-weight: 600;
+}
+.consultation-status--new { background: color-mix(in srgb, var(--color-destructive) 16%, var(--color-apricot-tint)); color: var(--color-destructive); }
+.consultation-status--contacted { background: var(--color-sage-tint); color: var(--color-sage-deep); }
